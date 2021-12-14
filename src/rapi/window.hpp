@@ -1,0 +1,52 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#ifdef RAPI_WITH_VULKAN
+#define GLFW_INCLUDE_VULKAN
+#endif // #ifdef RAPI_WITH_VULKAN
+
+#ifdef RAPI_WITH_METAL
+#define GLFW_INCLUDE_NONE
+#endif // #ifdef RAPI_WITH_METAL
+
+#include <GLFW/glfw3.h>
+
+#ifdef RAPI_WITH_METAL
+#import <Metal/Metal.h>
+#define GLFW_EXPOSE_NATIVE_COCOA
+#import <GLFW/glfw3native.h>
+#endif // #ifdef RAPI_WITH_METAL
+
+#include <GLFW/glfw3.h>
+
+#include "rapi_backends.hpp"
+
+namespace krypton::rapi {
+    /**
+     * Simple abstraction over a SDL2 window, including helper
+     * functions for various SDL functions.
+     */
+    class Window final {
+        std::string title = {};
+        uint32_t width = 0;
+        uint32_t height = 0;
+
+        GLFWwindow* window = nullptr;
+
+        static void errorCallback(int error, const char* desc);
+
+    public:
+        Window(const std::string& title, uint32_t width, uint32_t height);
+
+        void create(krypton::rapi::Backend backend);
+        void destroy();
+        [[nodiscard]] float getAspectRatio() const;
+
+#ifdef RAPI_WITH_VULKAN
+        [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;
+        [[nodiscard]] std::vector<const char*> getVulkanExtensions() const;
+#endif // #ifdef RAPI_WITH_VULKAN
+    };
+}

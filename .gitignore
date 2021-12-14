@@ -1,0 +1,23 @@
+# CMake and build folders.
+bin/*
+build/*
+out/*
+CMakeSettings.json
+vcpkg_installed/*
+
+# This currently only includes dependencies we're not publishing.
+external/*
+
+# We'll include the .vscode launch configurations but leave other settings
+# out.
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Debugging stuff is unwanted too.
+nsight/*
+
+# Binary files are not wanted either.
+*.spv
+*.exe
+*.dll

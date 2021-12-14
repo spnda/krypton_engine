@@ -1,0 +1,21 @@
+{
+    "name": "krypton-engine",
+    "version": "1.0.0",
+    "description": "A simple game engine using Vulkan and Metal as a backend",
+    "homepage": "https://github.com/spnda/krypton_engine",
+    "dependencies": [
+        "assimp",
+        "fmt",
+        "glfw3",
+        "glm",
+        {
+            "name": "imgui",
+            "features": [ "sdl2-binding", "vulkan-binding" ]
+        },
+        "stb",
+        "tinygltf",
+        "vk-bootstrap",
+        "vulkan-memory-allocator"
+    ],
+    "supports": "linux | windows | macos"
+}
