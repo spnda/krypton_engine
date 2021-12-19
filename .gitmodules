@@ -1,3 +1,6 @@
 [submodule "submodules/vk-mem-alloc"]
 	path = submodules/vk-mem-alloc
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "submodules/vk-bootstrap"]
+	path = submodules/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap

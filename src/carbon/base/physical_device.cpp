@@ -3,6 +3,12 @@
 #include "instance.hpp"
 #include "../utils.hpp"
 
+void carbon::PhysicalDevice::addExtensions(const std::vector<const char*>& extensions) {
+    for (auto ext : extensions) {
+        requiredExtensions.insert(ext);
+    }
+}
+
 void carbon::PhysicalDevice::create(const carbon::Instance& instance, VkSurfaceKHR surface) {
     // Get the physical device.
     vkb::PhysicalDeviceSelector physicalDeviceSelector((vkb::Instance(instance)));
@@ -36,11 +42,13 @@ void carbon::PhysicalDevice::create(const carbon::Instance& instance, VkSurfaceK
         };
         physicalDeviceSelector.add_required_extension_features(accelerationStructureFeatures);
 
+#ifdef WITH_NV_AFTERMATH
         VkPhysicalDeviceDiagnosticsConfigFeaturesNV diagnosticsConfigFeatures = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV,
             .diagnosticsConfig = true,
         };
         physicalDeviceSelector.add_required_extension_features(diagnosticsConfigFeatures);
+#endif // #ifdef WITH_NV_AFTERMATH
 
         VkPhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
@@ -66,10 +74,8 @@ void carbon::PhysicalDevice::create(const carbon::Instance& instance, VkSurfaceK
     physicalDevice = getFromVkbResult(physicalDeviceSelector.set_surface(surface).select());
 }
 
-void carbon::PhysicalDevice::addExtensions(const std::vector<const char*>& extensions) {
-    for (auto ext : extensions) {
-        requiredExtensions.insert(ext);
-    }
+std::string carbon::PhysicalDevice::getDeviceName() const {
+    return std::string { physicalDevice.properties.deviceName };
 }
 
 carbon::PhysicalDevice::operator vkb::PhysicalDevice() const {

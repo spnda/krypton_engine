@@ -30,7 +30,6 @@ namespace carbon {
         // If a swapchain already exists, we re-use it and
         // later destroy it.
         bool create(const carbon::Device& device);
-
         void destroy();
 
         VkResult acquireNextImage(const carbon::Semaphore& presentCompleteSemaphore, uint32_t* imageIndex) const;

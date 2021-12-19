@@ -15,10 +15,13 @@ namespace krypton::rapi {
      */
     class RenderAPI {
     protected:
-        krypton::rapi::Window window;
 
     public:
+        krypton::rapi::Window window;
+
         RenderAPI();
+
+        virtual void drawFrame() = 0;
 
         /**
          * Creates the window and initializes the rendering
@@ -26,6 +29,8 @@ namespace krypton::rapi {
          * this API can be used for rendering.
          */
         virtual void init() = 0;
+
+        virtual void resize(int width, int height) = 0;
 
         /**
          * Shutdowns the rendering backend and makes it useless

@@ -11,6 +11,12 @@ carbon::Instance::Instance(const carbon::Context& context)
 
 }
 
+void carbon::Instance::addExtensions(const std::vector<std::string>& extensions) {
+    for (auto ext : extensions) {
+        requiredExtensions.insert(ext);
+    }
+}
+
 void carbon::Instance::create(const std::string& appName, const std::string& engineName) {
 #ifdef WITH_NV_AFTERMATH
     // Has to be called *before* crating the "Vulkan device".
@@ -25,13 +31,9 @@ void carbon::Instance::create(const std::string& appName, const std::string& eng
         .set_engine_version(ctx.engineVersion)
         .require_api_version(ctx.apiVersion);
 
-#ifdef _DEBUG
-    instanceBuilder.enable_layer("VK_LAYER_LUNARG_monitor");
-#endif // #ifdef _DEBUG
-
     // Add all available extensions
     auto sysInfo = vkb::SystemInfo::get_system_info().value();
-    for (auto ext : requiredExtensions) {
+    for (auto& ext : requiredExtensions) {
         if (!sysInfo.is_extension_available(ext.c_str())) {
             fmt::print(stderr, "{} is not available!\n", ext);
             continue;
@@ -42,6 +44,7 @@ void carbon::Instance::create(const std::string& appName, const std::string& eng
     // Build the instance
     auto buildResult = instanceBuilder
 #ifdef _DEBUG
+        .enable_layer("VK_LAYER_LUNARG_monitor")
         .request_validation_layers()
         .use_default_debug_messenger()
 #endif // #ifdef _DEBUG
@@ -56,12 +59,6 @@ void carbon::Instance::destroy() const {
 #endif // #ifdef WITH_NV_AFTERMATH
 
     vkb::destroy_instance(instance);
-}
-
-void carbon::Instance::addExtensions(const std::vector<std::string>& extensions) {
-    for (auto ext : extensions) {
-        requiredExtensions.insert(ext);
-    }
 }
 
 carbon::Instance::operator vkb::Instance() const {

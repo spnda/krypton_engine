@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <utility>
 
 #ifdef WITH_NV_AFTERMATH

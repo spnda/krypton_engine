@@ -11,7 +11,7 @@
 template<class T>
 T getFromVkbResult(vkb::detail::Result<T> result) {
     if (!result) {
-        fmt::print("{}\n", result.error().message());
+        fmt::print("Encountered vkb error: {}\n", result.error().message());
         throw std::runtime_error(result.error().message());
     }
     return result.value();

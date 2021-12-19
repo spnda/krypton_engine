@@ -5,12 +5,12 @@
 
 carbon::Swapchain::Swapchain(const Context& context, const VkSurfaceKHR surface)
         : ctx(context), surface(surface) {
-    create(ctx.device);
-    vkAcquireNextImage = ctx.device.getFunctionAddress<PFN_vkAcquireNextImageKHR>("vkAcquireNextImageKHR");
-    vkDestroySurface = ctx.device.getFunctionAddress<PFN_vkDestroySurfaceKHR>("vkDestroySurfaceKHR");
 }
 
 bool carbon::Swapchain::create(const carbon::Device& device) {
+    vkAcquireNextImage = ctx.device.getFunctionAddress<PFN_vkAcquireNextImageKHR>("vkAcquireNextImageKHR");
+    vkDestroySurface = ctx.device.getFunctionAddress<PFN_vkDestroySurfaceKHR>("vkDestroySurfaceKHR");
+    
     vkb::SwapchainBuilder swapchainBuilder((vkb::Device(device)));
     auto buildResult = swapchainBuilder
         .set_old_swapchain(this->swapchain)
@@ -19,15 +19,13 @@ bool carbon::Swapchain::create(const carbon::Device& device) {
         .build();
     vkb::destroy_swapchain(this->swapchain);
     swapchain = getFromVkbResult(buildResult);
+    
     images = getImages();
     views = getImageViews();
     return true;
 }
 
 void carbon::Swapchain::destroy() {
-    auto result = ctx.device.waitIdle();
-    checkResult(ctx, result, "Failed waiting on device idle");
-
     swapchain.destroy_image_views(views);
     vkb::destroy_swapchain(this->swapchain);
     

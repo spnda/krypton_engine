@@ -2,10 +2,22 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <fmt/core.h>
+
+#include "rapi.hpp"
 #include "window.hpp"
 
-void krypton::rapi::Window::errorCallback(int error, const char* desc) {
-    std::cerr << desc << std::endl;
+void errorCallback(int error, const char* desc) {
+    fmt::print(stderr, "{}\n", desc);
+}
+
+void resizeCallback(GLFWwindow* window, int width, int height) {
+    if (width > 0 && height > 0) {
+        krypton::rapi::RenderAPI* w =
+            reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
+        if (w != nullptr)
+            w->resize(width, height);
+    }
 }
 
 krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height)
@@ -17,6 +29,8 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
     if (!glfwInit())
         throw std::runtime_error("glfwInit failed.");
 
+    glfwSetErrorCallback(errorCallback);
+
     switch (backend) {
         using enum krypton::rapi::Backend;
         case Vulkan:
@@ -26,6 +40,7 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     window = glfwCreateWindow(
         width, height,
         title.c_str(),
@@ -35,6 +50,9 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
         glfwTerminate();
         throw std::runtime_error("Failed to create window.");
     }
+
+    glfwSetErrorCallback(errorCallback);
+    glfwSetWindowSizeCallback(window, resizeCallback);
 }
 
 void krypton::rapi::Window::destroy() {
@@ -44,6 +62,18 @@ void krypton::rapi::Window::destroy() {
 
 float krypton::rapi::Window::getAspectRatio() const {
     return (float)width / (float)height;
+}
+
+void krypton::rapi::Window::pollEvents() const {
+    glfwPollEvents();
+}
+
+void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
+    glfwSetWindowUserPointer(window, rapi);
+}
+
+bool krypton::rapi::Window::shouldClose() const {
+    return glfwWindowShouldClose(window);
 }
 
 #ifdef RAPI_WITH_VULKAN

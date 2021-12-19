@@ -2,6 +2,8 @@ add_library(carbon)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-mem-alloc"
     "${CMAKE_BINARY_DIR}/vk-mem-alloc")
+add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-bootstrap"
+    "${CMAKE_BINARY_DIR}/vk-bootstrap")
 
 # Add shaderc from the Vulkan SDK
 add_library(shaderc UNKNOWN IMPORTED)
@@ -33,11 +35,12 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/external/nv-aftermath" AND build_type STREQUAL "
 endif()
 
 find_package(fmt CONFIG REQUIRED)
-find_package(vk-bootstrap CONFIG REQUIRED)
+# find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(carbon PRIVATE fmt::fmt-header-only)
 target_link_libraries(carbon PUBLIC vk-bootstrap::vk-bootstrap)
+target_link_libraries(carbon PUBLIC VulkanMemoryAllocator)
 target_link_libraries(carbon PUBLIC Vulkan::Vulkan)
 
 target_include_directories(carbon PUBLIC "./")

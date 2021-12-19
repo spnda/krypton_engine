@@ -24,7 +24,7 @@ namespace carbon {
 
     // The global vulkan context. Includes the window, surface,
     // Vulkan instance and devices.
-    class Context {
+    class Context final {
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
         PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR = nullptr;
         PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
@@ -77,8 +77,9 @@ namespace carbon {
         void buildVmaAllocator();
         void getVulkanFunctions();
 
-        auto createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin, VkCommandBufferUsageFlags bufferUsageFlags = 0, const std::string& name = {}) const -> VkCommandBuffer;
         void beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags bufferUsageFlags) const;
+        auto createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin, VkCommandBufferUsageFlags bufferUsageFlags = 0, const std::string& name = {}) const -> VkCommandBuffer;
+        void endCommandBuffer(VkCommandBuffer commandBuffer) const;
         void flushCommandBuffer(VkCommandBuffer commandBuffer, const carbon::Queue& queue) const;
         void oneTimeSubmit(const carbon::Queue& queue, VkCommandPool pool, const std::function<void(VkCommandBuffer)>& callback) const;
 

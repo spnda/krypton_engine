@@ -10,6 +10,7 @@ namespace carbon {
 
     class PhysicalDevice {
         std::set<const char*> requiredExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
             VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
 
@@ -27,8 +28,9 @@ namespace carbon {
         PhysicalDevice(const PhysicalDevice& device) = default;
         PhysicalDevice& operator=(const PhysicalDevice& device) = default;
 
-        void create(const carbon::Instance& instance, VkSurfaceKHR surface);
         void addExtensions(const std::vector<const char*>& extensions);
+        void create(const carbon::Instance& instance, VkSurfaceKHR surface);
+        std::string getDeviceName() const;
 
         explicit operator vkb::PhysicalDevice() const;
         operator VkPhysicalDevice() const;

@@ -102,6 +102,14 @@ void carbon::Context::getVulkanFunctions() {
     vkSetDebugUtilsObjectNameEXT = instance.getFunctionAddress<PFN_vkSetDebugUtilsObjectNameEXT>("vkSetDebugUtilsObjectNameEXT");
 }
 
+void carbon::Context::beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags bufferUsageFlags) const {
+    VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = bufferUsageFlags,
+    };
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+}
+
 auto carbon::Context::createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin, VkCommandBufferUsageFlags bufferUsageFlags, const std::string& name) const -> VkCommandBuffer {
     VkCommandBufferAllocateInfo bufferAllocateInfo = {};
     bufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -125,12 +133,9 @@ auto carbon::Context::createCommandBuffer(VkCommandBufferLevel level, VkCommandP
     return commandBuffer;
 }
 
-void carbon::Context::beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags bufferUsageFlags) const {
-    VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = bufferUsageFlags,
-    };
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+void carbon::Context::endCommandBuffer(VkCommandBuffer commandBuffer) const {
+    if (commandBuffer != nullptr)
+        vkEndCommandBuffer(commandBuffer);
 }
 
 void carbon::Context::flushCommandBuffer(VkCommandBuffer commandBuffer, const carbon::Queue& queue) const {

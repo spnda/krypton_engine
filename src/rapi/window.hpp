@@ -24,6 +24,8 @@
 #include "rapi_backends.hpp"
 
 namespace krypton::rapi {
+    class RenderAPI;
+
     /**
      * Simple abstraction over a SDL2 window, including helper
      * functions for various SDL functions.
@@ -35,14 +37,20 @@ namespace krypton::rapi {
 
         GLFWwindow* window = nullptr;
 
-        static void errorCallback(int error, const char* desc);
-
     public:
         Window(const std::string& title, uint32_t width, uint32_t height);
 
         void create(krypton::rapi::Backend backend);
         void destroy();
         [[nodiscard]] float getAspectRatio() const;
+        void pollEvents() const;
+
+        /**
+         * Set a pointer to the RendeRAPI instance for callbacks
+         * to use.
+         */
+        void setRapiPointer(krypton::rapi::RenderAPI* rapi);
+        [[nodiscard]] bool shouldClose() const;
 
 #ifdef RAPI_WITH_VULKAN
         [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;

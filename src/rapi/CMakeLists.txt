@@ -1,6 +1,9 @@
 add_library(rapi)
 
+find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+
+target_link_libraries(rapi PRIVATE fmt::fmt-header-only)
 target_link_libraries(rapi PRIVATE glfw)
 
 target_include_directories(rapi PUBLIC "./")

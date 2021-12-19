@@ -30,9 +30,9 @@ namespace carbon {
         Instance(const Instance &) = default;
         Instance& operator=(const Instance &) = default;
 
+        void addExtensions(const std::vector<std::string>& extensions);
         void create(const std::string& name, const std::string& engineName);
         void destroy() const;
-        void addExtensions(const std::vector<std::string>& extensions);
 
         template<class T>
         T getFunctionAddress(const std::string& functionName) const {
