@@ -33,7 +33,8 @@ void carbon::Queue::unlock() const {
 }
 
 void carbon::Queue::waitIdle() const {
-    vkQueueWaitIdle(handle);
+    if (handle != nullptr)
+        vkQueueWaitIdle(handle);
 }
 
 std::unique_lock<std::mutex> carbon::Queue::getLock() const {

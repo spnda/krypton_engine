@@ -24,7 +24,7 @@ namespace carbon {
         [[nodiscard]] uint32_t getQueueIndex(vkb::QueueType queueType) const;
 
         template<class T>
-        T getFunctionAddress(const std::string& functionName) const {
+        [[nodiscard]] T getFunctionAddress(const std::string& functionName) const {
             return reinterpret_cast<T>(vkGetDeviceProcAddr(device, functionName.c_str()));
         }
 

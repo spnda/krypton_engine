@@ -7,7 +7,7 @@
 namespace krypton::rapi {
     class RenderAPI;
 
-    std::shared_ptr<krypton::rapi::RenderAPI> getRenderApi();
+    std::unique_ptr<krypton::rapi::RenderAPI> getRenderApi();
 
     /**
      * The RenderAPI interface that can be extended to provide different

@@ -5,7 +5,7 @@
 
 auto main(int argc, char* argv[]) -> int {
     try {
-        auto rapi = krypton::rapi::getRenderApi();
+        auto rapi = std::move(krypton::rapi::getRenderApi());
         rapi->init();
         while (!rapi->window.shouldClose()) {
             rapi->window.pollEvents();
@@ -13,7 +13,7 @@ auto main(int argc, char* argv[]) -> int {
         }
         rapi->shutdown();
     } catch (const std::exception& e) {
-        std::cout << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
     }
     return 0;
 }

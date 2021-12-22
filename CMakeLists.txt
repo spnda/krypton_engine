@@ -13,7 +13,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:> is a generator expression to remove the Debug/Release folders.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
 if (MSVC)
-  set(CMAKE_CXX_FLAGS "/Zc:__cplusplus /EHsc /fsanitize=address /Zi") # Microsoft not properly setting __cplusplus by default.
+  # Microsoft not properly setting __cplusplus by default.
+  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc /fsanitize=address /Zi")
+else()
+  # string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address") # This works on clang, msvc and g++.
 endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")

@@ -10,7 +10,7 @@ namespace carbon {
 
     class PhysicalDevice {
         std::set<const char*> requiredExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            // VK_KHR_SWAPCHAIN_EXTENSION_NAME, vk-bootstrap kindly adds this already.
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
             VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
 

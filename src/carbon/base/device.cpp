@@ -20,7 +20,11 @@ void carbon::Device::destroy() const {
 }
 
 VkResult carbon::Device::waitIdle() const {
-    return vkDeviceWaitIdle(device);
+    if (device != nullptr) {
+        return vkDeviceWaitIdle(device);
+    } else {
+        return VK_RESULT_MAX_ENUM;
+    }
 }
 
 VkQueue carbon::Device::getQueue(const vkb::QueueType queueType) const {

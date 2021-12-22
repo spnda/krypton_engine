@@ -8,15 +8,6 @@
 #include "VkBootstrap.h"
 #include "context.hpp"
 
-template<class T>
-T getFromVkbResult(vkb::detail::Result<T> result) {
-    if (!result) {
-        fmt::print("Encountered vkb error: {}\n", result.error().message());
-        throw std::runtime_error(result.error().message());
-    }
-    return result.value();
-}
-
 static inline const std::unordered_map<VkResult, std::string> resultStrings = {
     {VK_SUCCESS, "VK_SUCCESS"},
     {VK_NOT_READY, "VK_NOT_READY"},
@@ -57,6 +48,15 @@ static inline const std::unordered_map<VkResult, std::string> resultStrings = {
     {VK_OPERATION_NOT_DEFERRED_KHR, "VK_OPERATION_NOT_DEFERRED_KHR"},
     {VK_PIPELINE_COMPILE_REQUIRED_EXT, "VK_PIPELINE_COMPILE_REQUIRED_EXT"},
 };
+
+template<class T>
+T getFromVkbResult(vkb::detail::Result<T> result) {
+    if (!result) {
+        fmt::print("Encountered vkb error: {}, {}\n", result.error().message(), resultStrings.at(result.vk_result()));
+        throw std::runtime_error(result.error().message());
+    }
+    return result.value();
+}
 
 inline void checkResult(const carbon::Context& ctx, VkResult result, const std::string& message) {
     if (result != VK_SUCCESS) {
