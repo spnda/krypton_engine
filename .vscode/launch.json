@@ -12,7 +12,20 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin/",
             "environment": [],
-            "preLaunchTask": "compile"
+            "preLaunchTask": "compile_debug"
+        },
+        {
+            "name": "clang++ - Debug",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/krypton_core",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "compile_debug"
         }
     ]
 }

@@ -22,6 +22,9 @@ namespace carbon {
 
         [[nodiscard]] VkQueue getQueue(vkb::QueueType queueType) const;
         [[nodiscard]] uint32_t getQueueIndex(vkb::QueueType queueType) const;
+        /** Replacement for the user-defined operator conversion, as it
+         * copies the vkb::Device object and I don't know how to return a ref. */
+        [[nodiscard]] const vkb::Device& getVkbDevice() const;
 
         template<class T>
         [[nodiscard]] T getFunctionAddress(const std::string& functionName) const {

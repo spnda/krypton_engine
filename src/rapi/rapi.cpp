@@ -1,5 +1,6 @@
 #include "rapi.hpp"
 
+#include "backends/metal_backend.hpp"
 #include "backends/vulkan_rt_backend.hpp"
 
 std::unique_ptr<krypton::rapi::RenderAPI> krypton::rapi::getRenderApi() {
@@ -8,7 +9,9 @@ std::unique_ptr<krypton::rapi::RenderAPI> krypton::rapi::getRenderApi() {
 #ifdef RAPI_WITH_VULKAN
     return std::make_unique<krypton::rapi::VulkanRT_RAPI>();
 #endif // #ifdef RAPI_WITH_VULKAN
+
 #ifdef RAPI_WITH_METAL
+    return std::make_unique<krypton::rapi::Metal_RAPI>();
 #endif // #ifdef RAPI_WITH_METAL
 }
 

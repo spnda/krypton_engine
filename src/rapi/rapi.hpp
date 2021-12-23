@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <mesh.hpp>
+
 #include "window.hpp"
 
 namespace krypton::rapi {
@@ -29,6 +31,12 @@ namespace krypton::rapi {
          * this API can be used for rendering.
          */
         virtual void init() = 0;
+
+        /**
+         * Adds given mesh to the render queue. This only has to be called
+         * once per mesh, as the mesh will be rendered for every frame. 
+         */
+        virtual void render(std::shared_ptr<krypton::mesh::Mesh> mesh) = 0;
 
         virtual void resize(int width, int height) = 0;
 

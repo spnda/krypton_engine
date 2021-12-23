@@ -4,6 +4,7 @@
 
 #include <fmt/core.h>
 
+#include "rapi_backends.hpp"
 #include "rapi.hpp"
 #include "window.hpp"
 
@@ -32,10 +33,11 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
     glfwSetErrorCallback(errorCallback);
 
     switch (backend) {
-        using enum krypton::rapi::Backend;
-        case Vulkan:
+        case krypton::rapi::Backend::Vulkan:
             if (!glfwVulkanSupported())
                 throw std::runtime_error("glfw doesn't support Vulkan.");
+            break;
+        case krypton::rapi::Backend::Metal:
             break;
     }
 
@@ -62,6 +64,10 @@ void krypton::rapi::Window::destroy() {
 
 float krypton::rapi::Window::getAspectRatio() const {
     return (float)width / (float)height;
+}
+
+GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
+    return window;
 }
 
 void krypton::rapi::Window::pollEvents() const {

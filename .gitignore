@@ -21,3 +21,6 @@ nsight/*
 *.spv
 *.exe
 *.dll
+
+# Metal/Apple specific files
+**/.DS_Store

@@ -11,7 +11,9 @@ bool carbon::Swapchain::create(const carbon::Device& device) {
     vkAcquireNextImage = ctx.device.getFunctionAddress<PFN_vkAcquireNextImageKHR>("vkAcquireNextImageKHR");
     vkDestroySurface = ctx.device.getFunctionAddress<PFN_vkDestroySurfaceKHR>("vkDestroySurfaceKHR");
     
-    vkb::SwapchainBuilder swapchainBuilder((vkb::Device(device)));
+    /* We don't call the copy ctor of vkb::Device here as that seems to throw exceptions. */
+    const vkb::Device& vkbDevice = device.getVkbDevice();
+    vkb::SwapchainBuilder swapchainBuilder(vkbDevice);
     auto buildResult = swapchainBuilder
         .set_old_swapchain(this->swapchain)
         .set_desired_extent(ctx.width, ctx.height)

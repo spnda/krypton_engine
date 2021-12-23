@@ -35,6 +35,10 @@ uint32_t carbon::Device::getQueueIndex(const vkb::QueueType queueType) const {
     return getFromVkbResult(device.get_queue_index(queueType));
 }
 
+const vkb::Device& carbon::Device::getVkbDevice() const {
+    return device;
+}
+
 carbon::Device::operator vkb::Device() const {
     return device;
 }

@@ -13,14 +13,6 @@
 
 #include <GLFW/glfw3.h>
 
-#ifdef RAPI_WITH_METAL
-#import <Metal/Metal.h>
-#define GLFW_EXPOSE_NATIVE_COCOA
-#import <GLFW/glfw3native.h>
-#endif // #ifdef RAPI_WITH_METAL
-
-#include <GLFW/glfw3.h>
-
 #include "rapi_backends.hpp"
 
 namespace krypton::rapi {
@@ -43,6 +35,7 @@ namespace krypton::rapi {
         void create(krypton::rapi::Backend backend);
         void destroy();
         [[nodiscard]] float getAspectRatio() const;
+        [[nodiscard]] GLFWwindow* getWindowPointer() const;
         void pollEvents() const;
 
         /**

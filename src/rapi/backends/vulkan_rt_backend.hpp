@@ -18,8 +18,8 @@ namespace krypton::rapi {
         bool needsResize = false;
 
     public:
-        VulkanRT_RAPI();
-        ~VulkanRT_RAPI();
+        virtual VulkanRT_RAPI();
+        virtual ~VulkanRT_RAPI();
 
         void drawFrame();
         void init();

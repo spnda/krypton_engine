@@ -4,11 +4,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "compile",
+            "label": "compile_debug",
             "group": "build",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/build",
+                "cwd": "${workspaceFolder}/build/debug",
             },
             "presentation": {
                 "reveal": "silent"
