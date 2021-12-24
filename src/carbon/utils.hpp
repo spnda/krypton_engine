@@ -8,6 +8,12 @@
 #include "VkBootstrap.h"
 #include "context.hpp"
 
+#define INSTANCE_FUNCTION_POINTER(name, instance) \
+    name = instance.getFunctionAddress<PFN_##name>(#name);
+
+#define DEVICE_FUNCTION_POINTER(name, device) \
+    name = device.getFunctionAddress<PFN_##name>(#name);
+
 static inline const std::unordered_map<VkResult, std::string> resultStrings = {
     {VK_SUCCESS, "VK_SUCCESS"},
     {VK_NOT_READY, "VK_NOT_READY"},

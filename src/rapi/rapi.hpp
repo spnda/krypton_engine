@@ -16,14 +16,12 @@ namespace krypton::rapi {
      * render backends.
      */
     class RenderAPI {
-    protected:
-
     public:
-        krypton::rapi::Window window;
-
-        RenderAPI();
+        virtual ~RenderAPI() {}
 
         virtual void drawFrame() = 0;
+
+        virtual krypton::rapi::Window* getWindow() = 0;
 
         /**
          * Creates the window and initializes the rendering

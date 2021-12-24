@@ -71,11 +71,16 @@ void carbon::PhysicalDevice::create(const carbon::Instance& instance, VkSurfaceK
     }
 
     // Let vk-bootstrap select our physical device.
-    physicalDevice = getFromVkbResult(physicalDeviceSelector.set_surface(surface).select());
+    auto res = physicalDeviceSelector.set_surface(surface).select();
+    physicalDevice = getFromVkbResult(res);
 }
 
 std::string carbon::PhysicalDevice::getDeviceName() const {
     return std::string { physicalDevice.properties.deviceName };
+}
+
+vkb::PhysicalDevice& carbon::PhysicalDevice::getVkbPhysicalDevice() {
+    return physicalDevice;
 }
 
 carbon::PhysicalDevice::operator vkb::PhysicalDevice() const {

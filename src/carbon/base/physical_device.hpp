@@ -31,6 +31,7 @@ namespace carbon {
         void addExtensions(const std::vector<const char*>& extensions);
         void create(const carbon::Instance& instance, VkSurfaceKHR surface);
         std::string getDeviceName() const;
+        vkb::PhysicalDevice& getVkbPhysicalDevice();
 
         explicit operator vkb::PhysicalDevice() const;
         operator VkPhysicalDevice() const;

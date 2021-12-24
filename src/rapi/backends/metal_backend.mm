@@ -39,7 +39,7 @@ krypton::shaders::Shader defaultShader;
 
 std::vector<krypton::rapi::metal::RenderObject> objects = {};
 
-krypton::rapi::Metal_RAPI::Metal_RAPI() {
+krypton::rapi::Metal_RAPI::Metal_RAPI() : window("Krypton", 1920, 1080) {
 
 }
 
@@ -79,6 +79,10 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
     [encoder endEncoding];
     [buffer presentDrawable:surface];
     [buffer commit];
+}
+
+krypton::rapi::Window* krypton::rapi::Metal_RAPI::getWindow() {
+    return &window;
 }
 
 void krypton::rapi::Metal_RAPI::init() {

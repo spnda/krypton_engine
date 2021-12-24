@@ -49,9 +49,11 @@ def main():
     match platform.system():
         case "Darwin": # MacOS
             call(["cmake", "-G", "Xcode", "../.."], "build/debug")
+            call(["cmake", "-G", "Xcode", "../.."], "build/release")
         case _: # Windows / Linux
             call(["cmake", "../.."], "build/debug")
+            call(["cmake", "../.."], "build/release")
 
-    print(f"{colors.green}Finished configuring project files in /build/debug/.{colors.end}")
+    print(f"{colors.green}Finished configuring project files in /build/debug/ and /build/release.{colors.end}")
 
 main()

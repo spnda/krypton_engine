@@ -13,12 +13,14 @@ namespace krypton::rapi {
      * supposed to be a C++ header and most Metal related API is Objective-C.
      */
     class Metal_RAPI final : public RenderAPI {
-        
+        krypton::rapi::Window window;
+
     public:
         Metal_RAPI();
         ~Metal_RAPI();
 
         void drawFrame();
+        krypton::rapi::Window* getWindow();
         void init();
         void render(std::shared_ptr<krypton::mesh::Mesh> mesh);
         void resize(int width, int height);

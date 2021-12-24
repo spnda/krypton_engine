@@ -2,8 +2,9 @@
 
 #include "../utils.hpp"
 
-void carbon::Device::create(const carbon::PhysicalDevice& physicalDevice) {
-    vkb::DeviceBuilder deviceBuilder((vkb::PhysicalDevice(physicalDevice)));
+void carbon::Device::create(carbon::PhysicalDevice& physicalDevice) {
+    vkb::PhysicalDevice& vkbPhysicalDevice = physicalDevice.getVkbPhysicalDevice();
+    vkb::DeviceBuilder deviceBuilder(vkbPhysicalDevice);
 #ifdef WITH_NV_AFTERMATH
     VkDeviceDiagnosticsConfigCreateInfoNV deviceDiagnosticsConfigCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV,
@@ -20,7 +21,7 @@ void carbon::Device::destroy() const {
 }
 
 VkResult carbon::Device::waitIdle() const {
-    if (device != nullptr) {
+    if (device.device != nullptr) {
         return vkDeviceWaitIdle(device);
     } else {
         return VK_RESULT_MAX_ENUM;

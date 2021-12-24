@@ -21,8 +21,8 @@ carbon::Context::Context(std::string appName, std::string engineName)
           instance(*this),
           presentCompleteSemaphore(*this, "presentCompleteSemaphore"),
           renderCompleteSemaphore(*this, "renderCompleteSemaphore"),
-          renderFence(*this, "renderFence"),
-          graphicsQueue(*this, "graphicsQueue") {
+          graphicsQueue(std::shared_ptr<carbon::Context>(this), "graphicsQueue"),
+          renderFence(*this, "renderFence") {
 
 }
 
@@ -53,6 +53,8 @@ void carbon::Context::setup(VkSurfaceKHR surface) {
 
 void carbon::Context::destroy() const {
     if (device == nullptr) return;
+
+    vkDestroySurfaceKHR(instance, surface, nullptr);
 
     presentCompleteSemaphore.destroy();
     renderCompleteSemaphore.destroy();
@@ -89,17 +91,17 @@ void carbon::Context::buildVmaAllocator() {
 }
 
 void carbon::Context::getVulkanFunctions() {
-    vkCreateAccelerationStructureKHR = device.getFunctionAddress<PFN_vkCreateAccelerationStructureKHR>("vkCreateAccelerationStructureKHR");
-    vkCreateRayTracingPipelinesKHR = device.getFunctionAddress<PFN_vkCreateRayTracingPipelinesKHR>("vkCreateRayTracingPipelinesKHR");
-    vkCmdBuildAccelerationStructuresKHR = device.getFunctionAddress<PFN_vkCmdBuildAccelerationStructuresKHR>("vkCmdBuildAccelerationStructuresKHR");
-    vkCmdSetCheckpointNV = device.getFunctionAddress<PFN_vkCmdSetCheckpointNV>("vkCmdSetCheckpointNV");
-    vkCmdTraceRaysKHR = device.getFunctionAddress<PFN_vkCmdTraceRaysKHR>("vkCmdTraceRaysKHR");
-    vkDestroyAccelerationStructureKHR = device.getFunctionAddress<PFN_vkDestroyAccelerationStructureKHR>("vkDestroyAccelerationStructureKHR");
-    vkGetAccelerationStructureBuildSizesKHR = device.getFunctionAddress<PFN_vkGetAccelerationStructureBuildSizesKHR>("vkGetAccelerationStructureBuildSizesKHR");
-    vkGetAccelerationStructureDeviceAddressKHR = device.getFunctionAddress<PFN_vkGetAccelerationStructureDeviceAddressKHR>("vkGetAccelerationStructureDeviceAddressKHR");
-    vkGetQueueCheckpointDataNV = device.getFunctionAddress<PFN_vkGetQueueCheckpointDataNV>("vkGetQueueCheckpointDataNV");
-    vkGetRayTracingShaderGroupHandlesKHR = device.getFunctionAddress<PFN_vkGetRayTracingShaderGroupHandlesKHR>("vkGetRayTracingShaderGroupHandlesKHR");
-    vkSetDebugUtilsObjectNameEXT = instance.getFunctionAddress<PFN_vkSetDebugUtilsObjectNameEXT>("vkSetDebugUtilsObjectNameEXT");
+    DEVICE_FUNCTION_POINTER(vkCreateAccelerationStructureKHR, device)
+    DEVICE_FUNCTION_POINTER(vkCreateRayTracingPipelinesKHR, device)
+    DEVICE_FUNCTION_POINTER(vkCmdBuildAccelerationStructuresKHR, device)
+    DEVICE_FUNCTION_POINTER(vkCmdSetCheckpointNV, device)
+    DEVICE_FUNCTION_POINTER(vkCmdTraceRaysKHR, device)
+    DEVICE_FUNCTION_POINTER(vkDestroyAccelerationStructureKHR, device)
+    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureBuildSizesKHR, device)
+    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureDeviceAddressKHR, device)
+    DEVICE_FUNCTION_POINTER(vkGetQueueCheckpointDataNV, device)
+    DEVICE_FUNCTION_POINTER(vkGetRayTracingShaderGroupHandlesKHR, device)
+    DEVICE_FUNCTION_POINTER(vkSetDebugUtilsObjectNameEXT, device)
 }
 
 void carbon::Context::beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags bufferUsageFlags) const {

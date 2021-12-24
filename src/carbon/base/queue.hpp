@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <mutex>
 
 #include <vulkan/vulkan.h>
@@ -12,16 +13,16 @@ namespace carbon {
     class Semaphore;
 
     class Queue {
-        PFN_vkQueuePresentKHR vkQueuePresent = nullptr;
+        PFN_vkQueuePresentKHR vkQueuePresentKHR = nullptr;
 
-        const carbon::Context& ctx;
+        std::shared_ptr<carbon::Context> ctx;
         const std::string name;
 
-        mutable std::mutex queueMutex = {};
         VkQueue handle = nullptr;
+        mutable std::mutex queueMutex = {};
 
     public:
-        explicit Queue(const carbon::Context& ctx, std::string name = {});
+        explicit Queue(std::shared_ptr<carbon::Context> ctx, std::string name = {});
         Queue(const carbon::Queue& queue);
 
         operator VkQueue() const;

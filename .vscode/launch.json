@@ -15,6 +15,16 @@
             "preLaunchTask": "compile_debug"
         },
         {
+            "name": "(Windows) Release",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "krypton_core.exe",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin/",
+            "environment": [],
+            "preLaunchTask": "compile_release"
+        },
+        {
             "name": "clang++ - Debug",
             "type": "lldb",
             "request": "launch",

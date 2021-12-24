@@ -26,8 +26,8 @@ auto main(int argc, char* argv[]) -> int {
         auto rapi = std::move(krypton::rapi::getRenderApi());
         rapi->init();
         rapi->render(smesh);
-        while (!rapi->window.shouldClose()) {
-            rapi->window.pollEvents();
+        while (!rapi->getWindow()->shouldClose()) {
+            rapi->getWindow()->pollEvents();
             rapi->drawFrame();
         }
         rapi->shutdown();

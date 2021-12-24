@@ -17,7 +17,7 @@ void carbon::RenderPass::destroy() {
 
 void carbon::RenderPass::create(const VkAttachmentLoadOp colorBufferLoadOp, const std::string& name) {
     VkAttachmentDescription colorAttachment = {
-        .format = swapchain.swapchain.image_format,
+        .format = swapchain.surfaceFormat.format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = colorBufferLoadOp,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,

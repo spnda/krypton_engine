@@ -16,7 +16,7 @@ namespace carbon {
         Device(const Device&) = default;
         Device& operator=(const Device&) = default;
 
-        void create(const carbon::PhysicalDevice& physicalDevice);
+        void create(carbon::PhysicalDevice& physicalDevice);
         void destroy() const;
         [[nodiscard]] auto waitIdle() const -> VkResult;
 

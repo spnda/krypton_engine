@@ -14,7 +14,3 @@ std::unique_ptr<krypton::rapi::RenderAPI> krypton::rapi::getRenderApi() {
     return std::make_unique<krypton::rapi::Metal_RAPI>();
 #endif // #ifdef RAPI_WITH_METAL
 }
-
-krypton::rapi::RenderAPI::RenderAPI() : window("Krypton", 1920, 1080) {
-
-}

@@ -3,9 +3,10 @@
 #include <utility>
 
 #include "../context.hpp"
+#include "../utils.hpp"
 
-carbon::Queue::Queue(const carbon::Context& context, std::string name)
-    : ctx(context), name(std::move(name)) {
+carbon::Queue::Queue(std::shared_ptr<carbon::Context> context, std::string name)
+    : ctx(std::move(context)), name(std::move(name)) {
 }
 
 carbon::Queue::Queue(const carbon::Queue& queue)
@@ -17,11 +18,11 @@ carbon::Queue::operator VkQueue() const {
 }
 
 void carbon::Queue::create(const vkb::QueueType queueType) {
-    vkQueuePresent = ctx.device.getFunctionAddress<PFN_vkQueuePresentKHR>("vkQueuePresentKHR");
-    handle = ctx.device.getQueue(queueType);
+    DEVICE_FUNCTION_POINTER(vkQueuePresentKHR, ctx->device)
+    handle = ctx->device.getQueue(queueType);
 
     if (!name.empty())
-        ctx.setDebugUtilsName(handle, name);
+        ctx->setDebugUtilsName(handle, name);
 }
 
 void carbon::Queue::lock() const {
@@ -57,5 +58,5 @@ VkResult carbon::Queue::present(uint32_t imageIndex, const VkSwapchainKHR& swapc
         presentInfo.pWaitSemaphores = &waitSemaphore.getHandle();
         presentInfo.waitSemaphoreCount = 1;
     }
-    return vkQueuePresent(handle, &presentInfo);
+    return vkQueuePresentKHR(handle, &presentInfo);
 }
