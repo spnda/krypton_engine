@@ -1,20 +1,20 @@
 #include "buffer.hpp"
 #include <vk_mem_alloc.h>
 
-#include "../context.hpp"
 #include "../utils.hpp"
+#include "../base/device.hpp"
 #include "image.hpp"
 
-carbon::Buffer::Buffer(const carbon::Context& context)
-        : ctx(context) {
+carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator)
+        : device(std::move(device)), allocator(allocator) {
 }
 
-carbon::Buffer::Buffer(const carbon::Context& context, std::string name)
-        : ctx(context), name(std::move(name)) {
+carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name)
+        : device(std::move(device)), allocator(allocator), name(std::move(name)) {
 }
 
 carbon::Buffer::Buffer(const carbon::Buffer& buffer)
-        : ctx(buffer.ctx), name(buffer.name),
+        : device(buffer.device), name(buffer.name), allocator(buffer.allocator),
           allocation(buffer.allocation), handle(buffer.handle), address(buffer.address) {
     
 }
@@ -38,23 +38,23 @@ void carbon::Buffer::create(const VkDeviceSize newSize, const VkBufferUsageFlags
         .requiredFlags = properties,
     };
 
-    auto result = vmaCreateBuffer(ctx.vmaAllocator, &bufferCreateInfo, &allocationInfo, &handle, &allocation, nullptr);
-    checkResult(ctx, result, "Failed to create buffer \"" + name + "\"");
+    auto result = vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationInfo, &handle, &allocation, nullptr);
+    checkResult(result, "Failed to create buffer \"" + name + "\"");
     assert(allocation != nullptr);
 
     if (isFlagSet(bufferUsage, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
         auto addressInfo = getBufferAddressInfo(handle);
-        address = ctx.getBufferDeviceAddress(addressInfo);
+        address = carbon::Buffer::getBufferDeviceAddress(device, &addressInfo);
     }
 
     if (!name.empty()) {
-        ctx.setDebugUtilsName(handle, name);
+        device->setDebugUtilsName(handle, name);
     }
 }
 
 void carbon::Buffer::destroy() {
     if (handle == nullptr || allocation == nullptr) return;
-    vmaDestroyBuffer(ctx.vmaAllocator, handle, allocation);
+    vmaDestroyBuffer(allocator, handle, allocation);
     handle = nullptr;
 }
 
@@ -79,6 +79,10 @@ auto carbon::Buffer::getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddr
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = handle,
     };
+}
+
+auto carbon::Buffer::getBufferDeviceAddress(std::shared_ptr<carbon::Device> device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress {
+    return vkGetBufferDeviceAddress(*device, addressInfo);
 }
 
 auto carbon::Buffer::getDeviceAddress() const -> const VkDeviceAddress& {
@@ -131,12 +135,12 @@ void carbon::Buffer::memoryCopy(const void* source, uint64_t copySize, uint64_t 
 }
 
 void carbon::Buffer::mapMemory(void** destination) const {
-    auto result = vmaMapMemory(ctx.vmaAllocator, allocation, destination);
-    checkResult(ctx, result, "Failed to map memory");
+    auto result = vmaMapMemory(allocator, allocation, destination);
+    checkResult(result, "Failed to map memory");
 }
 
 void carbon::Buffer::unmapMemory() const {
-    vmaUnmapMemory(ctx.vmaAllocator, allocation);
+    vmaUnmapMemory(allocator, allocation);
 }
 
 void carbon::Buffer::copyToBuffer(VkCommandBuffer cmdBuffer, const carbon::Buffer& destination) {

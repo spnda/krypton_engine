@@ -21,7 +21,7 @@ namespace krypton::rapi {
 
         virtual void drawFrame() = 0;
 
-        virtual krypton::rapi::Window* getWindow() = 0;
+        virtual auto getWindow() -> std::shared_ptr<krypton::rapi::Window> = 0;
 
         /**
          * Creates the window and initializes the rendering

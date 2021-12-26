@@ -1,21 +1,21 @@
 #pragma once
 
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 #include "VkBootstrap.h"
 
-#include "../context.hpp"
+#include "device.hpp"
+#include "instance.hpp"
 
 namespace carbon {
-    class Swapchain {
-        const carbon::Context& ctx;
+    class Queue;
+    class Semaphore;
 
-        PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
-        PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
-        PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-        PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
-        PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
-        PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
+    class Swapchain {
+        std::shared_ptr<carbon::Instance> instance;
+        std::shared_ptr<carbon::Device> device;
 
         VkSwapchainKHR swapchain = nullptr;
 
@@ -23,10 +23,10 @@ namespace carbon {
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
 
-        VkExtent2D chooseSwapExtent();
+        VkExtent2D chooseSwapExtent(VkExtent2D windowExtent);
         VkSurfaceFormatKHR chooseSwapSurfaceFormat();
         VkPresentModeKHR chooseSwapPresentMode();
-        void querySwapChainSupport(VkPhysicalDevice device);
+        void querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
         
     public:
         VkSurfaceFormatKHR surfaceFormat;
@@ -36,18 +36,18 @@ namespace carbon {
         std::vector<VkImage> swapchainImages = {};
         std::vector<VkImageView> swapchainImageViews = {};
 
-        Swapchain(const Context& context);
+        Swapchain(std::shared_ptr<carbon::Instance> instance, std::shared_ptr<carbon::Device> device);
 
         /**
          * Creates a new swapchain. If a swapchain already exists, we
          * re-use it to create a new one.
          */
-        bool create();
+        bool create(VkSurfaceKHR surface, VkExtent2D windowExtent);
         void destroy();
 
-        VkResult acquireNextImage(const carbon::Semaphore& presentCompleteSemaphore, uint32_t* imageIndex) const;
+        VkResult acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const;
 
-        VkResult queuePresent(carbon::Queue& queue, uint32_t imageIndex, carbon::Semaphore& waitSemaphore) const;
+        VkResult queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const;
 
         [[nodiscard]] VkFormat getFormat() const;
         [[nodiscard]] VkExtent2D getExtent() const;

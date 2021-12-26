@@ -2,10 +2,9 @@
 
 #include "../utils.hpp"
 
-carbon::Instance::Instance(const carbon::Context& context)
-    : ctx(context)
+carbon::Instance::Instance()
 #ifdef WITH_NV_AFTERMATH
-    , crashTracker(ctx)
+    : crashTracker()
 #endif // #ifdef WITH_NV_AFTERMATH
     {
 
@@ -17,7 +16,7 @@ void carbon::Instance::addExtensions(const std::vector<std::string>& extensions)
     }
 }
 
-void carbon::Instance::create(const std::string& appName, const std::string& engineName) {
+void carbon::Instance::create() {
 #ifdef WITH_NV_AFTERMATH
     // Has to be called *before* crating the "Vulkan device".
     // To be 100% sure this works, we're calling it before creating the VkInstance.
@@ -25,11 +24,11 @@ void carbon::Instance::create(const std::string& appName, const std::string& eng
 #endif // #ifdef WITH_NV_AFTERMATH
 
     auto instanceBuilder = vkb::InstanceBuilder()
-        .set_app_name(appName.c_str())
-        .set_app_version(ctx.applicationVersion)
-        .set_engine_name(engineName.c_str())
-        .set_engine_version(ctx.engineVersion)
-        .require_api_version(ctx.apiVersion);
+        .set_app_name(appData.applicationName.c_str())
+        .set_app_version(appData.applicationVersion)
+        .set_engine_name(appData.engineName.c_str())
+        .set_engine_version(appData.engineVersion)
+        .require_api_version(appData.apiVersion);
 
     // Add all available extensions
     auto sysInfo = vkb::SystemInfo::get_system_info().value();
@@ -51,6 +50,10 @@ void carbon::Instance::create(const std::string& appName, const std::string& eng
         .build();
 
     instance = getFromVkbResult(buildResult);
+
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, (*this))
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceFormatsKHR, (*this))
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfacePresentModesKHR, (*this))
 }
 
 void carbon::Instance::destroy() const {
@@ -59,6 +62,10 @@ void carbon::Instance::destroy() const {
 #endif // #ifdef WITH_NV_AFTERMATH
 
     vkb::destroy_instance(instance);
+}
+
+void carbon::Instance::setApplicationData(ApplicationData data) {
+    appData = std::move(data);
 }
 
 carbon::Instance::operator vkb::Instance() const {

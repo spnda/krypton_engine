@@ -3,9 +3,10 @@
 #include <utility>
 
 #include "../utils.hpp"
+#include "../base/command_buffer.hpp"
 
-carbon::Texture::Texture(const carbon::Context& context, const VkExtent2D imageSize, std::string name)
-    : carbon::Image(context, imageSize, std::move(name)) {
+carbon::Texture::Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const VkExtent2D imageSize, std::string name)
+    : carbon::Image(std::move(device), allocator, imageSize, std::move(name)) {
 
 }
 
@@ -65,13 +66,13 @@ void carbon::Texture::createTexture(VkFormat newFormat, uint32_t mipLevels, uint
         .mipLodBias = 0.0f,
         .maxLod = VK_LOD_CLAMP_NONE,
     };
-    auto result = vkCreateSampler(ctx.device, &samplerCreateInfo, nullptr, &sampler);
-    checkResult(ctx, result, "Failed to create sampler");
+    auto result = vkCreateSampler(*device, &samplerCreateInfo, nullptr, &sampler);
+    checkResult(result, "Failed to create sampler");
 }
 
-void carbon::Texture::generateMipmaps(VkCommandBuffer cmdBuffer) {
+void carbon::Texture::generateMipmaps(std::shared_ptr<carbon::CommandBuffer> cmdBuffer) {
     // Check if format properties support blitting on this hardware.
-    if (!formatSupportsBlit(ctx, imageFormat)) return;
+    if (!formatSupportsBlit(device, imageFormat)) return;
 
     uint32_t mipWidth = imageExtent.width;
     uint32_t mipHeight = imageExtent.height;
@@ -104,7 +105,7 @@ void carbon::Texture::generateMipmaps(VkCommandBuffer cmdBuffer) {
             mipWidth > 1 ? static_cast<int32_t>(mipWidth / 2) : 1,
             mipHeight > 1 ? static_cast<int32_t>(mipHeight / 2) : 1,
             1 };
-        vkCmdBlitImage(cmdBuffer,
+        vkCmdBlitImage(*cmdBuffer,
                        *this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                        *this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                        1, &blit,
@@ -132,8 +133,8 @@ VkSampler carbon::Texture::getSampler() const {
     return sampler;
 }
 
-bool carbon::Texture::formatSupportsBlit(const carbon::Context& ctx, VkFormat format) {
+bool carbon::Texture::formatSupportsBlit(std::shared_ptr<carbon::Device> device, VkFormat format) {
     VkFormatProperties formatProperties;
-    vkGetPhysicalDeviceFormatProperties(ctx.physicalDevice, format, &formatProperties);
+    vkGetPhysicalDeviceFormatProperties(device->getVkbDevice().physical_device, format, &formatProperties);
     return isFlagSet(formatProperties.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT);
 }

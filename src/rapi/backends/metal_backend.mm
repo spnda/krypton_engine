@@ -39,8 +39,8 @@ krypton::shaders::Shader defaultShader;
 
 std::vector<krypton::rapi::metal::RenderObject> objects = {};
 
-krypton::rapi::Metal_RAPI::Metal_RAPI() : window("Krypton", 1920, 1080) {
-
+krypton::rapi::Metal_RAPI::Metal_RAPI() {
+    window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
 }
 
 krypton::rapi::Metal_RAPI::~Metal_RAPI() {
@@ -81,14 +81,14 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
     [buffer commit];
 }
 
-krypton::rapi::Window* krypton::rapi::Metal_RAPI::getWindow() {
-    return &window;
+std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() {
+    return window;
 }
 
 void krypton::rapi::Metal_RAPI::init() {
     __autoreleasing NSError *error = nil;
 
-    window.create(krypton::rapi::Backend::Metal);
+    window->create(krypton::rapi::Backend::Metal);
 
     // Create the device, queue and metal layer
     device = MTLCreateSystemDefaultDevice();
@@ -99,7 +99,7 @@ void krypton::rapi::Metal_RAPI::init() {
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
     // Get the NSWindow*
-    GLFWwindow* pWindow = window.getWindowPointer();
+    GLFWwindow* pWindow = window->getWindowPointer();
     nswindow = glfwGetCocoaWindow(pWindow);
     nswindow.contentView.layer = swapchain;
     nswindow.contentView.wantsLayer = YES;

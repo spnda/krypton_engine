@@ -7,17 +7,19 @@
 #include <vk_mem_alloc.h>
 
 namespace carbon {
-    class Context;
+    class Device;
     class Image;
 
     /**
      * A basic data buffer, managed using vma.
      */
     class Buffer {
-        const Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         std::string name;
 
         mutable std::mutex memoryMutex;
+
+        VmaAllocator allocator = nullptr;
         VmaAllocation allocation = nullptr;
         VkDeviceSize size = 0;
         VkDeviceAddress address = 0;
@@ -25,10 +27,11 @@ namespace carbon {
 
         auto getCreateInfo(VkBufferUsageFlags bufferUsage) const -> VkBufferCreateInfo;
         static auto getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddressInfoKHR;
+        static auto getBufferDeviceAddress(std::shared_ptr<carbon::Device> device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress;
 
     public:
-        explicit Buffer(const Context& context);
-        explicit Buffer(const Context& context, std::string name);
+        explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
+        explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name);
         Buffer(const Buffer& buffer);
         ~Buffer() = default;
 

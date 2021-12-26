@@ -4,10 +4,10 @@
 #include <vulkan/vulkan.h>
 
 namespace carbon {
-    class Context;
+    class Device;
 
     class Fence {
-        const carbon::Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         const std::string name;
 
         /** Resets and submits must lock/unlock this mutex */
@@ -15,14 +15,14 @@ namespace carbon {
         VkFence handle = nullptr;
 
     public:
-        explicit Fence(const carbon::Context& context, std::string name = {});
+        explicit Fence(std::shared_ptr<carbon::Device> device, std::string name = {});
         Fence(const Fence& fence);
-
-        operator VkFence() const;
 
         void create(VkFenceCreateFlags flags = 0);
         void destroy() const;
         void wait();
         void reset();
+
+        operator VkFence() const;
     };
 }

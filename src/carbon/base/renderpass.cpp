@@ -2,22 +2,20 @@
 
 #include <array>
 
-#include "../context.hpp"
 #include "swapchain.hpp"
 
-carbon::RenderPass::RenderPass(const carbon::Context& context, const carbon::Swapchain& swapchain)
-        : ctx(context), swapchain(swapchain) {
-
+carbon::RenderPass::RenderPass(std::shared_ptr<carbon::Device> device, std::shared_ptr<carbon::Swapchain> swapchain)
+        : device(std::move(device)), swapchain(std::move(swapchain)) {
 }
 
 void carbon::RenderPass::destroy() {
     if (handle != nullptr)
-        vkDestroyRenderPass(ctx.device, handle, nullptr);
+        vkDestroyRenderPass(*device, handle, nullptr);
 }
 
 void carbon::RenderPass::create(const VkAttachmentLoadOp colorBufferLoadOp, const std::string& name) {
     VkAttachmentDescription colorAttachment = {
-        .format = swapchain.surfaceFormat.format,
+        .format = swapchain->surfaceFormat.format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = colorBufferLoadOp,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -59,10 +57,10 @@ void carbon::RenderPass::create(const VkAttachmentLoadOp colorBufferLoadOp, cons
         .pDependencies = &dependency
     };
 
-    vkCreateRenderPass(ctx.device, &renderPassInfo, nullptr, &handle);
+    vkCreateRenderPass(*device, &renderPassInfo, nullptr, &handle);
 
     if (!name.empty())
-        ctx.setDebugUtilsName(handle, name);
+        device->setDebugUtilsName(handle, name);
 }
 
 void carbon::RenderPass::begin(const VkCommandBuffer cmdBuffer, const VkFramebuffer framebuffer, std::vector<VkClearValue> clearValues) {
@@ -72,7 +70,7 @@ void carbon::RenderPass::begin(const VkCommandBuffer cmdBuffer, const VkFramebuf
         .framebuffer = framebuffer,
         .renderArea = {
             .offset = { 0, 0 },
-            .extent = swapchain.getExtent(),
+            .extent = swapchain->getExtent(),
         },
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),

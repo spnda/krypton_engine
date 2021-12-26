@@ -1,19 +1,21 @@
 #pragma once
 
 #include <string>
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 namespace carbon {
-    class Context;
+    class Device;
 
     class Semaphore {
-        const carbon::Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         const std::string name;
 
         VkSemaphore handle = nullptr;
 
     public:
-        explicit Semaphore(const carbon::Context& context, std::string name = {});
+        explicit Semaphore(std::shared_ptr<carbon::Device> device, std::string name = {});
         Semaphore(const Semaphore& semaphore) = default;
 
         operator VkSemaphore() const;

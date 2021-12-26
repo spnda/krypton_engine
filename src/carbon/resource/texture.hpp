@@ -1,10 +1,13 @@
 #pragma once
 
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 #include "image.hpp"
 
 namespace carbon {
+    class CommandBuffer;
     class Context;
 
     class Texture : public Image {
@@ -17,16 +20,16 @@ namespace carbon {
     public:
         static const VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        Texture(const carbon::Context& context, VkExtent2D imageSize, std::string name = "texture");
+        Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D imageSize, std::string name = "texture");
 
         explicit operator VkImageView() const;
         Texture& operator=(const Texture& newImage);
 
         void createTexture(VkFormat newFormat = VK_FORMAT_R8G8B8A8_SRGB, uint32_t mipLevels = 1, uint32_t arrayLayers = 1);
-        void generateMipmaps(VkCommandBuffer cmdBuffer);
+        void generateMipmaps(std::shared_ptr<carbon::CommandBuffer> cmdBuffer);
 
         [[nodiscard]] VkSampler getSampler() const;
 
-        static bool formatSupportsBlit(const carbon::Context& ctx, VkFormat format);
+        static bool formatSupportsBlit(std::shared_ptr<carbon::Device> device, VkFormat format);
     };
 }

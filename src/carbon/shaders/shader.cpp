@@ -5,11 +5,12 @@
 #include <sstream>
 #include <utility>
 
+#include "../base/device.hpp"
+
 #ifdef WITH_NV_AFTERMATH
 #include "shader_database.hpp"
 #endif // #ifdef WITH_NV_AFTERMATH
 
-#include "../context.hpp"
 #include "file_includer.hpp"
 
 static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
@@ -21,8 +22,8 @@ static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
     { carbon::ShaderStage::Callable, shaderc_callable_shader },
 };
 
-carbon::ShaderModule::ShaderModule(const carbon::Context& context, std::string name, const carbon::ShaderStage shaderStage)
-        : ctx(context), name(std::move(name)), shaderStage(shaderStage) {
+carbon::ShaderModule::ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, const carbon::ShaderStage shaderStage)
+        : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {
     
 }
 
@@ -90,9 +91,9 @@ void carbon::ShaderModule::createShaderModule() {
         .pCode = shaderCompileResult.binary.data(),
     };
 
-    vkCreateShaderModule(ctx.device, &moduleCreateInfo, nullptr, &shaderModule);
+    vkCreateShaderModule(*device, &moduleCreateInfo, nullptr, &shaderModule);
 
-    ctx.setDebugUtilsName(shaderModule, name);
+    device->setDebugUtilsName(shaderModule, name);
 #ifdef WITH_NV_AFTERMATH
     carbon::ShaderDatabase::addShaderBinary(shaderCompileResult.binary);
     carbon::ShaderDatabase::addShaderWithDebugInfo(shaderCompileResult.debugBinary, shaderCompileResult.binary);

@@ -1,12 +1,14 @@
 #pragma once
 
 #include <initializer_list>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "../shaders/shader.hpp"
+
 namespace carbon {
-    // fwd
-    class Context;
+    class Device;
     class ShaderModule;
 
     enum class RtShaderGroup : uint32_t {
@@ -28,11 +30,11 @@ namespace carbon {
 
         explicit operator VkPipeline() const;
 
-        void destroy(const carbon::Context& ctx) const;
+        void destroy(std::shared_ptr<carbon::Device> device) const;
     };
 
     class RayTracingPipelineBuilder {
-        Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         std::string pipelineName;
         
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
@@ -45,10 +47,11 @@ namespace carbon {
         std::vector<VkWriteDescriptorSet> descriptorWrites;
         VkPushConstantRange pushConstants;
 
-        explicit RayTracingPipelineBuilder(Context& context) : ctx(context) {}
+        explicit RayTracingPipelineBuilder(std::shared_ptr<carbon::Device> device)
+                : device(std::move(device)) {}
 
     public:
-        static RayTracingPipelineBuilder create(Context& context, std::string pipelineName);
+        static RayTracingPipelineBuilder create(std::shared_ptr<carbon::Device> device, std::string pipelineName);
 
         RayTracingPipelineBuilder& addShaderGroup(RtShaderGroup group, std::initializer_list<carbon::ShaderModule> shaders);
         RayTracingPipelineBuilder& addImageDescriptor(uint32_t binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, carbon::ShaderStage stageFlags, uint32_t count = 1);

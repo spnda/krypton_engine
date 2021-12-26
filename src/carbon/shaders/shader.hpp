@@ -24,7 +24,7 @@ namespace carbon {
     }
 
     // fwd.
-    class Context;
+    class Device;
 
     struct ShaderCompileResult {
         std::vector<uint32_t> binary;
@@ -32,7 +32,7 @@ namespace carbon {
     };
 
     class ShaderModule {
-        const carbon::Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         std::string name;
 
         VkShaderModule shaderModule = nullptr;
@@ -45,7 +45,7 @@ namespace carbon {
         [[nodiscard]] static auto readFile(const std::string& filepath) -> std::string;
 
     public:
-        explicit ShaderModule(const carbon::Context& context, std::string  name, carbon::ShaderStage shaderStage);
+        explicit ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, carbon::ShaderStage shaderStage);
 
         void createShader(const std::string& filename);
         [[nodiscard]] auto getShaderStageCreateInfo() const -> VkPipelineShaderStageCreateInfo;

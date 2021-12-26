@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -29,7 +30,7 @@ namespace carbon {
         PhysicalDevice& operator=(const PhysicalDevice& device) = default;
 
         void addExtensions(const std::vector<const char*>& extensions);
-        void create(const carbon::Instance& instance, VkSurfaceKHR surface);
+        void create(std::shared_ptr<carbon::Instance> instance, VkSurfaceKHR surface);
         std::string getDeviceName() const;
         vkb::PhysicalDevice& getVkbPhysicalDevice();
 

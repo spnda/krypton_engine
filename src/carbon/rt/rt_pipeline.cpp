@@ -2,23 +2,24 @@
 
 #include <utility>
 
-#include "../context.hpp"
 #include "rt_pipeline.hpp"
+#include "../base/device.hpp"
 #include "../resource/buffer.hpp"
+#include "../shaders/shader.hpp"
 
 carbon::RayTracingPipeline::operator VkPipeline() const {
     return pipeline;
 }
 
-void carbon::RayTracingPipeline::destroy(const carbon::Context& ctx) const {
-    vkDestroyPipeline(ctx.device, pipeline, nullptr);
-    vkDestroyPipelineLayout(ctx.device, pipelineLayout, nullptr);
-    vkDestroyDescriptorPool(ctx.device, descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(ctx.device, descriptorLayout, nullptr);
+void carbon::RayTracingPipeline::destroy(std::shared_ptr<carbon::Device> device) const {
+    vkDestroyPipeline(*device, pipeline, nullptr);
+    vkDestroyPipelineLayout(*device, pipelineLayout, nullptr);
+    vkDestroyDescriptorPool(*device, descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(*device, descriptorLayout, nullptr);
 }
 
-carbon::RayTracingPipelineBuilder carbon::RayTracingPipelineBuilder::create(Context& context, std::string pipelineName) {
-    carbon::RayTracingPipelineBuilder builder(context);
+carbon::RayTracingPipelineBuilder carbon::RayTracingPipelineBuilder::create(std::shared_ptr<carbon::Device> device, std::string pipelineName) {
+    carbon::RayTracingPipelineBuilder builder(std::move(device));
     builder.pipelineName = std::move(pipelineName);
     return builder;
 }
@@ -176,7 +177,7 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
     descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorLayoutCreateInfo.bindingCount = static_cast<uint32_t>(descriptorLayoutBindings.size());
     descriptorLayoutCreateInfo.pBindings = descriptorLayoutBindings.data();
-    vkCreateDescriptorSetLayout(ctx.device, &descriptorLayoutCreateInfo, nullptr, &descriptorSetLayout);
+    vkCreateDescriptorSetLayout(*device, &descriptorLayoutCreateInfo, nullptr, &descriptorSetLayout);
 
     // Create descriptor pool and allocate sets.
     static std::vector<VkDescriptorPoolSize> poolSizes = {
@@ -186,21 +187,21 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
     };
 
-    ctx.createDescriptorPool(1, poolSizes, &descriptorPool);
+    device->createDescriptorPool(1, poolSizes, &descriptorPool);
 
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
     descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     descriptorSetAllocateInfo.descriptorPool = descriptorPool;
     descriptorSetAllocateInfo.descriptorSetCount = 1;
     descriptorSetAllocateInfo.pSetLayouts = &descriptorSetLayout;
-    vkAllocateDescriptorSets(ctx.device, &descriptorSetAllocateInfo, &descriptorSet);
+    vkAllocateDescriptorSets(*device, &descriptorSetAllocateInfo, &descriptorSet);
 
     // Copy the just allocated descriptor set to the write descriptors.
     // Then update the sets.
     for (auto& write : descriptorWrites) {
         write.dstSet = descriptorSet;
     }
-    vkUpdateDescriptorSets(ctx.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, VK_NULL_HANDLE);
+    vkUpdateDescriptorSets(*device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, VK_NULL_HANDLE);
 
     carbon::RayTracingPipeline pipeline = {};
     pipeline.descriptorSet = descriptorSet;
@@ -215,12 +216,12 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
         pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstants;
         pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
     }
-    vkCreatePipelineLayout(ctx.device, &pipelineLayoutCreateInfo, nullptr, &pipeline.pipelineLayout);
+    vkCreatePipelineLayout(*device, &pipelineLayoutCreateInfo, nullptr, &pipeline.pipelineLayout);
 
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
     VkPhysicalDeviceProperties2 deviceProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
     deviceProperties.pNext = &rtProperties;
-    vkGetPhysicalDeviceProperties2(ctx.physicalDevice, &deviceProperties);
+    vkGetPhysicalDeviceProperties2(device->getVkbDevice().physical_device, &deviceProperties);
 
     // Create RT pipeline
     VkRayTracingPipelineCreateInfoKHR pipelineCreateInfo = {};
@@ -232,8 +233,16 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
     pipelineCreateInfo.layout = pipeline.pipelineLayout;
     pipelineCreateInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 
-    ctx.buildRayTracingPipeline(&pipeline.pipeline, { pipelineCreateInfo });
+    std::vector<VkRayTracingPipelineCreateInfoKHR> createInfos = { pipelineCreateInfo };
+    device->vkCreateRayTracingPipelinesKHR(
+        *device,
+        nullptr, nullptr,
+        createInfos.size(),
+        createInfos.data(),
+        nullptr,
+        &pipeline.pipeline
+    );
 
-    ctx.setDebugUtilsName(pipeline.pipeline, pipelineName);
+    device->setDebugUtilsName(pipeline.pipeline, pipelineName);
     return pipeline;
 }

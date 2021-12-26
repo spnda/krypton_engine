@@ -1,8 +1,10 @@
 #include "image.hpp"
+#include "../base/command_buffer.hpp"
+#include "../base/device.hpp"
 #include "../utils.hpp"
 
-carbon::Image::Image(const Context& context, const VkExtent2D extent, std::string name)
-        : ctx(context), imageExtent(extent), name(std::move(name)) {
+carbon::Image::Image(std::shared_ptr<carbon::Device> context, VmaAllocator allocator, const VkExtent2D extent, std::string name)
+        : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {
 }
 
 carbon::Image::operator VkImage() const {
@@ -39,7 +41,7 @@ void carbon::Image::create(const VkFormat newFormat, const VkImageUsageFlags usa
     allocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    vmaCreateImage(ctx.vmaAllocator, &imageCreateInfo, &allocationInfo, &image, &allocation, nullptr);
+    vmaCreateImage(allocator, &imageCreateInfo, &allocationInfo, &image, &allocation, nullptr);
 
     VkImageViewCreateInfo imageViewCreateInfo = {};
     imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -54,8 +56,8 @@ void carbon::Image::create(const VkFormat newFormat, const VkImageUsageFlags usa
     imageViewCreateInfo.subresourceRange.layerCount = 1;
     imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-    vkCreateImageView(ctx.device, &imageViewCreateInfo, nullptr, &imageView);
-    ctx.setDebugUtilsName(image, name);
+    vkCreateImageView(*device, &imageViewCreateInfo, nullptr, &imageView);
+    device->setDebugUtilsName(image, name);
 }
 
 void carbon::Image::create(VkImageCreateInfo* imageCreateInfo, VkImageViewCreateInfo* viewCreateInfo, VkImageLayout initialLayout) {
@@ -66,13 +68,13 @@ void carbon::Image::create(VkImageCreateInfo* imageCreateInfo, VkImageViewCreate
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
-    auto result = vmaCreateImage(ctx.vmaAllocator, imageCreateInfo, &allocationInfo, &image, &allocation, nullptr);
-    checkResult(ctx, result, "Failed to create image");
+    auto result = vmaCreateImage(allocator, imageCreateInfo, &allocationInfo, &image, &allocation, nullptr);
+    checkResult(result, "Failed to create image");
 
     viewCreateInfo->image = image;
-    result = vkCreateImageView(ctx.device, viewCreateInfo, nullptr, &imageView);
-    checkResult(ctx, result, "Failed to create imageView");
-    ctx.setDebugUtilsName(image, name);
+    result = vkCreateImageView(*device, viewCreateInfo, nullptr, &imageView);
+    checkResult(result, "Failed to create imageView");
+    device->setDebugUtilsName(image, name);
 }
 
 void carbon::Image::copyImage(VkCommandBuffer cmdBuffer, VkImage destination, VkImageLayout destinationLayout) {
@@ -87,8 +89,8 @@ void carbon::Image::copyImage(VkCommandBuffer cmdBuffer, VkImage destination, Vk
 }
 
 void carbon::Image::destroy() {
-    vkDestroyImageView(ctx.device, imageView, nullptr);
-    vmaDestroyImage(ctx.vmaAllocator, image, allocation);
+    vkDestroyImageView(*device, imageView, nullptr);
+    vmaDestroyImage(allocator, image, allocation);
     imageView = nullptr;
     image = nullptr;
 }
@@ -121,15 +123,15 @@ VkImageLayout carbon::Image::getImageLayout() {
 }
 
 void carbon::Image::changeLayout(
-        VkCommandBuffer commandBuffer,
+        std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
         const VkImageLayout newLayout,
         const VkImageSubresourceRange subresourceRange,
         const VkPipelineStageFlags srcStage, const VkPipelineStageFlags dstStage) {
-    carbon::Image::changeLayout(image, commandBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage, subresourceRange);
+    carbon::Image::changeLayout(image, cmdBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage, subresourceRange);
     currentLayouts[subresourceRange.baseMipLevel] = newLayout;
 }
 
-void carbon::Image::changeLayout(VkImage image, VkCommandBuffer commandBuffer,
+void carbon::Image::changeLayout(VkImage image, std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
                              VkImageLayout oldLayout, VkImageLayout newLayout,
                              VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                              VkImageSubresourceRange subresourceRange) {
@@ -171,8 +173,7 @@ void carbon::Image::changeLayout(VkImage image, VkCommandBuffer commandBuffer,
         .subresourceRange = subresourceRange,
     };
 
-    vkCmdPipelineBarrier(
-        commandBuffer,
+    cmdBuffer->pipelineBarrier(
         srcStage,
         dstStage,
         0,

@@ -6,7 +6,6 @@
 
 #include <fmt/core.h>
 
-#include "../context.hpp"
 #include "../shaders/shader_database.hpp"
 
 // Static callback functions.
@@ -53,9 +52,9 @@
     crashTracker->onShaderSourceLookup(shaderDebugName, setShaderBinary);
 }
 
-carbon::GpuCrashTracker::GpuCrashTracker(const Context& context) : ctx(context) {}
+carbon::GpuCrashTracker::GpuCrashTracker() {}
 
-carbon::GpuCrashTracker::GpuCrashTracker(const GpuCrashTracker& c) : ctx(c.ctx) {}
+carbon::GpuCrashTracker::GpuCrashTracker(const GpuCrashTracker& c) {}
 
 void carbon::GpuCrashTracker::enable() {
     // Enable crash dumps
@@ -194,12 +193,12 @@ void carbon::GpuCrashTracker::onShaderSourceLookup(const GFSDK_Aftermath_ShaderD
 }
 
 void carbon::GpuCrashTracker::onDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription) {
-    addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName, ctx.applicationName.c_str());
+    /*addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName, ctx.applicationName.c_str());
     std::string version = fmt::format("v{}.{}.{}",
                                       VK_API_VERSION_MAJOR(ctx.applicationVersion),
                                       VK_API_VERSION_MINOR(ctx.applicationVersion),
                                       VK_API_VERSION_PATCH(ctx.applicationVersion));
-    addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion, version.c_str());
+    addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion, version.c_str());*/
 }
 
 bool carbon::GpuCrashTracker::checkAftermathError(GFSDK_Aftermath_Result result, const std::string& message) {

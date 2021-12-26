@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include "VkBootstrap.h"
+
 #include "../resource/buffer.hpp"
 #include "../resource/stagingbuffer.hpp"
 
@@ -21,7 +23,8 @@ namespace carbon {
     /** The base of any acceleration structure */
     struct AccelerationStructure {
     protected:
-        const carbon::Context& ctx;
+        std::shared_ptr<carbon::Device> device;
+        VmaAllocator allocator = nullptr;
 
     public:
         carbon::Buffer resultBuffer;
@@ -30,7 +33,8 @@ namespace carbon {
         VkDeviceAddress address = 0;
         VkAccelerationStructureKHR handle = nullptr;
 
-        explicit AccelerationStructure(const carbon::Context& ctx, carbon::AccelerationStructureType type, std::string name);
+        explicit AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator,
+                                       carbon::AccelerationStructureType type, std::string name);
         AccelerationStructure(const AccelerationStructure& as) = default;
 
         void createScratchBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
@@ -55,7 +59,7 @@ namespace carbon {
         carbon::Buffer vertexBuffer;
         carbon::Buffer indexBuffer;
 
-        explicit BottomLevelAccelerationStructure(const carbon::Context& ctx, const std::string& name);
+        explicit BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name);
 
         void createMeshBuffers(std::vector<PrimitiveData> primitiveData, VkTransformMatrixKHR transform);
         void copyMeshBuffers(VkCommandBuffer cmdBuffer);
@@ -64,6 +68,6 @@ namespace carbon {
 
     struct TopLevelAccelerationStructure final : public AccelerationStructure {
     public:
-        explicit TopLevelAccelerationStructure(const carbon::Context& ctx);
+        explicit TopLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
     };
 }

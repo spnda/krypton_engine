@@ -9,9 +9,9 @@ void carbon::PhysicalDevice::addExtensions(const std::vector<const char*>& exten
     }
 }
 
-void carbon::PhysicalDevice::create(const carbon::Instance& instance, VkSurfaceKHR surface) {
+void carbon::PhysicalDevice::create(std::shared_ptr<carbon::Instance> instance, VkSurfaceKHR surface) {
     // Get the physical device.
-    vkb::PhysicalDeviceSelector physicalDeviceSelector((vkb::Instance(instance)));
+    vkb::PhysicalDeviceSelector physicalDeviceSelector((vkb::Instance(*instance)));
 
     // Add the required extensions.
     for (auto ext : requiredExtensions)

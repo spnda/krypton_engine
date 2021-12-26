@@ -44,11 +44,10 @@ namespace carbon {
 
     // Wrapper around NVIDIA Aftermath
     class GpuCrashTracker {
-        const carbon::Context& ctx;
         mutable std::mutex crashMutex;
 
     public:
-        explicit GpuCrashTracker(const carbon::Context& context);
+        explicit GpuCrashTracker();
         GpuCrashTracker(const GpuCrashTracker& c);
 
         void enable();

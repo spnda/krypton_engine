@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../context.hpp"
+#include "../base/device.hpp"
 #include "image.hpp"
 
 namespace carbon {
@@ -11,13 +11,13 @@ namespace carbon {
         const VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
     public:
-        explicit StorageImage(const carbon::Context& context);
+        explicit StorageImage(std::shared_ptr<carbon::Device>, VmaAllocator allocator, VkExtent2D windowExtent);
 
         void create();
-        void recreateImage();
+        void recreateImage(VkExtent2D windowExtent);
 
         void changeLayout(
-            VkCommandBuffer commandBuffer,
+            std::shared_ptr<carbon::CommandBuffer> commandBuffer,
             VkImageLayout newLayout,
             VkPipelineStageFlags srcStage,
             VkPipelineStageFlags dstStage);

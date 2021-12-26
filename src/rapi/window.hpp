@@ -36,6 +36,7 @@ namespace krypton::rapi {
         void destroy();
         [[nodiscard]] float getAspectRatio() const;
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
+        void getWindowSize(int* width, int* height) const;
         void pollEvents() const;
 
         /**

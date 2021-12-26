@@ -47,6 +47,10 @@ target_include_directories(carbon PUBLIC "./")
 
 add_files(
     TARGET carbon
+    "base/command_pool.cpp"
+    "base/command_pool.hpp"
+    "base/command_buffer.cpp"
+    "base/command_buffer.hpp"
     "base/crash_tracker.cpp"
     "base/crash_tracker.hpp"
     "base/device.cpp"
@@ -85,7 +89,5 @@ add_files(
     "shaders/shader.hpp"
     "shaders/shader_database.cpp"
     "shaders/shader_database.hpp"
-    "context.cpp"
-    "context.hpp"
     "utils.hpp"
 )

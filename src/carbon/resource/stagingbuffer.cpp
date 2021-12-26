@@ -1,7 +1,7 @@
 #include "stagingbuffer.hpp"
 
-carbon::StagingBuffer::StagingBuffer(const carbon::Context& context, std::string name)
-    : Buffer(context, std::move(name)) {
+carbon::StagingBuffer::StagingBuffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name)
+    : Buffer(std::move(device), allocator, std::move(name)) {
 }
 
 void carbon::StagingBuffer::create(uint64_t bufferSize, VkBufferUsageFlags additionalBufferUsage) {

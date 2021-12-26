@@ -1,9 +1,8 @@
+#include "device.hpp"
 #include "semaphore.hpp"
 
-#include "../context.hpp"
-
-carbon::Semaphore::Semaphore(const carbon::Context& context, std::string name)
-        : ctx(context), name(std::move(name)) {
+carbon::Semaphore::Semaphore(std::shared_ptr<carbon::Device> device, std::string name)
+        : device(std::move(device)), name(std::move(name)) {
 
 }
 
@@ -16,12 +15,12 @@ void carbon::Semaphore::create(VkSemaphoreCreateFlags flags) {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .flags = flags,
     };
-    vkCreateSemaphore(ctx.device, &semaphoreCreateInfo, nullptr, &handle);
+    vkCreateSemaphore(*device, &semaphoreCreateInfo, nullptr, &handle);
 }
 
 void carbon::Semaphore::destroy() const {
     if (handle != nullptr)
-        vkDestroySemaphore(ctx.device, handle, nullptr);
+        vkDestroySemaphore(*device, handle, nullptr);
 }
 
 auto carbon::Semaphore::getHandle() const -> const VkSemaphore& {

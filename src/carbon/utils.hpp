@@ -5,8 +5,11 @@
 #include <fstream>
 #include <fmt/core.h>
 
+#include <vulkan/vulkan.h>
+
 #include "VkBootstrap.h"
-#include "context.hpp"
+
+#include "base/queue.hpp"
 
 #define INSTANCE_FUNCTION_POINTER(name, instance) \
     name = instance.getFunctionAddress<PFN_##name>(#name);
@@ -64,10 +67,18 @@ T getFromVkbResult(vkb::detail::Result<T> result) {
     return result.value();
 }
 
-inline void checkResult(const carbon::Context& ctx, VkResult result, const std::string& message) {
+inline void checkResult(VkResult result, const std::string& message) {
+    if (result != VK_SUCCESS) {
+        auto error = fmt::format("{}: {}\n", message, resultStrings.at(result));
+        std::cerr << error;
+        throw std::runtime_error(error);
+    }
+}
+
+inline void checkResult(std::shared_ptr<carbon::Queue> queue, VkResult result, const std::string& message) {
     if (result != VK_SUCCESS) {
         // Get checkpoint data
-        auto checkpoints = ctx.getCheckpointData(ctx.graphicsQueue, 10);
+        auto checkpoints = queue->getCheckpointData(10);
         if (checkpoints.empty()) {
             fmt::print("No checkpoints have been created.\n");
         }

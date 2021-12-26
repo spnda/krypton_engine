@@ -1,22 +1,23 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
 
 namespace carbon {
     // fwd
-    class Context;
+    class Device;
     class Swapchain;
 
     class RenderPass {
-        const carbon::Context& ctx;
-        const carbon::Swapchain& swapchain;
+        std::shared_ptr<carbon::Device> device;
+        std::shared_ptr<carbon::Swapchain> swapchain;
 
         VkRenderPass handle = VK_NULL_HANDLE;
 
     public:
-        RenderPass(const carbon::Context& context, const carbon::Swapchain& swapchain);
+        RenderPass(std::shared_ptr<carbon::Device> device, std::shared_ptr<carbon::Swapchain> swapchain);
 
         void create(VkAttachmentLoadOp colorBufferLoadOp, const std::string& name = {});
         void destroy();

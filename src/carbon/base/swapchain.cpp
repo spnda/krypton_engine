@@ -2,25 +2,19 @@
 #include <cstdint>
 
 #include "swapchain.hpp"
+#include "semaphore.hpp"
 #include "../utils.hpp"
 
-carbon::Swapchain::Swapchain(const Context& context)
-        : ctx(context) {
+carbon::Swapchain::Swapchain(std::shared_ptr<carbon::Instance> instance,
+                             std::shared_ptr<carbon::Device> device)
+        : instance(std::move(instance)), device(std::move(device)) {
     swapchain = nullptr;
 }
 
-bool carbon::Swapchain::create() {
-    DEVICE_FUNCTION_POINTER(vkAcquireNextImageKHR, ctx.device)
-    DEVICE_FUNCTION_POINTER(vkDestroySurfaceKHR, ctx.device)
-    DEVICE_FUNCTION_POINTER(vkGetSwapchainImagesKHR, ctx.device)
-
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, ctx.instance)
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceFormatsKHR, ctx.instance)
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfacePresentModesKHR, ctx.instance)
-
-    querySwapChainSupport(ctx.physicalDevice);
+bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
+    querySwapChainSupport(device->getVkbDevice().physical_device, surface);
     surfaceFormat = chooseSwapSurfaceFormat();
-    imageExtent = chooseSwapExtent();
+    imageExtent = chooseSwapExtent(windowExtent);
     auto presentMode = chooseSwapPresentMode();
 
     uint32_t imageCount = capabilities.minImageCount + 1;
@@ -30,7 +24,7 @@ bool carbon::Swapchain::create() {
 
     VkSwapchainCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = ctx.surface,
+        .surface = surface,
 
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
@@ -51,14 +45,14 @@ bool carbon::Swapchain::create() {
     };
 
     VkSwapchainKHR newSwapchain = nullptr;
-    auto res = vkCreateSwapchainKHR(ctx.device, &createInfo, nullptr, &newSwapchain);
-    checkResult(ctx, res, "Failed to create swapchain");
+    auto res = device->vkCreateSwapchainKHR(*device, &createInfo, nullptr, &newSwapchain);
+    checkResult(res, "Failed to create swapchain");
     swapchain = newSwapchain;
 
     // Get the swapchain images
-    vkGetSwapchainImagesKHR(ctx.device, swapchain, &imageCount, nullptr);
+    device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, nullptr);
     swapchainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(ctx.device, swapchain, &imageCount, swapchainImages.data());
+    device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, swapchainImages.data());
     
     // Get the swapchain image views
     swapchainImageViews.resize(imageCount);
@@ -83,8 +77,8 @@ bool carbon::Swapchain::create() {
             },
         };
 
-        res = vkCreateImageView(ctx.device, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
-        checkResult(ctx, res, "Failed to create swapchain image view");
+        res = vkCreateImageView(*device, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+        checkResult(res, "Failed to create swapchain image view");
     }
 
     return true;
@@ -92,19 +86,19 @@ bool carbon::Swapchain::create() {
 
 void carbon::Swapchain::destroy() {
     for (auto& view : swapchainImageViews) {
-        vkDestroyImageView(ctx.device, view, nullptr);
+        vkDestroyImageView(*device, view, nullptr);
         view = nullptr;
     }
-    vkDestroySwapchainKHR(ctx.device, swapchain, nullptr);
+    vkDestroySwapchainKHR(*device, swapchain, nullptr);
     swapchain = nullptr;
 }
 
-VkResult carbon::Swapchain::acquireNextImage(const carbon::Semaphore& presentCompleteSemaphore, uint32_t* imageIndex) const {
-    return vkAcquireNextImageKHR(ctx.device, swapchain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, imageIndex);
+VkResult carbon::Swapchain::acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const {
+    return device->vkAcquireNextImageKHR(*device, swapchain, UINT64_MAX, presentCompleteSemaphore->getHandle(), (VkFence)nullptr, imageIndex);
 }
 
-VkResult carbon::Swapchain::queuePresent(carbon::Queue& queue, uint32_t imageIndex, carbon::Semaphore& waitSemaphore) const {
-    return queue.present(imageIndex, swapchain, waitSemaphore);
+VkResult carbon::Swapchain::queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const {
+    return queue->present(imageIndex, swapchain, waitSemaphore);
 }
 
 VkFormat carbon::Swapchain::getFormat() const {
@@ -115,11 +109,11 @@ VkExtent2D carbon::Swapchain::getExtent() const {
     return imageExtent;
 }
 
-VkExtent2D carbon::Swapchain::chooseSwapExtent() {
+VkExtent2D carbon::Swapchain::chooseSwapExtent(VkExtent2D windowExtent) {
     if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
     } else {
-        VkExtent2D actualExtent = { ctx.width, ctx.height };
+        VkExtent2D actualExtent = windowExtent;
         actualExtent.width = std::max(capabilities.minImageExtent.width,
             std::min(capabilities.maxImageExtent.width, actualExtent.width));
         actualExtent.height = std::max(capabilities.minImageExtent.height,
@@ -147,22 +141,22 @@ VkPresentModeKHR carbon::Swapchain::chooseSwapPresentMode() {
     return VK_PRESENT_MODE_FIFO_KHR; /* Essentially V-Sync */
 }
 
-void carbon::Swapchain::querySwapChainSupport(VkPhysicalDevice device) {
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, ctx.surface, &capabilities);
+void carbon::Swapchain::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    instance->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
 
     uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, ctx.surface, &formatCount, nullptr);
+    instance->vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 
     if (formatCount != 0) {
         formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, ctx.surface, &formatCount, formats.data());
+        instance->vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
     }
 
     uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, ctx.surface, &presentModeCount, nullptr);
+    instance->vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
 
     if (presentModeCount != 0) {
         presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, ctx.surface, &presentModeCount, presentModes.data());
+        instance->vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
     }
 }

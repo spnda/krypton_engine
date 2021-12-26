@@ -1,31 +1,34 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
-#include "../context.hpp"
-
 namespace carbon {
+    class CommandBuffer;
+    class Device;
+
     class Image {
         std::string name;
 
+        VmaAllocator allocator = nullptr;
         VmaAllocation allocation = nullptr;
         VkImage image = nullptr;
         VkImageView imageView = nullptr;
         VkFormat format = VK_FORMAT_UNDEFINED;
 
     protected:
-        const Context& ctx;
+        std::shared_ptr<carbon::Device> device;
         VkExtent2D imageExtent = { 0, 0 };
         std::map<uint32_t, VkImageLayout> currentLayouts = {
             { 0, VK_IMAGE_LAYOUT_UNDEFINED }
         };
 
     public:
-        Image(const Context& context, VkExtent2D extent, std::string name = {});
+        Image(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D extent, std::string name = {});
 
         operator VkImage() const;
         Image& operator=(const Image& newImage);
@@ -43,7 +46,7 @@ namespace carbon {
         [[nodiscard]] VkImageLayout getImageLayout();
 
         void changeLayout(
-            VkCommandBuffer commandBuffer,
+            std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
             VkImageLayout newLayout,
             VkImageSubresourceRange subresourceRange,
             VkPipelineStageFlags srcStage,
@@ -51,7 +54,7 @@ namespace carbon {
 
         static void changeLayout(
             VkImage image,
-            VkCommandBuffer commandBuffer,
+            std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
             VkImageLayout oldLayout, VkImageLayout newLayout,
             VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
             VkImageSubresourceRange subresourceRange

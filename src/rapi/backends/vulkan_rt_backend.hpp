@@ -4,12 +4,22 @@
 
 #include <string>
 
-#include <context.hpp>
-#include <base/swapchain.hpp>
 #include <resource/buffer.hpp>
 
 #include "../rapi.hpp"
 #include "../window.hpp"
+
+namespace carbon {
+    class CommandBuffer;
+    class CommandPool;
+    class Device;
+    class Fence;
+    class Instance;
+    class PhysicalDevice;
+    class Queue;
+    class Semaphore;
+    class Swapchain;
+}
 
 namespace krypton::rapi {
     namespace vulkan {
@@ -21,30 +31,52 @@ namespace krypton::rapi {
             std::vector<uint64_t> bufferVertexOffsets;
             std::vector<uint64_t> bufferIndexOffsets;
 
-            RenderObject(const carbon::Context& ctx, std::shared_ptr<krypton::mesh::Mesh> mesh);
+            RenderObject(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::shared_ptr<krypton::mesh::Mesh> mesh);
         };
     }
 
     class VulkanRT_RAPI final : public RenderAPI {
-        krypton::rapi::Window window;
-        std::shared_ptr<carbon::Context> ctx;
-        std::unique_ptr<carbon::Swapchain> swapchain;
+        // Base Vulkan context
+        std::shared_ptr<krypton::rapi::Window> window;
         std::vector<std::string> instanceExtensions;
+        std::shared_ptr<carbon::Instance> instance;
+        std::shared_ptr<carbon::PhysicalDevice> physicalDevice;
+        std::shared_ptr<carbon::Device> device;
+        VmaAllocator allocator = nullptr;
+
+        // Command buffers
+        std::shared_ptr<carbon::CommandPool> commandPool;
+        std::shared_ptr<carbon::CommandBuffer> drawCommandBuffer;
+
+        // Sync structures
+        std::shared_ptr<carbon::Fence> renderFence;
+        std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore;
+        std::shared_ptr<carbon::Semaphore> renderCompleteSemaphore;
+
+        // Graphics
+        VkSurfaceKHR surface = nullptr;
+        std::shared_ptr<carbon::Queue> graphicsQueue;
+        std::shared_ptr<carbon::Swapchain> swapchain;
+        uint32_t frameBufferWidth, frameBufferHeight;
 
         bool needsResize = false;
+        uint32_t swapchainIndex = 0;
 
         std::vector<krypton::rapi::vulkan::RenderObject> objects = {};
+
+        auto waitForFrame() -> VkResult;
 
     public:
         VulkanRT_RAPI();
         ~VulkanRT_RAPI();
 
         void drawFrame();
-        krypton::rapi::Window* getWindow();
+        auto getWindow() -> std::shared_ptr<krypton::rapi::Window>;
         void init();
         void render(std::shared_ptr<krypton::mesh::Mesh> mesh);
         void resize(int width, int height);
         void shutdown();
+        auto submitFrame() -> VkResult;
     };
 }
 
