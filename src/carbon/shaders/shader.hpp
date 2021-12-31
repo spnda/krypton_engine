@@ -1,9 +1,12 @@
 #pragma once
 
 #include <map>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 #include <shaderc/shaderc.hpp>
+
+#include <shaders.hpp>
 
 namespace carbon {
     enum class ShaderStage : uint64_t {
@@ -26,11 +29,6 @@ namespace carbon {
     // fwd.
     class Device;
 
-    struct ShaderCompileResult {
-        std::vector<uint32_t> binary;
-        std::vector<uint32_t> debugBinary;
-    };
-
     class ShaderModule {
         std::shared_ptr<carbon::Device> device;
         std::string name;
@@ -38,11 +36,9 @@ namespace carbon {
         VkShaderModule shaderModule = nullptr;
         carbon::ShaderStage shaderStage;
 
-        ShaderCompileResult shaderCompileResult;
+        krypton::shaders::ShaderCompileResult shaderCompileResult;
 
         void createShaderModule();
-        [[nodiscard]] auto compileShader(const std::string& shaderName, const std::string& shader_source) const -> ShaderCompileResult;
-        [[nodiscard]] static auto readFile(const std::string& filepath) -> std::string;
 
     public:
         explicit ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, carbon::ShaderStage shaderStage);

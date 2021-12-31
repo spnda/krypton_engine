@@ -5,16 +5,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-mem-alloc"
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-bootstrap"
     "${CMAKE_BINARY_DIR}/vk-bootstrap")
 
-# Add shaderc from the Vulkan SDK
-add_library(shaderc UNKNOWN IMPORTED)
-if(WIN32)
-  set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib")
-  set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include")
-  target_link_libraries(carbon PUBLIC shaderc)
-else()
-  target_link_libraries(carbon PRIVATE shaderc_combined glslang MachineIndependent OSDependent OGLCompiler GenericCodeGen SPIRV SPIRV-Tools-opt SPIRV-Tools)
-endif()
-
 # Add NVIDIA Aftermath if found in external/nv-aftermath
 string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
 if (EXISTS "${CMAKE_SOURCE_DIR}/external/nv-aftermath" AND build_type STREQUAL "debug" AND WIN32)
@@ -39,6 +29,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(carbon PRIVATE fmt::fmt-header-only)
+target_link_libraries(carbon PUBLIC shaders)
 target_link_libraries(carbon PUBLIC vk-bootstrap::vk-bootstrap)
 target_link_libraries(carbon PUBLIC VulkanMemoryAllocator)
 target_link_libraries(carbon PUBLIC Vulkan::Vulkan)
@@ -83,11 +74,9 @@ add_files(
     "rt/acceleration_structure.hpp"
     "rt/rt_pipeline.cpp"
     "rt/rt_pipeline.hpp"
-    "shaders/file_includer.cpp"
-    "shaders/file_includer.hpp"
-    "shaders/shader.cpp"
-    "shaders/shader.hpp"
     "shaders/shader_database.cpp"
     "shaders/shader_database.hpp"
+    "shaders/shader.cpp"
+    "shaders/shader.hpp"
     "utils.hpp"
 )

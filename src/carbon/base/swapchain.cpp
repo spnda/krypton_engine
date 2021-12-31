@@ -53,7 +53,7 @@ bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
     device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, nullptr);
     swapchainImages.resize(imageCount);
     device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, swapchainImages.data());
-    
+
     // Get the swapchain image views
     swapchainImageViews.resize(imageCount);
     for (size_t i = 0; i < swapchainImages.size(); ++i) {

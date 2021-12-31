@@ -1,17 +1,18 @@
 #include "shader.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <utility>
+
+#include <file_includer.hpp>
 
 #include "../base/device.hpp"
 
 #ifdef WITH_NV_AFTERMATH
 #include "shader_database.hpp"
 #endif // #ifdef WITH_NV_AFTERMATH
-
-#include "file_includer.hpp"
 
 static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
     { carbon::ShaderStage::RayGeneration, shaderc_raygen_shader },
@@ -25,61 +26,6 @@ static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
 carbon::ShaderModule::ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, const carbon::ShaderStage shaderStage)
         : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {
     
-}
-
-std::string carbon::ShaderModule::readFile(const std::string& filename) {
-    std::ifstream is(filename, std::ios::binary);
-
-    if (is.is_open()) {
-        std::string shaderCode;
-        std::stringstream stringBuffer;
-        stringBuffer << is.rdbuf();
-        shaderCode = stringBuffer.str();
-
-        return shaderCode;
-    } else {
-        throw std::runtime_error(std::string("Failed to open shader file: ") + filename);
-    }
-}
-
-carbon::ShaderCompileResult carbon::ShaderModule::compileShader(const std::string& shaderName, const std::string& shader_source) const {
-    shaderc::Compiler compiler;
-    shaderc::CompileOptions options;
-
-    // TODO: Macro definitions
-
-    std::unique_ptr<FileIncluder> includer(new FileIncluder());
-    options.SetIncluder(std::move(includer));
-    options.SetOptimizationLevel(shaderc_optimization_level_performance);
-    options.SetTargetSpirv(shaderc_spirv_version_1_5);
-    options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
-
-    shaderc_shader_kind kind = shader_kinds[shaderStage];
-
-    auto checkResult = [=]<typename T>(shaderc::CompilationResult<T>& result) mutable {
-        if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-            std::cerr << result.GetErrorMessage() << std::endl;
-            return std::vector<T>();
-        }
-        return std::vector<T>(result.cbegin(),  result.cend());
-    };
-
-    // Preprocess the files.
-    auto result = compiler.PreprocessGlsl(shader_source, kind, shaderName.c_str(), options);
-    const std::vector<char> preProcessedSourceChars = checkResult(result);
-    const std::string preProcessedSource = {preProcessedSourceChars.begin(), preProcessedSourceChars.end()};
-
-    // Compile to SPIR-V
-#ifdef _DEBUG
-    options.SetGenerateDebugInfo();
-#endif // #ifdef _DEBUG
-    auto compileResult = compiler.CompileGlslToSpv(preProcessedSource, kind, shaderName.c_str(), options);
-    auto binary = checkResult(compileResult);
-
-    options.SetGenerateDebugInfo();
-    auto debugCompileResult = compiler.CompileGlslToSpv(preProcessedSource, kind, shaderName.c_str(), options);
-    auto debugBinary = checkResult(debugCompileResult);
-    return { binary, debugBinary };
 }
 
 void carbon::ShaderModule::createShaderModule() {
@@ -101,8 +47,10 @@ void carbon::ShaderModule::createShaderModule() {
 }
 
 void carbon::ShaderModule::createShader(const std::string& filename) {
-    auto fileContents = readFile(filename);
-    shaderCompileResult = compileShader(filename, fileContents);
+    auto shaderFile = krypton::shaders::readShaderFile(std::filesystem::path {filename});
+    shaderCompileResult = krypton::shaders::compileGlslShader(shaderFile.filePath.filename().string(),
+        shaderFile.content, shader_kinds.at(shaderStage));
+
     createShaderModule();
 }
 

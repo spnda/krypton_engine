@@ -4,7 +4,7 @@
 
 #include <shaderc/shaderc.hpp>
 
-namespace carbon {
+namespace krypton::shaders {
     class FileIncluder : public shaderc::CompileOptions::IncluderInterface {
         struct FileInfo {
             const std::string fullFilePath;

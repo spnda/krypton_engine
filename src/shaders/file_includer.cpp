@@ -1,23 +1,23 @@
-#include "file_includer.hpp"
-
 #include <fstream>
 #include <sstream>
 
-carbon::FileIncluder::FileIncluder() = default;
+#include "file_includer.hpp"
 
-shaderc_include_result* carbon::FileIncluder::GetInclude(
+krypton::shaders::FileIncluder::FileIncluder() = default;
+
+shaderc_include_result* krypton::shaders::FileIncluder::GetInclude(
         const char *requestedSource, shaderc_include_type type,
         const char *requestingSource, size_t includeDepth) {
     const std::string fullFilePath = findFile(requestedSource, requestingSource);
     if (fullFilePath.empty()) {
-        return carbon::FileIncluder::includeErrorResult("Failed to find file: " + std::string(requestedSource));
+        return krypton::shaders::FileIncluder::includeErrorResult("Failed to find file: " + std::string(requestedSource));
     }
 
     std::string fileContents;
     try {
-        fileContents = carbon::FileIncluder::readFileAsString(fullFilePath);
+        fileContents = krypton::shaders::FileIncluder::readFileAsString(fullFilePath);
     } catch (std::exception& exception) {
-        return carbon::FileIncluder::includeErrorResult(exception.what());
+        return krypton::shaders::FileIncluder::includeErrorResult(exception.what());
     }
 
     auto* fileInfo = new FileInfo {
@@ -34,13 +34,13 @@ shaderc_include_result* carbon::FileIncluder::GetInclude(
     };
 }
 
-void carbon::FileIncluder::ReleaseInclude(shaderc_include_result *includeResult) {
+void krypton::shaders::FileIncluder::ReleaseInclude(shaderc_include_result *includeResult) {
     auto* fileInfo = static_cast<FileInfo*>(includeResult->user_data);
     delete fileInfo;
     delete includeResult;
 }
 
-std::string carbon::FileIncluder::readFileAsString(const std::string& filename) {
+std::string krypton::shaders::FileIncluder::readFileAsString(const std::string& filename) {
     std::ifstream is(filename, std::ios::in);
 
     if (is.is_open()) {
@@ -55,7 +55,7 @@ std::string carbon::FileIncluder::readFileAsString(const std::string& filename) 
     }
 }
 
-shaderc_include_result* carbon::FileIncluder::includeErrorResult(const std::string &message) {
+shaderc_include_result* krypton::shaders::FileIncluder::includeErrorResult(const std::string &message) {
     return new shaderc_include_result {
         .source_name = "",
         .source_name_length = 0,
@@ -64,7 +64,7 @@ shaderc_include_result* carbon::FileIncluder::includeErrorResult(const std::stri
     };
 }
 
-std::string carbon::FileIncluder::findFile(const std::string &inclusionPath, const std::string &source) {
+std::string krypton::shaders::FileIncluder::findFile(const std::string &inclusionPath, const std::string &source) {
     // TODO: Improve this function.
     static const std::string baseFolder = "shaders/";
     return baseFolder + inclusionPath;

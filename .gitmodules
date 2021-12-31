@@ -4,3 +4,6 @@
 [submodule "submodules/vk-bootstrap"]
 	path = submodules/vk-bootstrap
 	url = https://github.com/charles-lunarg/vk-bootstrap
+[submodule "submodules/SPIRV-Cross"]
+	path = submodules/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross
