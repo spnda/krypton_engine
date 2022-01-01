@@ -1,6 +1,5 @@
-#include "device.hpp"
-
-#include "../utils.hpp"
+#include <carbon/base/device.hpp>
+#include <carbon/utils.hpp>
 
 #define DEVICE_FUNCTION_POINTER(name, device) \
     name = device.getFunctionAddress<PFN_##name>(#name);

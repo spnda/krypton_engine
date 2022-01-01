@@ -1,9 +1,9 @@
-#include "buffer.hpp"
 #include <vk_mem_alloc.h>
 
-#include "../utils.hpp"
-#include "../base/device.hpp"
-#include "image.hpp"
+#include <carbon/base/device.hpp>
+#include <carbon/resource/buffer.hpp>
+#include <carbon/resource/image.hpp>
+#include <carbon/utils.hpp>
 
 carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator)
         : device(std::move(device)), allocator(allocator) {

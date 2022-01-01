@@ -3,7 +3,7 @@
 #include "vertex.hpp"
 
 namespace krypton::mesh {
-	struct Material final {
+    struct Material final {
         glm::vec3 baseColor = glm::vec3(1.0f);
         float metallicFactor = 1.0f;
         float roughnessFactor = 1.0f;
@@ -12,5 +12,5 @@ namespace krypton::mesh {
         Index occlusionTextureIndex = -1;
         Index emissiveTextureIndex = -1;
         Index pbrTextureIndex = -1;
-	};
+    };
 }

@@ -4,9 +4,9 @@
 
 #include <fmt/core.h>
 
-#include "rapi_backends.hpp"
-#include "rapi.hpp"
-#include "window.hpp"
+#include <rapi/rapi_backends.hpp>
+#include <rapi/rapi.hpp>
+#include <rapi/window.hpp>
 
 void errorCallback(int error, const char* desc) {
     fmt::print(stderr, "{}\n", desc);

@@ -8,7 +8,7 @@ target_link_libraries(rapi PRIVATE glfw)
 target_link_libraries(rapi PUBLIC mesh)
 target_link_libraries(rapi PUBLIC shaders)
 
-target_include_directories(rapi PUBLIC "./")
+target_include_directories(rapi PUBLIC "./include")
 
 if (WIN32 OR UNIX AND NOT APPLE)
     add_compile_definitions(RAPI_WITH_VULKAN)
@@ -22,13 +22,14 @@ endif()
 
 add_files(
     TARGET rapi
+    "include/rapi/backends/metal_backend.hpp"
+    "include/rapi/backends/vulkan_rt_backend.hpp"
+    "include/rapi/rapi_backends.hpp"
+    "include/rapi/rapi.hpp"
+    "include/rapi/window.hpp"
+
     "backends/metal_backend.mm"
-    "backends/metal_backend.hpp"
     "backends/vulkan_rt_backend.cpp"
-    "backends/vulkan_rt_backend.hpp"
-    "rapi_backends.hpp"
     "rapi.cpp"
-    "rapi.hpp"
     "window.cpp"
-    "window.hpp"
 )

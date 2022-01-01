@@ -1,17 +1,15 @@
-#include "shader.hpp"
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <utility>
 
-#include <file_includer.hpp>
-
-#include "../base/device.hpp"
+#include <carbon/base/device.hpp>
+#include <carbon/shaders/shader.hpp>
+#include <shaders/file_includer.hpp>
 
 #ifdef WITH_NV_AFTERMATH
-#include "shader_database.hpp"
+#include <carbon/shaders/shader_database.hpp>
 #endif // #ifdef WITH_NV_AFTERMATH
 
 static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {

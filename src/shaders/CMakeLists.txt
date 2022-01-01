@@ -20,14 +20,15 @@ endif()
 target_link_libraries(shaders PUBLIC spirv-cross-core)
 target_link_libraries(shaders PUBLIC shaderc)
 
-target_include_directories(shaders PUBLIC "./")
+target_include_directories(shaders PUBLIC "./include")
 
 add_files(
     TARGET shaders
+    "include/shaders/file_includer.hpp"
+    "include/shaders/shaders.hpp"
+    
     "file_includer.cpp"
-    "file_includer.hpp"
     "shaders.cpp"
-    "shaders.hpp"
 )
 
 # Copy shaders into binary directory

@@ -10,9 +10,8 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include <shader.hpp>
-
-#include "metal_backend.hpp"
+#include <shaders/shader.hpp>
+#include <rapi/backends/metal_backend.hpp>
 
 namespace krypton::rapi::metal {
     struct RenderObject final {

@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <shaderc/shaderc.hpp>
 
-#include <shaders.hpp>
+#include <shaders/shaders.hpp>
 
 namespace carbon {
     enum class ShaderStage : uint64_t {

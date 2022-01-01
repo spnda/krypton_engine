@@ -1,5 +1,7 @@
-#include "device.hpp"
-#include "semaphore.hpp"
+#include <memory>
+
+#include <carbon/base/device.hpp>
+#include <carbon/base/semaphore.hpp>
 
 carbon::Semaphore::Semaphore(std::shared_ptr<carbon::Device> device, std::string name)
         : device(std::move(device)), name(std::move(name)) {

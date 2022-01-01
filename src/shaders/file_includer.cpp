@@ -1,7 +1,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "file_includer.hpp"
+#include <shaders/file_includer.hpp>
 
 krypton::shaders::FileIncluder::FileIncluder() = default;
 

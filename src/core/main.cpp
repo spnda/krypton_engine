@@ -2,8 +2,8 @@
 
 #include <glm/glm.hpp>
 
-#include <rapi.hpp>
-#include <window.hpp>
+#include <rapi/rapi.hpp>
+#include <rapi/window.hpp>
 
 // This is just a simple triangles
 std::vector<krypton::mesh::Vertex> vertexData = {

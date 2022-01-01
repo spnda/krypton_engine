@@ -4,9 +4,10 @@
 
 #include <memory>
 
-#include <mesh.hpp>
+#include <mesh/mesh.hpp>
 
 #include "../rapi.hpp"
+#include "../window.hpp"
 
 namespace krypton::rapi {
     /**

@@ -1,7 +1,7 @@
-#include "command_buffer.hpp"
-#include "device.hpp"
-#include "queue.hpp"
-#include "../utils.hpp"
+#include <carbon/base/command_buffer.hpp>
+#include <carbon/base/device.hpp>
+#include <carbon/base/queue.hpp>
+#include <carbon/utils.hpp>
 
 carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle) : handle(handle) {
     

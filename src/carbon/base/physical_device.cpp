@@ -1,7 +1,6 @@
-#include "physical_device.hpp"
-
-#include "instance.hpp"
-#include "../utils.hpp"
+#include <carbon/base/instance.hpp>
+#include <carbon/base/physical_device.hpp>
+#include <carbon/utils.hpp>
 
 void carbon::PhysicalDevice::addExtensions(const std::vector<const char*>& extensions) {
     for (auto ext : extensions) {

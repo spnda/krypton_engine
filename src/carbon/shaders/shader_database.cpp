@@ -1,8 +1,8 @@
 #ifdef WITH_NV_AFTERMATH
 
 #include <map>
-#include "shader_database.hpp"
-#include "../base/crash_tracker.hpp"
+#include <carbon/shaders/shader_database.hpp>
+#include <carbon/base/crash_tracker.hpp>
 
 // Required for std::less<GFSDK_Aftermath_ShaderHash>, part of the std::map implementation.
 bool operator<(GFSDK_Aftermath_ShaderHash a, GFSDK_Aftermath_ShaderHash b) {

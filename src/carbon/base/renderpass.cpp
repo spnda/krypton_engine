@@ -1,8 +1,8 @@
-#include "renderpass.hpp"
-
 #include <array>
+#include <memory>
 
-#include "swapchain.hpp"
+#include <carbon/base/renderpass.hpp>
+#include <carbon/base/swapchain.hpp>
 
 carbon::RenderPass::RenderPass(std::shared_ptr<carbon::Device> device, std::shared_ptr<carbon::Swapchain> swapchain)
         : device(std::move(device)), swapchain(std::move(swapchain)) {

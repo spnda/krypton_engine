@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <mesh.hpp>
+#include <mesh/mesh.hpp>
 
 #include "window.hpp"
 

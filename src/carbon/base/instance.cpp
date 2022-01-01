@@ -1,6 +1,5 @@
-#include "instance.hpp"
-
-#include "../utils.hpp"
+#include <carbon/base/instance.hpp>
+#include <carbon/utils.hpp>
 
 carbon::Instance::Instance()
 #ifdef WITH_NV_AFTERMATH

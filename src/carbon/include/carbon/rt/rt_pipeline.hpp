@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "../shaders/shader.hpp"
+#include <carbon/shaders/shader.hpp>
 
 namespace carbon {
     class Device;

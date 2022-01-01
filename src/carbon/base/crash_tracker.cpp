@@ -1,12 +1,11 @@
 #ifdef WITH_NV_AFTERMATH
 
-#include "crash_tracker.hpp"
-
 #include <fstream>
 
 #include <fmt/core.h>
 
-#include "../shaders/shader_database.hpp"
+#include <carbon/base/crash_tracker.hpp>
+#include <carbon/shaders/shader_database.hpp>
 
 // Static callback functions.
 [[maybe_unused]] void crashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription,

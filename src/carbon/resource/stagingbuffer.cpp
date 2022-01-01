@@ -1,4 +1,4 @@
-#include "stagingbuffer.hpp"
+#include <carbon/resource/stagingbuffer.hpp>
 
 carbon::StagingBuffer::StagingBuffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name)
     : Buffer(std::move(device), allocator, std::move(name)) {

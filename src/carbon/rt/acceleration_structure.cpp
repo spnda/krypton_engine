@@ -1,7 +1,6 @@
-#include "acceleration_structure.hpp"
-
-#include "../base/device.hpp"
-#include "../resource/stagingbuffer.hpp"
+#include <carbon/base/device.hpp>
+#include <carbon/resource/stagingbuffer.hpp>
+#include <carbon/rt/acceleration_structure.hpp>
 
 carbon::AccelerationStructure::AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, carbon::AccelerationStructureType asType, const std::string name)
         : device(std::move(device)), allocator(allocator), type(asType),

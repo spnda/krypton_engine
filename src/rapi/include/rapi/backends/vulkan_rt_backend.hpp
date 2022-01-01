@@ -4,7 +4,8 @@
 
 #include <string>
 
-#include <resource/buffer.hpp>
+#include <carbon/resource/buffer.hpp>
+#include <mesh/mesh.hpp>
 
 #include "../rapi.hpp"
 #include "../window.hpp"

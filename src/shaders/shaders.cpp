@@ -5,8 +5,8 @@
 
 #include <shaderc/shaderc.hpp>
 
-#include "file_includer.hpp"
-#include "shaders.hpp"
+#include <shaders/file_includer.hpp>
+#include <shaders/shaders.hpp>
 
 krypton::shaders::Shader krypton::shaders::readShaderFile(std::filesystem::path path) {
     std::ifstream is(path, std::ios::binary);

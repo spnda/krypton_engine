@@ -1,9 +1,8 @@
-#include "texture.hpp"
-
 #include <utility>
 
-#include "../utils.hpp"
-#include "../base/command_buffer.hpp"
+#include <carbon/base/command_buffer.hpp>
+#include <carbon/resource/texture.hpp>
+#include <carbon/utils.hpp>
 
 carbon::Texture::Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const VkExtent2D imageSize, std::string name)
     : carbon::Image(std::move(device), allocator, imageSize, std::move(name)) {

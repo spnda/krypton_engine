@@ -1,9 +1,10 @@
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 
-#include "swapchain.hpp"
-#include "semaphore.hpp"
-#include "../utils.hpp"
+#include <carbon/base/semaphore.hpp>
+#include <carbon/base/swapchain.hpp>
+#include <carbon/utils.hpp>
 
 carbon::Swapchain::Swapchain(std::shared_ptr<carbon::Instance> instance,
                              std::shared_ptr<carbon::Device> device)

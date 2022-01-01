@@ -1,10 +1,8 @@
-#include "queue.hpp"
-
 #include <utility>
 
-#include "../utils.hpp"
-#include "fence.hpp"
-#include "semaphore.hpp"
+#include <carbon/base/fence.hpp>
+#include <carbon/base/queue.hpp>
+#include <carbon/base/semaphore.hpp>
 
 carbon::Queue::Queue(std::shared_ptr<carbon::Device> device, std::string name)
     : device(std::move(device)), name(std::move(name)) {

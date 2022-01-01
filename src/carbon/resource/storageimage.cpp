@@ -1,4 +1,4 @@
-#include "storageimage.hpp"
+#include <carbon/resource/storageimage.hpp>
 
 carbon::StorageImage::StorageImage(std::shared_ptr<carbon::Device>, VmaAllocator allocator, VkExtent2D windowExtent)
         : carbon::Image(device, allocator, windowExtent, "storageImage") {

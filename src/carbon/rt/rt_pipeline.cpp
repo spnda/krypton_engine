@@ -2,10 +2,10 @@
 
 #include <utility>
 
-#include "rt_pipeline.hpp"
-#include "../base/device.hpp"
-#include "../resource/buffer.hpp"
-#include "../shaders/shader.hpp"
+#include <carbon/rt/rt_pipeline.hpp>
+#include <carbon/base/device.hpp>
+#include <carbon/resource/buffer.hpp>
+#include <carbon/shaders/shader.hpp>
 
 carbon::RayTracingPipeline::operator VkPipeline() const {
     return pipeline;

@@ -1,7 +1,9 @@
-#include "image.hpp"
-#include "../base/command_buffer.hpp"
-#include "../base/device.hpp"
-#include "../utils.hpp"
+#include <memory>
+
+#include <carbon/base/command_buffer.hpp>
+#include <carbon/base/device.hpp>
+#include <carbon/resource/image.hpp>
+#include <carbon/utils.hpp>
 
 carbon::Image::Image(std::shared_ptr<carbon::Device> context, VmaAllocator allocator, const VkExtent2D extent, std::string name)
         : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {

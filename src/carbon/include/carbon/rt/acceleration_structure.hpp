@@ -7,8 +7,8 @@
 
 #include "VkBootstrap.h"
 
-#include "../resource/buffer.hpp"
-#include "../resource/stagingbuffer.hpp"
+#include <carbon/resource/buffer.hpp>
+#include <carbon/resource/stagingbuffer.hpp>
 
 namespace carbon {
     // fwd.

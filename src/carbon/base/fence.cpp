@@ -1,9 +1,8 @@
-#include "fence.hpp"
-
 #include <utility>
 
-#include "../utils.hpp"
-#include "device.hpp"
+#include <carbon/base/device.hpp>
+#include <carbon/base/fence.hpp>
+#include <carbon/utils.hpp>
 
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
