@@ -1,6 +1,7 @@
 #include <array>
 #include <memory>
 
+#include <carbon/base/device.hpp>
 #include <carbon/base/renderpass.hpp>
 #include <carbon/base/swapchain.hpp>
 

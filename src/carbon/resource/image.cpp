@@ -127,7 +127,7 @@ VkImageLayout carbon::Image::getImageLayout() {
 void carbon::Image::changeLayout(
         std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
         const VkImageLayout newLayout,
-        const VkImageSubresourceRange subresourceRange,
+        const VkImageSubresourceRange& subresourceRange,
         const VkPipelineStageFlags srcStage, const VkPipelineStageFlags dstStage) {
     carbon::Image::changeLayout(image, cmdBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage, subresourceRange);
     currentLayouts[subresourceRange.baseMipLevel] = newLayout;
@@ -136,7 +136,7 @@ void carbon::Image::changeLayout(
 void carbon::Image::changeLayout(VkImage image, std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
                              VkImageLayout oldLayout, VkImageLayout newLayout,
                              VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-                             VkImageSubresourceRange subresourceRange) {
+                             const VkImageSubresourceRange& subresourceRange) {
     uint32_t srcAccessMask, dstAccessMask;
     switch (srcStage) {
         default:

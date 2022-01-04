@@ -11,9 +11,6 @@
 #include <carbon/resource/stagingbuffer.hpp>
 
 namespace carbon {
-    // fwd.
-    class Context;
-
     enum class AccelerationStructureType : uint64_t {
         BottomLevel = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
         TopLevel = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,

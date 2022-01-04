@@ -44,7 +44,7 @@ void carbon::Buffer::create(const VkDeviceSize newSize, const VkBufferUsageFlags
 
     if (isFlagSet(bufferUsage, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
         auto addressInfo = getBufferAddressInfo(handle);
-        address = carbon::Buffer::getBufferDeviceAddress(device, &addressInfo);
+        address = carbon::Buffer::getBufferDeviceAddress(device.get(), &addressInfo);
     }
 
     if (!name.empty()) {
@@ -81,7 +81,7 @@ auto carbon::Buffer::getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddr
     };
 }
 
-auto carbon::Buffer::getBufferDeviceAddress(std::shared_ptr<carbon::Device> device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress {
+auto carbon::Buffer::getBufferDeviceAddress(carbon::Device* device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress {
     return vkGetBufferDeviceAddress(*device, addressInfo);
 }
 

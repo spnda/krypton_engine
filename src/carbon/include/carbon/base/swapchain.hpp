@@ -6,10 +6,9 @@
 
 #include "VkBootstrap.h"
 
-#include "device.hpp"
-#include "instance.hpp"
-
 namespace carbon {
+    class Device;
+    class Instance;
     class Queue;
     class Semaphore;
 
@@ -19,9 +18,9 @@ namespace carbon {
 
         VkSwapchainKHR swapchain = nullptr;
 
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
+        VkSurfaceCapabilitiesKHR capabilities = {};
+        std::vector<VkSurfaceFormatKHR> formats = {};
+        std::vector<VkPresentModeKHR> presentModes = {};
 
         VkExtent2D chooseSwapExtent(VkExtent2D windowExtent);
         VkSurfaceFormatKHR chooseSwapSurfaceFormat();
@@ -29,10 +28,10 @@ namespace carbon {
         void querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
     public:
-        VkSurfaceFormatKHR surfaceFormat;
-        VkExtent2D imageExtent;
+        VkSurfaceFormatKHR surfaceFormat = {};
+        VkExtent2D imageExtent = {};
 
-        uint32_t imageCount;
+        uint32_t imageCount = 0;
         std::vector<VkImage> swapchainImages = {};
         std::vector<VkImageView> swapchainImageViews = {};
 
@@ -45,11 +44,9 @@ namespace carbon {
         bool create(VkSurfaceKHR surface, VkExtent2D windowExtent);
         void destroy();
 
-        VkResult acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const;
-
-        VkResult queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const;
-
-        [[nodiscard]] VkFormat getFormat() const;
-        [[nodiscard]] VkExtent2D getExtent() const;
+        [[nodiscard]] auto acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const -> VkResult;
+        [[nodiscard]] auto queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const -> VkResult;
+        [[nodiscard]] auto getFormat() const -> VkFormat;
+        [[nodiscard]] auto getExtent() const -> VkExtent2D;
     };
 } // namespace carbon

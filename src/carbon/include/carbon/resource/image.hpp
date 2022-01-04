@@ -30,7 +30,6 @@ namespace carbon {
     public:
         Image(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D extent, std::string name = {});
 
-        operator VkImage() const;
         Image& operator=(const Image& newImage);
 
         void create(VkFormat newFormat, VkImageUsageFlags usageFlags, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
@@ -48,7 +47,7 @@ namespace carbon {
         void changeLayout(
             std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
             VkImageLayout newLayout,
-            VkImageSubresourceRange subresourceRange,
+            const VkImageSubresourceRange& subresourceRange,
             VkPipelineStageFlags srcStage,
             VkPipelineStageFlags dstStage);
 
@@ -57,7 +56,9 @@ namespace carbon {
             std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
             VkImageLayout oldLayout, VkImageLayout newLayout,
             VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-            VkImageSubresourceRange subresourceRange
+            const VkImageSubresourceRange& subresourceRange
         );
+
+        operator VkImage() const;
     };
 }

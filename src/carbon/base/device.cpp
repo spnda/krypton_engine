@@ -1,12 +1,14 @@
 #include <carbon/base/device.hpp>
+#include <carbon/base/physical_device.hpp>
 #include <carbon/utils.hpp>
 
 #define DEVICE_FUNCTION_POINTER(name, device) \
     name = device.getFunctionAddress<PFN_##name>(#name);
 
-void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> physicalDevice) {
-    vkb::PhysicalDevice& vkbPhysicalDevice = physicalDevice->getVkbPhysicalDevice();
-    vkb::DeviceBuilder deviceBuilder(vkbPhysicalDevice);
+void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> newPhysicalDevice) {
+    physicalDevice = std::move(newPhysicalDevice);
+
+    vkb::DeviceBuilder deviceBuilder(physicalDevice->handle);
 #ifdef WITH_NV_AFTERMATH
     VkDeviceDiagnosticsConfigCreateInfoNV deviceDiagnosticsConfigCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV,
@@ -15,7 +17,7 @@ void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> physicalDevi
     };
     deviceBuilder.add_pNext(&deviceDiagnosticsConfigCreateInfo);
 #endif // #ifdef WITH_NV_AFTERMATH
-    device = getFromVkbResult(deviceBuilder.build());
+    handle = getFromVkbResult(deviceBuilder.build());
 
     DEVICE_FUNCTION_POINTER(vkAcquireNextImageKHR, (*this))
     DEVICE_FUNCTION_POINTER(vkCreateAccelerationStructureKHR, (*this))
@@ -25,7 +27,6 @@ void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> physicalDevi
     DEVICE_FUNCTION_POINTER(vkCmdSetCheckpointNV, (*this))
     DEVICE_FUNCTION_POINTER(vkCmdTraceRaysKHR, (*this))
     DEVICE_FUNCTION_POINTER(vkDestroyAccelerationStructureKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkDestroySurfaceKHR, (*this))
     DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureBuildSizesKHR, (*this))
     DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureDeviceAddressKHR, (*this))
     DEVICE_FUNCTION_POINTER(vkGetQueueCheckpointDataNV, (*this))
@@ -36,12 +37,12 @@ void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> physicalDevi
 }
 
 void carbon::Device::destroy() const {
-    vkb::destroy_device(device);
+    vkb::destroy_device(handle);
 }
 
 VkResult carbon::Device::waitIdle() const {
-    if (device.device != nullptr) {
-        return vkDeviceWaitIdle(device);
+    if (handle.device != nullptr) {
+        return vkDeviceWaitIdle(handle);
     } else {
         return VK_RESULT_MAX_ENUM;
     }
@@ -54,19 +55,19 @@ void carbon::Device::createDescriptorPool(const uint32_t maxSets, const std::vec
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data(),
     };
-    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, descriptorPool);
+    vkCreateDescriptorPool(handle, &descriptorPoolCreateInfo, nullptr, descriptorPool);
 }
 
 VkQueue carbon::Device::getQueue(const vkb::QueueType queueType) const {
-    return getFromVkbResult(device.get_queue(queueType));
+    return getFromVkbResult(handle.get_queue(queueType));
 }
 
 uint32_t carbon::Device::getQueueIndex(const vkb::QueueType queueType) const {
-    return getFromVkbResult(device.get_queue_index(queueType));
+    return getFromVkbResult(handle.get_queue_index(queueType));
 }
 
-const vkb::Device& carbon::Device::getVkbDevice() const {
-    return device;
+std::shared_ptr<carbon::PhysicalDevice> carbon::Device::getPhysicalDevice() const {
+    return physicalDevice;
 }
 
 void carbon::Device::setDebugUtilsName(const VkAccelerationStructureKHR& as, const std::string& name) const {
@@ -121,14 +122,10 @@ void carbon::Device::setDebugUtilsName(const T& object, const std::string& name,
         .pObjectName = name.c_str()
     };
 
-    auto result = vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+    auto result = vkSetDebugUtilsObjectNameEXT(handle, &nameInfo);
     checkResult(result, "Failed to set debug utils object name");
 }
 
-carbon::Device::operator vkb::Device() const {
-    return device;
-}
-
 carbon::Device::operator VkDevice() const {
-    return device.device;
+    return handle.device;
 }

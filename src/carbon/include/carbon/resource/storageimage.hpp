@@ -1,7 +1,6 @@
 #pragma once
 
-#include "../base/device.hpp"
-#include "image.hpp"
+#include <carbon/resource/image.hpp>
 
 namespace carbon {
     /** A helper class to easily create and use a storage image for raytracing */

@@ -1,13 +1,9 @@
+#ifdef WITH_NV_AFTERMATH
+#include <carbon/base/crash_tracker.hpp>
+#endif // #ifdef WITH_NV_AFTERMATH
+
 #include <carbon/base/instance.hpp>
 #include <carbon/utils.hpp>
-
-carbon::Instance::Instance()
-#ifdef WITH_NV_AFTERMATH
-    : crashTracker()
-#endif // #ifdef WITH_NV_AFTERMATH
-    {
-
-}
 
 void carbon::Instance::addExtensions(const std::vector<std::string>& extensions) {
     for (auto ext : extensions) {
@@ -19,7 +15,8 @@ void carbon::Instance::create() {
 #ifdef WITH_NV_AFTERMATH
     // Has to be called *before* crating the "Vulkan device".
     // To be 100% sure this works, we're calling it before creating the VkInstance.
-    crashTracker.enable();
+    crashTracker = std::make_unique<carbon::GpuCrashTracker>();
+    crashTracker->enable();
 #endif // #ifdef WITH_NV_AFTERMATH
 
     auto instanceBuilder = vkb::InstanceBuilder()
@@ -48,8 +45,9 @@ void carbon::Instance::create() {
 #endif // #ifdef _DEBUG
         .build();
 
-    instance = getFromVkbResult(buildResult);
+    handle = getFromVkbResult(buildResult);
 
+    INSTANCE_FUNCTION_POINTER(vkDestroySurfaceKHR, (*this))
     INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, (*this))
     INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceFormatsKHR, (*this))
     INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfacePresentModesKHR, (*this))
@@ -57,20 +55,16 @@ void carbon::Instance::create() {
 
 void carbon::Instance::destroy() const {
 #ifdef WITH_NV_AFTERMATH
-    crashTracker.disable();
+    crashTracker->disable();
 #endif // #ifdef WITH_NV_AFTERMATH
 
-    vkb::destroy_instance(instance);
+    vkb::destroy_instance(handle);
 }
 
 void carbon::Instance::setApplicationData(ApplicationData data) {
     appData = std::move(data);
 }
 
-carbon::Instance::operator vkb::Instance() const {
-    return instance;
-}
-
 carbon::Instance::operator VkInstance() const {
-    return instance.instance;
+    return handle.instance;
 }

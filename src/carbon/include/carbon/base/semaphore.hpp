@@ -18,10 +18,11 @@ namespace carbon {
         explicit Semaphore(std::shared_ptr<carbon::Device> device, std::string name = {});
         Semaphore(const Semaphore& semaphore) = default;
 
-        operator VkSemaphore() const;
-
         void create(VkSemaphoreCreateFlags flags = 0);
         void destroy() const;
+
         [[nodiscard]] auto getHandle() const -> const VkSemaphore&;
+
+        operator VkSemaphore() const;
     };
 }

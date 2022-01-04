@@ -4,8 +4,8 @@
 
 carbon::AccelerationStructure::AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, carbon::AccelerationStructureType asType, const std::string name)
         : device(std::move(device)), allocator(allocator), type(asType),
-        resultBuffer(device, allocator, std::move(name)),
-        scratchBuffer(device, allocator, std::move(name)) {
+        resultBuffer(this->device, allocator, std::move(name)),
+        scratchBuffer(this->device, allocator, std::move(name)) {
 }
 
 void carbon::AccelerationStructure::createScratchBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes) {

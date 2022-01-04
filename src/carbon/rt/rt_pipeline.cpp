@@ -2,9 +2,10 @@
 
 #include <utility>
 
-#include <carbon/rt/rt_pipeline.hpp>
 #include <carbon/base/device.hpp>
+#include <carbon/base/physical_device.hpp>
 #include <carbon/resource/buffer.hpp>
+#include <carbon/rt/rt_pipeline.hpp>
 #include <carbon/shaders/shader.hpp>
 
 carbon::RayTracingPipeline::operator VkPipeline() const {
@@ -221,7 +222,7 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
     VkPhysicalDeviceProperties2 deviceProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
     deviceProperties.pNext = &rtProperties;
-    vkGetPhysicalDeviceProperties2(device->getVkbDevice().physical_device, &deviceProperties);
+    vkGetPhysicalDeviceProperties2(*device->getPhysicalDevice(), &deviceProperties);
 
     // Create RT pipeline
     VkRayTracingPipelineCreateInfoKHR pipelineCreateInfo = {};

@@ -7,13 +7,10 @@
 
 #include "VkBootstrap.h"
 
-#ifdef WITH_NV_AFTERMATH
-#include "crash_tracker.hpp"
-#endif // #ifdef WITH_NV_AFTERMATH
-
 namespace carbon {
     // fwd
-    class Context;
+    class GpuCrashTracker;
+    class PhysicalDevice;
 
     struct ApplicationData {
         uint32_t apiVersion = VK_MAKE_API_VERSION(0, 1, 2, 0);
@@ -25,22 +22,23 @@ namespace carbon {
     };
 
     class Instance {
+        friend class carbon::PhysicalDevice;
+
         std::set<std::string> requiredExtensions = {};
-        vkb::Instance instance = {};
+        vkb::Instance handle = {};
         ApplicationData appData;
 
 #ifdef WITH_NV_AFTERMATH
-        carbon::GpuCrashTracker crashTracker;
+        std::unique_ptr<carbon::GpuCrashTracker> crashTracker;
 #endif // #ifdef WITH_NV_AFTERMATH
 
     public:
+        PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
         PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
         PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
         PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
-        
-        explicit Instance();
-        Instance(const Instance &) = default;
-        Instance& operator=(const Instance &) = default;
+
+        explicit Instance() = default;
 
         void addExtensions(const std::vector<std::string>& extensions);
         void create();
@@ -49,10 +47,9 @@ namespace carbon {
 
         template<class T>
         T getFunctionAddress(const std::string& functionName) const {
-            return reinterpret_cast<T>(vkGetInstanceProcAddr(instance, functionName.c_str()));
+            return reinterpret_cast<T>(vkGetInstanceProcAddr(handle, functionName.c_str()));
         }
 
-        explicit operator vkb::Instance() const;
         operator VkInstance() const;
     };
 } // namespace carbon

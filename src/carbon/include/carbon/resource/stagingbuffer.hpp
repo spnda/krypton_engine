@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buffer.hpp"
+#include <carbon/resource/buffer.hpp>
 
 namespace carbon {
     class StagingBuffer : public Buffer {

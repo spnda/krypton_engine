@@ -7,9 +7,12 @@
 #include "VkBootstrap.h"
 
 namespace carbon {
+    class Device;
     class Instance;
 
     class PhysicalDevice {
+        friend class carbon::Device;
+
         std::set<const char*> requiredExtensions = {
             // VK_KHR_SWAPCHAIN_EXTENSION_NAME, vk-bootstrap kindly adds this already.
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -22,19 +25,15 @@ namespace carbon {
             VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME,
 #endif // #ifdef WITH_NV_AFTERMATH
         };
-        vkb::PhysicalDevice physicalDevice = {};
+        vkb::PhysicalDevice handle = {};
 
     public:
         explicit PhysicalDevice() = default;
-        PhysicalDevice(const PhysicalDevice& device) = default;
-        PhysicalDevice& operator=(const PhysicalDevice& device) = default;
 
         void addExtensions(const std::vector<const char*>& extensions);
         void create(std::shared_ptr<carbon::Instance> instance, VkSurfaceKHR surface);
-        std::string getDeviceName() const;
-        vkb::PhysicalDevice& getVkbPhysicalDevice();
+        auto getDeviceName() const -> std::string;
 
-        explicit operator vkb::PhysicalDevice() const;
         operator VkPhysicalDevice() const;
     };
 }

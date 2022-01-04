@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include <spirv_cross/spirv_cross_c.h> // We're using the C API, as the C++ API is not 100% stable
+#include "spirv_cross_c.h" // We're using the C API from the submodule, as the C++ API is not 100% stable
 
 namespace krypton::shaders {
     enum class CrossCompileTarget {

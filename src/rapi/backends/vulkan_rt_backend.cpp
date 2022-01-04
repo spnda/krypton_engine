@@ -12,6 +12,8 @@
 #include <carbon/base/command_pool.hpp>
 #include <carbon/base/device.hpp>
 #include <carbon/base/fence.hpp>
+#include <carbon/base/instance.hpp>
+#include <carbon/base/physical_device.hpp>
 #include <carbon/base/semaphore.hpp>
 #include <carbon/base/swapchain.hpp>
 #include <carbon/resource/buffer.hpp>
@@ -19,9 +21,10 @@
 #include <carbon/utils.hpp>
 #include <rapi/backends/vulkan_rt_backend.hpp>
 
-krypton::rapi::vulkan::RenderObject::RenderObject(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::shared_ptr<krypton::mesh::Mesh> mesh)
-    : vertexBuffer(device, allocator, "vertexBuffer"), indexBuffer(device, allocator, "indexBuffer") {
-
+krypton::rapi::vulkan::RenderObject::RenderObject(std::shared_ptr<carbon::Device> device,
+        VmaAllocator allocator, std::shared_ptr<krypton::mesh::Mesh> mesh) {
+    vertexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "vertexBuffer");
+    indexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "indexBuffer");
 }
 
 krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {

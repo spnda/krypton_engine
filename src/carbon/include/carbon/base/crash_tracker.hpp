@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include <vulkan/vulkan.h>
+
 #include "GFSDK_Aftermath.h"
 #include "GFSDK_Aftermath_GpuCrashDump.h"
 #include "GFSDK_Aftermath_GpuCrashDumpDecoding.h"
@@ -40,8 +41,6 @@ static inline const std::unordered_map<GFSDK_Aftermath_Result, std::string> afte
 };
 
 namespace carbon {
-    class Context;
-
     // Wrapper around NVIDIA Aftermath
     class GpuCrashTracker {
         mutable std::mutex crashMutex;

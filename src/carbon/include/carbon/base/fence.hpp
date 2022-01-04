@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <mutex>
+
 #include <vulkan/vulkan.h>
 
 namespace carbon {

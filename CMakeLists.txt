@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Automatically find our vcpkg.cmake toolchain file.
-if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+# We only do this on Windows, as on Linux or Mac the user could also use the
+# package manager.
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND WIN32)
   set(vcpkg_file "$ENV{VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake")
   cmake_path(SET vcpkg_file NORMALIZE "${vcpkg_file}")
   set(CMAKE_TOOLCHAIN_FILE "${vcpkg_file}" CACHE FILEPATH "")

@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <memory>
 
+#include <carbon/base/device.hpp>
+#include <carbon/base/instance.hpp>
+#include <carbon/base/physical_device.hpp>
 #include <carbon/base/semaphore.hpp>
 #include <carbon/base/swapchain.hpp>
 #include <carbon/utils.hpp>
@@ -9,11 +12,10 @@
 carbon::Swapchain::Swapchain(std::shared_ptr<carbon::Instance> instance,
                              std::shared_ptr<carbon::Device> device)
         : instance(std::move(instance)), device(std::move(device)) {
-    swapchain = nullptr;
 }
 
 bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
-    querySwapChainSupport(device->getVkbDevice().physical_device, surface);
+    querySwapChainSupport(*device->getPhysicalDevice(), surface);
     surfaceFormat = chooseSwapSurfaceFormat();
     imageExtent = chooseSwapExtent(windowExtent);
     auto presentMode = chooseSwapPresentMode();
@@ -133,13 +135,11 @@ VkSurfaceFormatKHR carbon::Swapchain::chooseSwapSurfaceFormat() {
 }
 
 VkPresentModeKHR carbon::Swapchain::chooseSwapPresentMode() {
-    for (const auto& availablePresentMode : presentModes) {
+    auto res = std::find_if(presentModes.begin(), presentModes.end(), [](VkPresentModeKHR presentMode) {
         /* Best present mode that doesn't result in tearing but still somewhat unlocks framerates */
-        if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            return availablePresentMode;
-        }
-    }
-    return VK_PRESENT_MODE_FIFO_KHR; /* Essentially V-Sync */
+        return presentMode == VK_PRESENT_MODE_MAILBOX_KHR;
+    });
+    return res != presentModes.end() ? *res : VK_PRESENT_MODE_FIFO_KHR;
 }
 
 void carbon::Swapchain::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {

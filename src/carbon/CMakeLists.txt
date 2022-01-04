@@ -28,7 +28,7 @@ find_package(fmt CONFIG REQUIRED)
 # find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 
-target_link_libraries(carbon PRIVATE fmt::fmt-header-only)
+target_link_libraries(carbon PRIVATE fmt::fmt)
 target_link_libraries(carbon PUBLIC shaders)
 target_link_libraries(carbon PUBLIC vk-bootstrap::vk-bootstrap)
 target_link_libraries(carbon PUBLIC VulkanMemoryAllocator)

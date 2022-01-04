@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <carbon/shaders/shader.hpp>
+#include <carbon/shaders/shader_stage.hpp>
 
 namespace carbon {
     class Device;
@@ -18,8 +18,6 @@ namespace carbon {
     };
 
     class RayTracingPipeline {
-        PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
-
     public:
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = nullptr;

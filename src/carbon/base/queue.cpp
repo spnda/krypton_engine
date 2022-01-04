@@ -1,5 +1,6 @@
 #include <utility>
 
+#include <carbon/base/device.hpp>
 #include <carbon/base/fence.hpp>
 #include <carbon/base/queue.hpp>
 #include <carbon/base/semaphore.hpp>

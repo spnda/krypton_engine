@@ -3,7 +3,7 @@ add_library(rapi)
 find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 
-target_link_libraries(rapi PRIVATE fmt::fmt-header-only)
+target_link_libraries(rapi PRIVATE fmt::fmt)
 target_link_libraries(rapi PRIVATE glfw)
 target_link_libraries(rapi PUBLIC mesh)
 target_link_libraries(rapi PUBLIC shaders)
@@ -14,10 +14,14 @@ if (WIN32 OR UNIX AND NOT APPLE)
     add_compile_definitions(RAPI_WITH_VULKAN)
 
     target_link_libraries(rapi PUBLIC carbon)
+
+    add_files(TARGET rapi "backends/vulkan_rt_backend.cpp")
 elseif (APPLE)
     add_compile_definitions(RAPI_WITH_METAL)
 
     target_link_libraries(rapi PUBLIC metal)
+
+    add_files(TARGET rapi "backends/metal_backend.mm")
 endif()
 
 add_files(
@@ -28,8 +32,6 @@ add_files(
     "include/rapi/rapi.hpp"
     "include/rapi/window.hpp"
 
-    "backends/metal_backend.mm"
-    "backends/vulkan_rt_backend.cpp"
     "rapi.cpp"
     "window.cpp"
 )

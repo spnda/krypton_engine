@@ -8,15 +8,10 @@
 
 #include <shaders/shaders.hpp>
 
+#include <carbon/shaders/shader_stage.hpp>
+
 namespace carbon {
-    enum class ShaderStage : uint64_t {
-        RayGeneration = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
-        ClosestHit = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
-        RayMiss = VK_SHADER_STAGE_MISS_BIT_KHR,
-        AnyHit = VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
-        Intersection = VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
-        Callable = VK_SHADER_STAGE_CALLABLE_BIT_KHR,
-    };
+    class Device;
 
     inline ShaderStage operator|(ShaderStage a, ShaderStage b) {
         return static_cast<ShaderStage>(static_cast<uint64_t>(a) | static_cast<uint64_t>(b));
@@ -25,9 +20,6 @@ namespace carbon {
     inline bool operator>(ShaderStage a, ShaderStage b) {
         return static_cast<uint64_t>(a) > static_cast<uint64_t>(b);
     }
-
-    // fwd.
-    class Device;
 
     class ShaderModule {
         std::shared_ptr<carbon::Device> device;

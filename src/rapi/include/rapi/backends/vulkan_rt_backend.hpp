@@ -4,13 +4,16 @@
 
 #include <string>
 
-#include <carbon/resource/buffer.hpp>
+#include <vk_mem_alloc.h>
+
+#include <carbon/resource/buffer.hpp> /* Required for the unique_ptr in RenderObject */
 #include <mesh/mesh.hpp>
 
 #include "../rapi.hpp"
 #include "../window.hpp"
 
 namespace carbon {
+    class Buffer;
     class CommandBuffer;
     class CommandPool;
     class Device;
@@ -26,8 +29,8 @@ namespace krypton::rapi {
     namespace vulkan {
         struct RenderObject {
             std::shared_ptr<krypton::mesh::Mesh> mesh;
-            carbon::Buffer vertexBuffer;
-            carbon::Buffer indexBuffer;
+            std::unique_ptr<carbon::Buffer> vertexBuffer;
+            std::unique_ptr<carbon::Buffer> indexBuffer;
             uint64_t vertexCount = 0, indexCount = 0;
             std::vector<uint64_t> bufferVertexOffsets;
             std::vector<uint64_t> bufferIndexOffsets;
@@ -58,7 +61,7 @@ namespace krypton::rapi {
         VkSurfaceKHR surface = nullptr;
         std::shared_ptr<carbon::Queue> graphicsQueue;
         std::shared_ptr<carbon::Swapchain> swapchain;
-        uint32_t frameBufferWidth, frameBufferHeight;
+        uint32_t frameBufferWidth = 0, frameBufferHeight = 0;
 
         bool needsResize = false;
         uint32_t swapchainIndex = 0;
@@ -71,12 +74,12 @@ namespace krypton::rapi {
         VulkanRT_RAPI();
         ~VulkanRT_RAPI();
 
-        void drawFrame();
-        auto getWindow() -> std::shared_ptr<krypton::rapi::Window>;
-        void init();
-        void render(std::shared_ptr<krypton::mesh::Mesh> mesh);
-        void resize(int width, int height);
-        void shutdown();
+        void drawFrame() override;
+        auto getWindow() -> std::shared_ptr<krypton::rapi::Window> override;
+        void init() override;
+        void render(std::shared_ptr<krypton::mesh::Mesh> mesh) override;
+        void resize(int width, int height) override;
+        void shutdown() override;
         auto submitFrame() -> VkResult;
     };
 }

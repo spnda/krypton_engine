@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <mutex>
 
 #include <vulkan/vulkan.h>
@@ -27,13 +28,12 @@ namespace carbon {
 
         auto getCreateInfo(VkBufferUsageFlags bufferUsage) const -> VkBufferCreateInfo;
         static auto getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddressInfoKHR;
-        static auto getBufferDeviceAddress(std::shared_ptr<carbon::Device> device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress;
+        static auto getBufferDeviceAddress(carbon::Device* device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress;
 
     public:
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name);
         Buffer(const Buffer& buffer);
-        ~Buffer() = default;
 
         Buffer& operator=(const Buffer& buffer);
 
@@ -46,14 +46,14 @@ namespace carbon {
         void lock() const;
         void unlock() const;
 
-        auto getDeviceAddress() const -> const VkDeviceAddress&;
+        [[nodiscard]] auto getDeviceAddress() const -> const VkDeviceAddress&;
         /** Gets a basic descriptor buffer info, with given size and given offset, or 0 if omitted. */
-        auto getDescriptorInfo(uint64_t size, uint64_t offset = 0) const -> VkDescriptorBufferInfo;
-        auto getHandle() const -> const VkBuffer;
-        auto getDeviceOrHostConstAddress() const -> const VkDeviceOrHostAddressConstKHR;
-        auto getDeviceOrHostAddress() const -> const VkDeviceOrHostAddressKHR;
-        auto getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dstAccess) const -> VkBufferMemoryBarrier;
-        auto getSize() const -> VkDeviceSize;
+        [[nodiscard]] auto getDescriptorInfo(uint64_t size, uint64_t offset = 0) const -> VkDescriptorBufferInfo;
+        [[nodiscard]] auto getHandle() const -> const VkBuffer;
+        [[nodiscard]] auto getDeviceOrHostConstAddress() const -> const VkDeviceOrHostAddressConstKHR;
+        [[nodiscard]] auto getDeviceOrHostAddress() const -> const VkDeviceOrHostAddressKHR;
+        [[nodiscard]] auto getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dstAccess) const -> VkBufferMemoryBarrier;
+        [[nodiscard]] auto getSize() const -> VkDeviceSize;
 
         /**
          * Copies the memory of size from source into the

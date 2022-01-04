@@ -1,16 +1,14 @@
 #include <utility>
 
 #include <carbon/base/command_buffer.hpp>
+#include <carbon/base/device.hpp>
+#include <carbon/base/physical_device.hpp>
 #include <carbon/resource/texture.hpp>
 #include <carbon/utils.hpp>
 
 carbon::Texture::Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const VkExtent2D imageSize, std::string name)
     : carbon::Image(std::move(device), allocator, imageSize, std::move(name)) {
 
-}
-
-carbon::Texture::operator VkImageView() const {
-    return getImageView();
 }
 
 carbon::Texture& carbon::Texture::operator=(const Texture& newImage) {
@@ -134,6 +132,10 @@ VkSampler carbon::Texture::getSampler() const {
 
 bool carbon::Texture::formatSupportsBlit(std::shared_ptr<carbon::Device> device, VkFormat format) {
     VkFormatProperties formatProperties;
-    vkGetPhysicalDeviceFormatProperties(device->getVkbDevice().physical_device, format, &formatProperties);
+    vkGetPhysicalDeviceFormatProperties(*device->getPhysicalDevice(), format, &formatProperties);
     return isFlagSet(formatProperties.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT);
+}
+
+carbon::Texture::operator VkImageView() const {
+    return getImageView();
 }

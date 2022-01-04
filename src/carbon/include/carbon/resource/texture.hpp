@@ -4,7 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include "image.hpp"
+#include <carbon/resource/image.hpp>
 
 namespace carbon {
     class CommandBuffer;
@@ -22,7 +22,6 @@ namespace carbon {
 
         Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D imageSize, std::string name = "texture");
 
-        explicit operator VkImageView() const;
         Texture& operator=(const Texture& newImage);
 
         void createTexture(VkFormat newFormat = VK_FORMAT_R8G8B8A8_SRGB, uint32_t mipLevels = 1, uint32_t arrayLayers = 1);
@@ -31,5 +30,7 @@ namespace carbon {
         [[nodiscard]] VkSampler getSampler() const;
 
         static bool formatSupportsBlit(std::shared_ptr<carbon::Device> device, VkFormat format);
+
+        explicit operator VkImageView() const;
     };
 }

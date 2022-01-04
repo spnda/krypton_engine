@@ -22,7 +22,7 @@ void resizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height)
-                              : title(std::move(title)), width(width), height(height) {
+                              : title(title), width(width), height(height) {
 
 }
 
