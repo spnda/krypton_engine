@@ -1,6 +1,8 @@
 #pragma once
 
-#include "vertex.hpp"
+#include <glm/glm.hpp>
+
+#include <mesh/vertex.hpp>
 
 namespace krypton::mesh {
     struct Material final {

@@ -1,5 +1,6 @@
 #include <vk_mem_alloc.h>
 
+#include <carbon/base/command_buffer.hpp>
 #include <carbon/base/device.hpp>
 #include <carbon/resource/buffer.hpp>
 #include <carbon/resource/image.hpp>
@@ -143,16 +144,16 @@ void carbon::Buffer::unmapMemory() const {
     vmaUnmapMemory(allocator, allocation);
 }
 
-void carbon::Buffer::copyToBuffer(VkCommandBuffer cmdBuffer, const carbon::Buffer& destination) {
+void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer& destination) {
     if (handle == nullptr || size == 0) return;
     VkBufferCopy copy = {
         .srcOffset = 0,
         .dstOffset = 0,
         .size = size,
     };
-    vkCmdCopyBuffer(cmdBuffer, handle, destination.handle, 1, &copy);
+    vkCmdCopyBuffer(VkCommandBuffer(*cmdBuffer), handle, destination.handle, 1, &copy);
 }
 
-void carbon::Buffer::copyToImage(const VkCommandBuffer cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy) {
-    vkCmdCopyBufferToImage(cmdBuffer, handle, VkImage(destination), imageLayout, 1, copy);
+void carbon::Buffer::copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy) {
+    vkCmdCopyBufferToImage(VkCommandBuffer(*cmdBuffer), handle, VkImage(destination), imageLayout, 1, copy);
 }

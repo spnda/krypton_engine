@@ -75,7 +75,7 @@ inline void checkResult(VkResult result, const std::string& message) {
     }
 }
 
-inline void checkResult(std::shared_ptr<carbon::Queue> queue, VkResult result, const std::string& message) {
+inline void checkResult(carbon::Queue* queue, VkResult result, const std::string& message) {
     if (result != VK_SUCCESS) {
         // Get checkpoint data
         auto checkpoints = queue->getCheckpointData(10);

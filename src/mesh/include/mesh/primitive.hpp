@@ -4,7 +4,7 @@
 
 #include <glm/glm.hpp>
 
-#include "vertex.hpp"
+#include <mesh/vertex.hpp>
 
 namespace krypton::mesh {
 	struct Primitive final {

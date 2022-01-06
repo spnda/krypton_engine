@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -9,17 +10,19 @@ namespace carbon {
     class Queue;
 
     class CommandBuffer {
-        std::shared_ptr<carbon::Device> device;
-
+        carbon::Device* device = nullptr;
         VkCommandBuffer handle = nullptr;
 
     public:
-        explicit CommandBuffer(VkCommandBuffer handle);
+        explicit CommandBuffer(VkCommandBuffer handle, carbon::Device* device);
 
         void begin(VkCommandBufferUsageFlags usageFlags);
-        void end(std::shared_ptr<carbon::Queue> queue);
+        void end(carbon::Queue* queue);
 
         /* Vulkan commands */
+        void buildAccelerationStructures(const std::vector<VkAccelerationStructureBuildGeometryInfoKHR>& geometryInfos,
+                                         const std::vector<VkAccelerationStructureBuildRangeInfoKHR*>& rangeInfos);
+        void setCheckpoint(const char* checkpoint);
         void pipelineBarrier(
                 VkPipelineStageFlags srcStageMask,
                 VkPipelineStageFlags dstStageMask,

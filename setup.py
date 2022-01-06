@@ -10,9 +10,11 @@ class colors:
     red = "\033[91m"
     end = "\033[0m"
 
-def call(args, cwd):
+def call(args, cwd=".", shell=False):
     try:
-        subprocess.check_call(args, cwd=cwd, stdout=subprocess.DEVNULL, shell=True)
+        # It's probably not the best idea to also surpress stderr, but it
+        # keeps our logs clean and this doesn't do much anyway
+        subprocess.check_call(args, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=shell)
         return True   
     except subprocess.CalledProcessError:
         return False
@@ -35,25 +37,33 @@ def main():
     print(f"{colors.green}Cloning submodules...{colors.end}")
     call(["git", "submodule", "update", "--init", "--recursive"], ".")
 
-    # Install dependencies through vcpkg
-    print(f"{colors.green}Installing dependencies through vcpkg...{colors.end}")
-    if not call(["vcpkg", "install"], "."):
-        print(f"{colors.red}The command 'vcpkg install' failed. Perhaps vcpkg is not installed?{colors.end}")
-
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.
     if "VCPKG_ROOT" not in os.environ:
         print(f"{colors.yellow}VCPKG_ROOT is not defined as an environment variable. This might cause issues with dependencies.{colors.end}")
 
-    print(f"{colors.green}Configuring build files...{colors.end}")
     match platform.system():
         case "Darwin": # MacOS
-            call(["cmake", "-G", "Xcode", "../.."], "build/debug")
-            call(["cmake", "-G", "Xcode", "../.."], "build/release")
+            # We will try running vcpkg install, even on Mac, but won't print
+            # any messages/errors to the console as the user might've installed
+            # the packages through e.g. brew
+            call(["vcpkg", "install"])
+
+            # glslang uses behaviour which was deprecated with CMake 3.13,
+            # therefore we'll disable that warning using -Wno-dev
+            print(f"{colors.green}Configuring build files...{colors.end}")
+            call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/debug")
+            call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/release")
         case _: # Windows / Linux
-            call(["cmake", "../.."], "build/debug")
-            call(["cmake", "../.."], "build/release")
+            print(f"{colors.green}Installing dependencies through vcpkg...{colors.end}")
+            if not call(["vcpkg", "install"], "."):
+                print(f"{colors.red}The command 'vcpkg install' failed. Perhaps vcpkg is not installed?{colors.end}")
+
+            print(f"{colors.green}Configuring build files...{colors.end}")
+            call(["cmake", "-Wno-dev", "../.."], "build/debug", True)
+            call(["cmake", "-Wno-dev", "../.."], "build/release", True)
 
     print(f"{colors.green}Finished configuring project files in /build/debug/ and /build/release.{colors.end}")
 
-main()
+if __name__ == "__main__":
+    main()

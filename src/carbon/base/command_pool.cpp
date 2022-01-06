@@ -17,6 +17,21 @@ void carbon::CommandPool::create(const uint32_t queueFamilyIndex, const VkComman
     vkCreateCommandPool(*device, &commandPoolCreateInfo, nullptr, &handle);
 }
 
+std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(
+    VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags) {
+    VkCommandBufferAllocateInfo allocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = handle,
+        .level = level,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer cmdBuffer = nullptr;
+    auto res = vkAllocateCommandBuffers(*device, &allocateInfo, &cmdBuffer);
+    checkResult(res, "Failed to allocate command buffer");
+    return std::make_shared<carbon::CommandBuffer>(cmdBuffer, device.get());
+}
+
 std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocateBuffers(
     VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags, uint32_t count) {
     VkCommandBufferAllocateInfo allocateInfo = {
@@ -34,7 +49,7 @@ std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocat
     commandBuffers.resize(cmdBuffers.size());
 
     for (size_t i = 0; i < cmdBuffers.size(); ++i) {
-        commandBuffers[i] = std::make_shared<carbon::CommandBuffer>(cmdBuffers[i]);
+        commandBuffers[i] = std::make_shared<carbon::CommandBuffer>(cmdBuffers[i], device.get());
     }
 
     return commandBuffers;

@@ -6,8 +6,9 @@
 
 #include <mesh/mesh.hpp>
 
-#include "../rapi.hpp"
-#include "../window.hpp"
+#include <rapi/rapi.hpp>
+#include <rapi/render_object_handle.hpp>
+#include <rapi/window.hpp>
 
 namespace krypton::rapi {
     /**
@@ -16,16 +17,23 @@ namespace krypton::rapi {
     class Metal_RAPI final : public RenderAPI {
         std::shared_ptr<krypton::rapi::Window> window;
 
+        std::vector<krypton::rapi::RenderObjectHandle> handlesForFrame = {};
+        
     public:
         Metal_RAPI();
         ~Metal_RAPI();
 
-        void drawFrame();
-        auto getWindow() -> std::shared_ptr<krypton::rapi::Window>;
-        void init();
-        void render(std::shared_ptr<krypton::mesh::Mesh> mesh);
-        void resize(int width, int height);
-        void shutdown();
+        void beginFrame() override;
+        auto createRenderObject() -> RenderObjectHandle override;
+        auto destroyRenderObject(RenderObjectHandle& handle) -> bool override;
+        void drawFrame() override;
+        void endFrame() override;
+        auto getWindow() -> std::shared_ptr<krypton::rapi::Window> override;
+        void init() override;
+        void loadMeshForRenderObject(RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) override;
+        void render(RenderObjectHandle& handle) override;
+        void resize(int width, int height) override;
+        void shutdown() override;
     };
 }
 

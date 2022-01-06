@@ -11,6 +11,8 @@
 #include <carbon/resource/stagingbuffer.hpp>
 
 namespace carbon {
+    class CommandBuffer;
+
     enum class AccelerationStructureType : uint64_t {
         BottomLevel = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
         TopLevel = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
@@ -20,12 +22,13 @@ namespace carbon {
     /** The base of any acceleration structure */
     struct AccelerationStructure {
     protected:
+        const std::string name;
         std::shared_ptr<carbon::Device> device;
         VmaAllocator allocator = nullptr;
 
     public:
-        carbon::Buffer resultBuffer;
-        carbon::Buffer scratchBuffer;
+        std::shared_ptr<carbon::Buffer> resultBuffer;
+        std::shared_ptr<carbon::Buffer> scratchBuffer;
         carbon::AccelerationStructureType type = AccelerationStructureType::Generic;
         VkDeviceAddress address = 0;
         VkAccelerationStructureKHR handle = nullptr;
@@ -37,7 +40,7 @@ namespace carbon {
         void createScratchBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
         void createResultBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
         void createStructure(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
-        void destroy();
+        virtual void destroy();
         auto getBuildSizes(const uint32_t* primitiveCount,
                            VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
                            VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties) -> VkAccelerationStructureBuildSizesInfoKHR;
@@ -59,8 +62,9 @@ namespace carbon {
         explicit BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name);
 
         void createMeshBuffers(std::vector<PrimitiveData> primitiveData, VkTransformMatrixKHR transform);
-        void copyMeshBuffers(VkCommandBuffer cmdBuffer);
+        void copyMeshBuffers(carbon::CommandBuffer* cmdBuffer);
         void destroyMeshBuffers();
+        void destroy() override;
     };
 
     struct TopLevelAccelerationStructure final : public AccelerationStructure {

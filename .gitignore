@@ -1,6 +1,7 @@
 # CMake and build folders.
 bin/*
 build/*
+lib/*
 out/*
 CMakeSettings.json
 vcpkg_installed/*
@@ -21,6 +22,9 @@ nsight/*
 *.spv
 *.exe
 *.dll
+*.lib
+*.a
+*.dylib
 
 # Metal/Apple specific files
 **/.DS_Store

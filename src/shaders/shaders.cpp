@@ -3,9 +3,8 @@
 #include <sstream>
 #include <string>
 
-#include <shaderc/shaderc.hpp>
+#include <fmt/core.h>
 
-#include <shaders/file_includer.hpp>
 #include <shaders/shaders.hpp>
 
 krypton::shaders::Shader krypton::shaders::readShaderFile(std::filesystem::path path) {
@@ -23,42 +22,47 @@ krypton::shaders::Shader krypton::shaders::readShaderFile(std::filesystem::path 
 }
 
 krypton::shaders::ShaderCompileResult krypton::shaders::compileGlslShader(
-        const std::string& shaderName, const std::string& shaderSource, shaderc_shader_kind kind) {
-    shaderc::Compiler compiler;
-    shaderc::CompileOptions options;
-
-    // TODO: Macro definitions
-
-    std::unique_ptr<FileIncluder> includer(new FileIncluder());
-    options.SetIncluder(std::move(includer));
-    options.SetOptimizationLevel(shaderc_optimization_level_performance);
-    options.SetTargetSpirv(shaderc_spirv_version_1_5);
-    options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
-
-    auto checkResult = [=]<typename T>(shaderc::CompilationResult<T>& result) mutable {
-        if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-            std::cerr << result.GetErrorMessage() << std::endl;
-            return std::vector<T>();
-        }
-        return std::vector<T>(result.cbegin(),  result.cend());
+        const std::string& shaderName, const std::string& shaderSource, ShaderStage shaderStage, TargetSpirv target) {
+    const glslang_input_t input = {
+        .language = GLSLANG_SOURCE_GLSL,
+        .stage = static_cast<glslang_stage_t>(shaderStage),
+        .client = GLSLANG_CLIENT_VULKAN,
+        .client_version = GLSLANG_TARGET_VULKAN_1_2,
+        .target_language = GLSLANG_TARGET_SPV,
+        .target_language_version = static_cast<glslang_target_language_version_t>(target),
+        .code = shaderSource.c_str(),
+        .default_version = 460,
+        .default_profile = GLSLANG_NO_PROFILE,
+        .messages = GLSLANG_MSG_DEFAULT_BIT,
     };
 
-    // Preprocess the files.
-    auto result = compiler.PreprocessGlsl(shaderSource, kind, shaderName.c_str(), options);
-    const std::vector<char> preProcessedSourceChars = checkResult(result);
-    const std::string preProcessedSource = {preProcessedSourceChars.begin(), preProcessedSourceChars.end()};
+    glslang_initialize_process();
 
-    // Compile to SPIR-V
-#ifdef _DEBUG
-    options.SetGenerateDebugInfo();
-#endif // #ifdef _DEBUG
-    auto compileResult = compiler.CompileGlslToSpv(preProcessedSource, kind, shaderName.c_str(), options);
-    auto binary = checkResult(compileResult);
+    glslang_shader_t* shader = glslang_shader_create(&input);
+    if (!glslang_shader_preprocess(shader, &input)) {
 
-    options.SetGenerateDebugInfo();
-    auto debugCompileResult = compiler.CompileGlslToSpv(preProcessedSource, kind, shaderName.c_str(), options);
-    auto debugBinary = checkResult(debugCompileResult);
-    return { binary, debugBinary };
+    }
+    if (!glslang_shader_parse(shader, &input)) {
+
+    }
+    glslang_program_t* program = glslang_program_create();
+    glslang_program_add_shader(program, shader);
+
+    if (!glslang_program_link(program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT)) {
+
+    }
+
+    glslang_program_SPIRV_generate(program, input.stage);
+    if (glslang_program_SPIRV_get_messages(program)) {
+        fmt::print(stderr, "{}", glslang_program_SPIRV_get_messages(program));
+    }
+    glslang_shader_delete(shader);
+
+    auto* spvptr = glslang_program_SPIRV_get_ptr(program);
+    std::vector<uint32_t> spv;
+    spv.assign(spvptr,
+        spvptr + glslang_program_SPIRV_get_size(program) * sizeof(uint32_t));
+    return { spv, spv };
 }
 
 krypton::shaders::CrossCompileResult krypton::shaders::crossCompile(const std::vector<uint32_t>& spirv, krypton::shaders::CrossCompileTarget target) {
@@ -78,6 +82,10 @@ krypton::shaders::CrossCompileResult krypton::shaders::crossCompile(const std::v
         case CrossCompileTarget::TARGET_GLSL:
             spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_GLSL_VERSION, 330);
             spvc_compiler_options_set_bool(options, SPVC_COMPILER_OPTION_GLSL_ES, SPVC_FALSE);
+            break;
+        case CrossCompileTarget::TARGET_METAL:
+            spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_MSL_VERSION,
+                                           (2 << 16) + 4); /* MSL 2.4 */
             break;
     }
     spvc_compiler_install_compiler_options(compiler, options);

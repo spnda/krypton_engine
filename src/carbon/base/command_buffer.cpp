@@ -3,7 +3,8 @@
 #include <carbon/base/queue.hpp>
 #include <carbon/utils.hpp>
 
-carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle) : handle(handle) {
+carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle, carbon::Device* device)
+        : handle(handle), device(device) {
     
 }
 
@@ -17,11 +18,26 @@ void carbon::CommandBuffer::begin(VkCommandBufferUsageFlags usageFlags) {
     vkBeginCommandBuffer(handle, &beginInfo);
 }
 
-void carbon::CommandBuffer::end(std::shared_ptr<carbon::Queue> queue) {
+void carbon::CommandBuffer::end(carbon::Queue* queue) {
     if (handle == nullptr) return;
     
     auto res = vkEndCommandBuffer(handle);
     checkResult(std::move(queue), res, "Failed to end command buffer");
+}
+
+void carbon::CommandBuffer::buildAccelerationStructures(const std::vector<VkAccelerationStructureBuildGeometryInfoKHR>& geometryInfos,
+                                                        const std::vector<VkAccelerationStructureBuildRangeInfoKHR*>& rangeInfos) {
+    device->vkCmdBuildAccelerationStructuresKHR(
+        handle,
+        static_cast<uint32_t>(geometryInfos.size()),
+        geometryInfos.data(),
+        rangeInfos.data()
+    );
+}
+
+void carbon::CommandBuffer::setCheckpoint(const char* checkpoint) {
+    if (device->vkCmdSetCheckpointNV != nullptr) /* We might not be using the extension */
+        device->vkCmdSetCheckpointNV(handle, checkpoint);
 }
 
 void carbon::CommandBuffer::pipelineBarrier(

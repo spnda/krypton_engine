@@ -56,7 +56,7 @@ std::unique_lock<std::mutex> carbon::Queue::getLock() const {
     return std::unique_lock(queueMutex); // Auto locks.
 }
 
-VkResult carbon::Queue::submit(std::shared_ptr<carbon::Fence> fence, const VkSubmitInfo* submitInfo) const {
+VkResult carbon::Queue::submit(carbon::Fence* fence, const VkSubmitInfo* submitInfo) const {
     return vkQueueSubmit(handle, 1, submitInfo, *fence);
 }
 

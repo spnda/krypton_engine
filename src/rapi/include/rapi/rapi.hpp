@@ -4,7 +4,8 @@
 
 #include <mesh/mesh.hpp>
 
-#include "window.hpp"
+#include <rapi/render_object_handle.hpp>
+#include <rapi/window.hpp>
 
 namespace krypton::rapi {
     class RenderAPI;
@@ -19,9 +20,21 @@ namespace krypton::rapi {
     public:
         virtual ~RenderAPI() {}
 
+        virtual void beginFrame() = 0;
+
+        /**
+         * Creates a new handle to a new render object. This handle can from now
+         * on be used to modify 
+         */
+        [[nodiscard]] virtual auto createRenderObject() -> RenderObjectHandle = 0;
+
+        [[nodiscard]] virtual auto destroyRenderObject(RenderObjectHandle& handle) -> bool = 0;
+
         virtual void drawFrame() = 0;
 
-        virtual auto getWindow() -> std::shared_ptr<krypton::rapi::Window> = 0;
+        virtual void endFrame() = 0;
+
+        [[nodiscard]] virtual auto getWindow() -> std::shared_ptr<krypton::rapi::Window> = 0;
 
         /**
          * Creates the window and initializes the rendering
@@ -31,10 +44,14 @@ namespace krypton::rapi {
         virtual void init() = 0;
 
         /**
-         * Adds given mesh to the render queue. This only has to be called
-         * once per mesh, as the mesh will be rendered for every frame. 
+         * Loads given mesh into the render object for given handle.
          */
-        virtual void render(std::shared_ptr<krypton::mesh::Mesh> mesh) = 0;
+        virtual void loadMeshForRenderObject(RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) = 0;
+
+        /**
+         * Adds given mesh to the render queue for this frame.
+         */
+        virtual void render(RenderObjectHandle& handle) = 0;
 
         virtual void resize(int width, int height) = 0;
 

@@ -8,6 +8,7 @@
 #include <vk_mem_alloc.h>
 
 namespace carbon {
+    class CommandBuffer;
     class Device;
     class Image;
 
@@ -64,7 +65,7 @@ namespace carbon {
         void mapMemory(void** destination) const;
         void unmapMemory() const;
 
-        void copyToBuffer(VkCommandBuffer cmdBuffer, const carbon::Buffer& destination);
-        void copyToImage(VkCommandBuffer cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy);
+        void copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer& destination);
+        void copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy);
     };
 } // namespace carbon

@@ -1,31 +1,31 @@
-add_library(shaders)
+add_library(krypton_shaders)
+add_library(krypton::shaders ALIAS krypton_shaders)
+
+execute_process(
+    COMMAND "${CMAKE_SOURCE_DIR}/submodules/glslang/update_glslang_sources.py"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/submodules/glslang"
+)
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/glslang"
+    "${CMAKE_BINARY_DIR}/glslang")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross"
     "${CMAKE_BINARY_DIR}/SPIRV-Cross")
 
-if (DEFINED ENV{VULKAN_SDK} AND WIN32)
-    # We'll import shaderc from the Vulkan SDK.
-    # This will also add other Vulkan-related headers from the SDK
-    # to the target.
-    add_library(shaderc UNKNOWN IMPORTED)
-    set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib")
-    set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include")
-    target_link_libraries(shaders PUBLIC shaderc)
-else()
-    # On Linux, we'll try and get the libraries from the environment.
-    target_link_libraries(shaders PUBLIC shaderc_combined)
-endif()
+find_package(fmt CONFIG REQUIRED)
 
-target_link_libraries(shaders PUBLIC spirv-cross-core spirv-cross-c)
+target_link_libraries(krypton_shaders PUBLIC fmt::fmt)
+target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
+target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
 
-target_include_directories(shaders PUBLIC "./include")
+target_compile_features(krypton_shaders PRIVATE cxx_std_20)
+
+target_include_directories(krypton_shaders PUBLIC "./include")
 
 add_files(
-    TARGET shaders
-    "include/shaders/file_includer.hpp"
+    TARGET krypton_shaders
     "include/shaders/shaders.hpp"
     
-    "file_includer.cpp"
     "shaders.cpp"
 )
 
@@ -39,7 +39,7 @@ file(GLOB_RECURSE ALL_SHADERS
 foreach(SHADER IN LISTS ALL_SHADERS)
     get_filename_component(SHADER_NAME ${SHADER} NAME)
 
-    add_custom_command(TARGET shaders POST_BUILD
+    add_custom_command(TARGET krypton_shaders POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${SHADER} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/${SHADER_NAME})
 endforeach()

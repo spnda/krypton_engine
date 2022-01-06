@@ -29,10 +29,12 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(carbon PRIVATE fmt::fmt)
-target_link_libraries(carbon PUBLIC shaders)
+target_link_libraries(carbon PUBLIC krypton::shaders)
 target_link_libraries(carbon PUBLIC vk-bootstrap::vk-bootstrap)
 target_link_libraries(carbon PUBLIC VulkanMemoryAllocator)
 target_link_libraries(carbon PUBLIC Vulkan::Vulkan)
+
+target_compile_features(carbon PRIVATE cxx_std_20)
 
 target_include_directories(carbon PUBLIC "./include")
 

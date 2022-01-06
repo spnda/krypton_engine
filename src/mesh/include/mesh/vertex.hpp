@@ -10,6 +10,9 @@ namespace krypton::mesh {
 	struct Vertex final {
 		glm::fvec4 pos;
 		glm::fvec4 color = glm::fvec4(1.0);
+		glm::fvec4 normals;
+		glm::fvec2 uv;
+		glm::fvec2 padding;
 	};
 
 	static constexpr uint32_t VERTEX_STRIDE = sizeof(Vertex);
