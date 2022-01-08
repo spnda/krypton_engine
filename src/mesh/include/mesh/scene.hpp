@@ -10,4 +10,4 @@ namespace krypton::mesh {
         std::string name = {};
         std::vector<krypton::mesh::Mesh> meshes;
     };
-}
+} // namespace krypton::mesh

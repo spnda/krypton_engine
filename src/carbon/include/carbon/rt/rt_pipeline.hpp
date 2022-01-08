@@ -18,7 +18,7 @@ namespace carbon {
     };
 
     class RayTracingPipeline {
-    public:
+      public:
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = nullptr;
 
@@ -34,7 +34,7 @@ namespace carbon {
     class RayTracingPipelineBuilder {
         std::shared_ptr<carbon::Device> device;
         std::string pipelineName;
-        
+
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
 
@@ -46,9 +46,9 @@ namespace carbon {
         VkPushConstantRange pushConstants;
 
         explicit RayTracingPipelineBuilder(std::shared_ptr<carbon::Device> device)
-                : device(std::move(device)) {}
+            : device(std::move(device)) {}
 
-    public:
+      public:
         static RayTracingPipelineBuilder create(std::shared_ptr<carbon::Device> device, std::string pipelineName);
 
         RayTracingPipelineBuilder& addShaderGroup(RtShaderGroup group, std::initializer_list<carbon::ShaderModule> shaders);

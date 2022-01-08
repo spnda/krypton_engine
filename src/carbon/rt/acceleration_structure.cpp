@@ -4,8 +4,7 @@
 #include <carbon/rt/acceleration_structure.hpp>
 
 carbon::AccelerationStructure::AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, carbon::AccelerationStructureType asType, const std::string name)
-        : device(std::move(device)), allocator(allocator), type(asType), name(std::move(name)) {
-
+    : device(std::move(device)), allocator(allocator), type(asType), name(std::move(name)) {
 }
 
 void carbon::AccelerationStructure::createScratchBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes) {
@@ -15,8 +14,7 @@ void carbon::AccelerationStructure::createScratchBuffer(VkAccelerationStructureB
         buildSizes.buildScratchSize,
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 void carbon::AccelerationStructure::createResultBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes) {
@@ -26,8 +24,7 @@ void carbon::AccelerationStructure::createResultBuffer(VkAccelerationStructureBu
         buildSizes.accelerationStructureSize,
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 void carbon::AccelerationStructure::createStructure(VkAccelerationStructureBuildSizesInfoKHR buildSizes) {
@@ -54,16 +51,16 @@ void carbon::AccelerationStructure::destroy() {
 }
 
 VkAccelerationStructureBuildSizesInfoKHR carbon::AccelerationStructure::getBuildSizes(const uint32_t* primitiveCount,
-                                                                                  VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
-                                                                                  VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties) {
+                                                                                      VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
+                                                                                      VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties) {
     VkAccelerationStructureBuildSizesInfoKHR buildSizes = {};
     buildSizes.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-    
+
     device->vkGetAccelerationStructureBuildSizesKHR(*device,
-        VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-        buildGeometryInfo,
-        primitiveCount,
-        &buildSizes);
+                                                    VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                                                    buildGeometryInfo,
+                                                    primitiveCount,
+                                                    &buildSizes);
 
     buildSizes.accelerationStructureSize = carbon::Buffer::alignedSize(buildSizes.accelerationStructureSize, 256); // Apparently, this is part of the Vulkan Spec
     buildSizes.buildScratchSize = carbon::Buffer::alignedSize(buildSizes.buildScratchSize, asProperties.minAccelerationStructureScratchOffsetAlignment);
@@ -80,13 +77,13 @@ VkWriteDescriptorSetAccelerationStructureKHR carbon::AccelerationStructure::getD
 }
 
 carbon::BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name)
-        : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::BottomLevel, name),
-          vertexBuffer(device, allocator, "vertexBuffer"),
-          indexBuffer(device, allocator, "indexBuffer"),
-          transformBuffer(device, allocator, "transformBuffer"),
-          vertexStagingBuffer(device, allocator, "vertexStagingBuffer"),
-          indexStagingBuffer(device, allocator, "indexStagingBuffer"),
-          transformStagingBuffer(device, allocator, "transformStagingBuffer") {
+    : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::BottomLevel, name),
+      vertexBuffer(device, allocator, "vertexBuffer"),
+      indexBuffer(device, allocator, "indexBuffer"),
+      transformBuffer(device, allocator, "transformBuffer"),
+      vertexStagingBuffer(device, allocator, "vertexStagingBuffer"),
+      indexStagingBuffer(device, allocator, "indexStagingBuffer"),
+      transformStagingBuffer(device, allocator, "transformStagingBuffer") {
 }
 
 void carbon::BottomLevelAccelerationStructure::createMeshBuffers(std::vector<PrimitiveData> primitiveData, VkTransformMatrixKHR transform) {
@@ -151,5 +148,5 @@ void carbon::BottomLevelAccelerationStructure::destroy() {
 }
 
 carbon::TopLevelAccelerationStructure::TopLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator)
-        : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::TopLevel, "tlas") {
+    : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::TopLevel, "tlas") {
 }

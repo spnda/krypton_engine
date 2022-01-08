@@ -3,9 +3,9 @@
 #ifdef RAPI_WITH_VULKAN
 
 /* We don't want the painfully slow iterator debug stuff from MSVC on vectors */
-#pragma warning(disable:4005) /* "macro redefenition" */
+#pragma warning(disable : 4005) /* "macro redefenition" */
 // #define _ITERATOR_DEBUG_LEVEL 0
-#pragma warning(default:4005)
+#pragma warning(default : 4005)
 
 #include <functional>
 #include <string>
@@ -34,7 +34,7 @@ namespace carbon {
     class StagingBuffer;
     class Swapchain;
     class TopLevelAccelerationStructure;
-}
+} // namespace carbon
 
 namespace krypton::rapi {
     class VulkanRT_RAPI final : public RenderAPI {
@@ -78,7 +78,7 @@ namespace krypton::rapi {
         auto submitFrame() -> VkResult;
         auto waitForFrame() -> VkResult;
 
-    public:
+      public:
         VulkanRT_RAPI();
         ~VulkanRT_RAPI();
 
@@ -94,6 +94,6 @@ namespace krypton::rapi {
         void resize(int width, int height) override;
         void shutdown() override;
     };
-}
+} // namespace krypton::rapi
 
 #endif // #ifdef RAPI_WITH_VULKAN

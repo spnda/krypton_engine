@@ -15,7 +15,7 @@ namespace krypton::util {
         explicit FreeListHandle(uint32_t index, uint32_t generation) : index(index), generation(generation) {}
     };
 
-    template<typename Object>
+    template <typename Object>
     struct FreeListObject {
         uint32_t next = 0;
         uint32_t generation = 0;
@@ -35,7 +35,7 @@ namespace krypton::util {
     class LargeFreeList : public LargeVector<FreeListObject<Object>> {
         [[nodiscard]] auto createSlot() -> uint32_t;
 
-    public:
+      public:
         /** We create the first 'hole' right away */
         LargeFreeList();
 
@@ -45,32 +45,32 @@ namespace krypton::util {
         void removeHandle(FreeListHandle& handle);
     };
 
-    template<typename Object>
+    template <typename Object>
     krypton::util::FreeListObject<Object>::FreeListObject(Object object)
-            : object(std::move(object)) {
-
+        : object(std::move(object)) {
     }
 
-    template<typename Object>
+    template <typename Object>
     krypton::util::LargeFreeList<Object>::LargeFreeList() {
         this->push_back(FreeListObject<Object> {});
     }
 
-    template<typename Object>
+    template <typename Object>
     uint32_t krypton::util::LargeFreeList<Object>::createSlot() {
         auto& lfl = *this;
 
         /** We check for the first free hole and use it. */
         const uint32_t slot = lfl[0].next;
         lfl[0].next = lfl[slot].next;
-        if (slot) return slot;
+        if (slot)
+            return slot;
 
         /** There are no holes yet, we extend the array. */
         this->resize(this->size() + 1);
         return this->size() - 1;
     }
 
-    template<typename Object>
+    template <typename Object>
     Object& krypton::util::LargeFreeList<Object>::getFromHandle(FreeListHandle& handle) {
         /* Verify first that the handle is valid */
         assert(isHandleValid(handle));
@@ -78,18 +78,18 @@ namespace krypton::util {
         return (*this)[handle.index].object;
     }
 
-    template<typename Object>
+    template <typename Object>
     krypton::util::FreeListHandle krypton::util::LargeFreeList<Object>::getNewHandle() {
         auto slot = createSlot();
-        return krypton::util::FreeListHandle { slot, (*this)[slot].generation };
+        return krypton::util::FreeListHandle {slot, (*this)[slot].generation};
     }
 
-    template<typename Object>
+    template <typename Object>
     bool krypton::util::LargeFreeList<Object>::isHandleValid(FreeListHandle& handle) {
         return (*this)[handle.index].generation == handle.generation;
     }
 
-    template<typename Object>
+    template <typename Object>
     void krypton::util::LargeFreeList<Object>::removeHandle(krypton::util::FreeListHandle& handle) {
         assert(isHandleValid(handle));
 
@@ -104,4 +104,4 @@ namespace krypton::util {
          */
         lfl[handle.index].generation++;
     }
-}
+} // namespace krypton::util

@@ -47,25 +47,25 @@ namespace krypton::models {
         const auto& bufferView = model.bufferViews[accessor.bufferView];
         bv->data = reinterpret_cast<const float*>(&(model.buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
         bv->stride = accessor.ByteStride(bufferView)
-            ? (accessor.ByteStride(bufferView) / sizeof(float))
-            : getTinyGltfTypeSizeInBytes(type);
+                         ? (accessor.ByteStride(bufferView) / sizeof(float))
+                         : getTinyGltfTypeSizeInBytes(type);
         bv->count = accessor.count;
     };
 
-    template<typename T, typename S>
+    template <typename T, typename S>
     void writeToVector(const T* src, const size_t count, std::vector<S>& out) {
         out.resize(count);
         for (size_t i = 0; i < count; ++i)
             out[i] = static_cast<T>(src[i]);
-    } 
-}
+    }
+} // namespace krypton::models
 
 void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node) {
     auto transform = krypton::models::getTransformMatrix(node);
     auto& kMesh = meshes.emplace_back();
 
     for (const auto& primitive : mesh.primitives) {
-        auto& kPrimitive = kMesh.primitives.emplace_back(); 
+        auto& kPrimitive = kMesh.primitives.emplace_back();
 
         {
             // We require a position attribute.
@@ -76,10 +76,10 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
             // offset) and store them as pointers.
             PrimitiveBufferValue positions = {}, normals = {}, uvs = {};
             getBufferValueForAccessor(model, primitive.attributes.find("POSITION")->second, TINYGLTF_TYPE_VEC3, &positions);
-            
+
             if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
                 getBufferValueForAccessor(model, primitive.attributes.find("NORMAL")->second, TINYGLTF_TYPE_VEC3, &normals);
-            
+
             if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
                 getBufferValueForAccessor(model, primitive.attributes.find("TEXCOORD_0")->second, TINYGLTF_TYPE_VEC2, &uvs);
 
@@ -88,7 +88,7 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
                 auto& vertex = kPrimitive.vertices.emplace_back();
                 auto pos = glm::make_vec3(&positions.data[i * positions.stride]);
                 vertex.pos = glm::fvec4(pos.x, pos.y, pos.z, 1.0f);
-                
+
                 if (normals.data != nullptr) {
                     auto normal = glm::make_vec3(&normals.data[i * normals.stride]);
                     vertex.normals = glm::fvec4(normal.x, normal.y, normal.z, 1.0f);
@@ -188,7 +188,7 @@ bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
                 kMaterial.baseTextureIndex = pbrmr.baseColorTexture.index;
             if (pbrmr.metallicRoughnessTexture.index >= 0)
                 kMaterial.pbrTextureIndex = pbrmr.metallicRoughnessTexture.index;
-            
+
             kMaterial.metallicFactor = static_cast<float>(pbrmr.metallicFactor);
             kMaterial.roughnessFactor = static_cast<float>(pbrmr.roughnessFactor);
         }

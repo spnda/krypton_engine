@@ -20,11 +20,11 @@ void carbon::Instance::create() {
 #endif // #ifdef WITH_NV_AFTERMATH
 
     auto instanceBuilder = vkb::InstanceBuilder()
-        .set_app_name(appData.applicationName.c_str())
-        .set_app_version(appData.applicationVersion)
-        .set_engine_name(appData.engineName.c_str())
-        .set_engine_version(appData.engineVersion)
-        .require_api_version(appData.apiVersion);
+                               .set_app_name(appData.applicationName.c_str())
+                               .set_app_version(appData.applicationVersion)
+                               .set_engine_name(appData.engineName.c_str())
+                               .set_engine_version(appData.engineVersion)
+                               .require_api_version(appData.apiVersion);
 
     // Add all available extensions
     auto sysInfo = vkb::SystemInfo::get_system_info().value();
@@ -39,11 +39,11 @@ void carbon::Instance::create() {
     // Build the instance
     auto buildResult = instanceBuilder
 #ifdef _DEBUG
-        .enable_layer("VK_LAYER_LUNARG_monitor")
-        .request_validation_layers()
-        .use_default_debug_messenger()
+                           .enable_layer("VK_LAYER_LUNARG_monitor")
+                           .request_validation_layers()
+                           .use_default_debug_messenger()
 #endif // #ifdef _DEBUG
-        .build();
+                           .build();
 
     handle = getFromVkbResult(buildResult);
 

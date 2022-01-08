@@ -8,10 +8,10 @@ namespace carbon {
         static const VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         static const VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    public:
+      public:
         explicit StagingBuffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name = "stagingBuffer");
         StagingBuffer(const StagingBuffer& buffer) = default;
 
         void create(uint64_t bufferSize, VkBufferUsageFlags bufferUsage = 0);
     };
-}
+} // namespace carbon

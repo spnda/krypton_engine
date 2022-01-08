@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
 
 namespace carbon {
     class CommandBuffer;
@@ -20,14 +20,13 @@ namespace carbon {
         VkImageView imageView = nullptr;
         VkFormat format = VK_FORMAT_UNDEFINED;
 
-    protected:
+      protected:
         std::shared_ptr<carbon::Device> device;
-        VkExtent2D imageExtent = { 0, 0 };
+        VkExtent2D imageExtent = {0, 0};
         std::map<uint32_t, VkImageLayout> currentLayouts = {
-            { 0, VK_IMAGE_LAYOUT_UNDEFINED }
-        };
+            {0, VK_IMAGE_LAYOUT_UNDEFINED}};
 
-    public:
+      public:
         Image(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D extent, std::string name = {});
 
         Image& operator=(const Image& newImage);
@@ -56,9 +55,8 @@ namespace carbon {
             std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
             VkImageLayout oldLayout, VkImageLayout newLayout,
             VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-            const VkImageSubresourceRange& subresourceRange
-        );
+            const VkImageSubresourceRange& subresourceRange);
 
         operator VkImage() const;
     };
-}
+} // namespace carbon

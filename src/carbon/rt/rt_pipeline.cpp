@@ -26,11 +26,11 @@ carbon::RayTracingPipelineBuilder carbon::RayTracingPipelineBuilder::create(std:
 }
 
 carbon::RayTracingPipelineBuilder& carbon::RayTracingPipelineBuilder::addShaderGroup(RtShaderGroup group,
-                                                                             std::initializer_list<carbon::ShaderModule> shaders) {
+                                                                                     std::initializer_list<carbon::ShaderModule> shaders) {
     std::map<uint32_t, carbon::ShaderStage> modules = {};
     for (auto& shader : shaders) {
         shaderStages.push_back(shader.getShaderStageCreateInfo());
-        modules.insert({ static_cast<uint32_t>(shaderStages.size()) - 1, shader.getShaderStage()});
+        modules.insert({static_cast<uint32_t>(shaderStages.size()) - 1, shader.getShaderStage()});
     }
 
     VkRayTracingShaderGroupCreateInfoKHR shaderGroup = {
@@ -39,8 +39,7 @@ carbon::RayTracingPipelineBuilder& carbon::RayTracingPipelineBuilder::addShaderG
         .generalShader = VK_SHADER_UNUSED_KHR,
         .closestHitShader = VK_SHADER_UNUSED_KHR,
         .anyHitShader = VK_SHADER_UNUSED_KHR,
-        .intersectionShader = VK_SHADER_UNUSED_KHR
-    };
+        .intersectionShader = VK_SHADER_UNUSED_KHR};
 
     switch (group) {
         case carbon::RtShaderGroup::General:
@@ -182,10 +181,10 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
 
     // Create descriptor pool and allocate sets.
     static std::vector<VkDescriptorPoolSize> poolSizes = {
-        { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
+        {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10},
     };
 
     device->createDescriptorPool(1, poolSizes, &descriptorPool);
@@ -219,8 +218,10 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
     }
     vkCreatePipelineLayout(*device, &pipelineLayoutCreateInfo, nullptr, &pipeline.pipelineLayout);
 
-    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
-    VkPhysicalDeviceProperties2 deviceProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+    VkPhysicalDeviceProperties2 deviceProperties = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+    };
     deviceProperties.pNext = &rtProperties;
     vkGetPhysicalDeviceProperties2(*device->getPhysicalDevice(), &deviceProperties);
 
@@ -234,15 +235,14 @@ carbon::RayTracingPipeline carbon::RayTracingPipelineBuilder::build() {
     pipelineCreateInfo.layout = pipeline.pipelineLayout;
     pipelineCreateInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 
-    std::vector<VkRayTracingPipelineCreateInfoKHR> createInfos = { pipelineCreateInfo };
+    std::vector<VkRayTracingPipelineCreateInfoKHR> createInfos = {pipelineCreateInfo};
     device->vkCreateRayTracingPipelinesKHR(
         *device,
         nullptr, nullptr,
         createInfos.size(),
         createInfos.data(),
         nullptr,
-        &pipeline.pipeline
-    );
+        &pipeline.pipeline);
 
     device->setDebugUtilsName(pipeline.pipeline, pipelineName);
     return pipeline;

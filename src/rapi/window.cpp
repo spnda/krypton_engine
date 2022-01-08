@@ -4,8 +4,8 @@
 
 #include <fmt/core.h>
 
-#include <rapi/rapi_backends.hpp>
 #include <rapi/rapi.hpp>
+#include <rapi/rapi_backends.hpp>
 #include <rapi/window.hpp>
 
 void errorCallback(int error, const char* desc) {
@@ -22,8 +22,7 @@ void resizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height)
-                              : title(title), width(width), height(height) {
-
+    : title(title), width(width), height(height) {
 }
 
 void krypton::rapi::Window::create(krypton::rapi::Backend backend) {

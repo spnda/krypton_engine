@@ -27,7 +27,7 @@ namespace carbon {
         VkPresentModeKHR chooseSwapPresentMode();
         void querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-    public:
+      public:
         VkSurfaceFormatKHR surfaceFormat = {};
         VkExtent2D imageExtent = {};
 

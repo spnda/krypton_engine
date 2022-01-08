@@ -25,6 +25,6 @@ namespace krypton::rapi::vulkan {
         uint64_t meshBufferIndexOffset = 0;
         krypton::mesh::Index materialIndex = 0;
     };
-}
+} // namespace krypton::rapi::vulkan
 
 #endif // #ifdef RAPI_WITH_VULKAN

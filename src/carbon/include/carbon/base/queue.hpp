@@ -3,8 +3,8 @@
 #include <memory>
 #include <mutex>
 
-#include <vulkan/vulkan.h>
 #include <VkBootstrap.h>
+#include <vulkan/vulkan.h>
 
 namespace carbon {
     // fwd
@@ -20,7 +20,7 @@ namespace carbon {
         VkQueue handle = nullptr;
         mutable std::mutex queueMutex = {};
 
-    public:
+      public:
         explicit Queue(std::shared_ptr<carbon::Device> device, std::string name = {});
         Queue(const carbon::Queue& queue);
 
@@ -39,4 +39,4 @@ namespace carbon {
 
         operator VkQueue() const;
     };
-}
+} // namespace carbon

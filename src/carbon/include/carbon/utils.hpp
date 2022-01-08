@@ -1,9 +1,9 @@
 #pragma once
 
+#include <fmt/core.h>
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
-#include <fstream>
-#include <fmt/core.h>
 
 #include <vulkan/vulkan.h>
 
@@ -58,7 +58,7 @@ static inline const std::unordered_map<VkResult, std::string> resultStrings = {
     {VK_PIPELINE_COMPILE_REQUIRED_EXT, "VK_PIPELINE_COMPILE_REQUIRED_EXT"},
 };
 
-template<class T>
+template <class T>
 T getFromVkbResult(vkb::detail::Result<T> result) {
     if (!result) {
         fmt::print("Encountered vkb error: {}, {}\n", result.error().message(), resultStrings.at(result.vk_result()));

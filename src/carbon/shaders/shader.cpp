@@ -13,17 +13,16 @@
 #endif // #ifdef WITH_NV_AFTERMATH
 
 static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
-    { carbon::ShaderStage::RayGeneration, shaderc_raygen_shader },
-    { carbon::ShaderStage::ClosestHit, shaderc_closesthit_shader },
-    { carbon::ShaderStage::RayMiss, shaderc_miss_shader },
-    { carbon::ShaderStage::AnyHit, shaderc_anyhit_shader },
-    { carbon::ShaderStage::Intersection, shaderc_intersection_shader },
-    { carbon::ShaderStage::Callable, shaderc_callable_shader },
+    {carbon::ShaderStage::RayGeneration, shaderc_raygen_shader},
+    {carbon::ShaderStage::ClosestHit, shaderc_closesthit_shader},
+    {carbon::ShaderStage::RayMiss, shaderc_miss_shader},
+    {carbon::ShaderStage::AnyHit, shaderc_anyhit_shader},
+    {carbon::ShaderStage::Intersection, shaderc_intersection_shader},
+    {carbon::ShaderStage::Callable, shaderc_callable_shader},
 };
 
 carbon::ShaderModule::ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, const carbon::ShaderStage shaderStage)
-        : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {
-    
+    : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {
 }
 
 void carbon::ShaderModule::createShaderModule() {
@@ -47,7 +46,7 @@ void carbon::ShaderModule::createShaderModule() {
 void carbon::ShaderModule::createShader(const std::string& filename) {
     auto shaderFile = krypton::shaders::readShaderFile(std::filesystem::path {filename});
     shaderCompileResult = krypton::shaders::compileGlslShader(shaderFile.filePath.filename().string(),
-        shaderFile.content, shader_kinds.at(shaderStage));
+                                                              shaderFile.content, shader_kinds.at(shaderStage));
 
     createShaderModule();
 }

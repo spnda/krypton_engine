@@ -11,7 +11,7 @@
 
 carbon::Swapchain::Swapchain(std::shared_ptr<carbon::Instance> instance,
                              std::shared_ptr<carbon::Device> device)
-        : instance(std::move(instance)), device(std::move(device)) {
+    : instance(std::move(instance)), device(std::move(device)) {
 }
 
 bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
@@ -35,7 +35,7 @@ bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
         .imageExtent = imageExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // We need this when switching layouts to copy the storage image.
-        
+
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = nullptr,
@@ -71,13 +71,7 @@ bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
                 .b = VK_COMPONENT_SWIZZLE_IDENTITY,
                 .a = VK_COMPONENT_SWIZZLE_IDENTITY,
             },
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            },
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1},
         };
 
         res = vkCreateImageView(*device, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
@@ -97,7 +91,7 @@ void carbon::Swapchain::destroy() {
 }
 
 VkResult carbon::Swapchain::acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const {
-    return device->vkAcquireNextImageKHR(*device, swapchain, UINT64_MAX, presentCompleteSemaphore->getHandle(), (VkFence)nullptr, imageIndex);
+    return device->vkAcquireNextImageKHR(*device, swapchain, UINT64_MAX, presentCompleteSemaphore->getHandle(), (VkFence) nullptr, imageIndex);
 }
 
 VkResult carbon::Swapchain::queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const {
@@ -118,9 +112,9 @@ VkExtent2D carbon::Swapchain::chooseSwapExtent(VkExtent2D windowExtent) {
     } else {
         VkExtent2D actualExtent = windowExtent;
         actualExtent.width = std::max(capabilities.minImageExtent.width,
-            std::min(capabilities.maxImageExtent.width, actualExtent.width));
+                                      std::min(capabilities.maxImageExtent.width, actualExtent.width));
         actualExtent.height = std::max(capabilities.minImageExtent.height,
-            std::min(capabilities.maxImageExtent.height, actualExtent.height));
+                                       std::min(capabilities.maxImageExtent.height, actualExtent.height));
         return actualExtent;
     }
 }

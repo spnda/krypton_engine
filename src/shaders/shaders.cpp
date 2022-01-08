@@ -15,14 +15,14 @@ krypton::shaders::Shader krypton::shaders::readShaderFile(std::filesystem::path 
         std::stringstream ss;
         ss << is.rdbuf();
         shaderCode = ss.str();
-        return { path, ss.str() };
+        return {path, ss.str()};
     } else {
         throw std::runtime_error(std::string("Failed to open shader file: ") + path.string());
     }
 }
 
 krypton::shaders::ShaderCompileResult krypton::shaders::compileGlslShader(
-        const std::string& shaderName, const std::string& shaderSource, ShaderStage shaderStage, TargetSpirv target) {
+    const std::string& shaderName, const std::string& shaderSource, ShaderStage shaderStage, TargetSpirv target) {
     const glslang_input_t input = {
         .language = GLSLANG_SOURCE_GLSL,
         .stage = static_cast<glslang_stage_t>(shaderStage),
@@ -40,16 +40,13 @@ krypton::shaders::ShaderCompileResult krypton::shaders::compileGlslShader(
 
     glslang_shader_t* shader = glslang_shader_create(&input);
     if (!glslang_shader_preprocess(shader, &input)) {
-
     }
     if (!glslang_shader_parse(shader, &input)) {
-
     }
     glslang_program_t* program = glslang_program_create();
     glslang_program_add_shader(program, shader);
 
     if (!glslang_program_link(program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT)) {
-
     }
 
     glslang_program_SPIRV_generate(program, input.stage);
@@ -61,8 +58,8 @@ krypton::shaders::ShaderCompileResult krypton::shaders::compileGlslShader(
     auto* spvptr = glslang_program_SPIRV_get_ptr(program);
     std::vector<uint32_t> spv;
     spv.assign(spvptr,
-        spvptr + glslang_program_SPIRV_get_size(program) * sizeof(uint32_t));
-    return { spv, spv };
+               spvptr + glslang_program_SPIRV_get_size(program) * sizeof(uint32_t));
+    return {spv, spv};
 }
 
 krypton::shaders::CrossCompileResult krypton::shaders::crossCompile(const std::vector<uint32_t>& spirv, krypton::shaders::CrossCompileTarget target) {
@@ -94,5 +91,8 @@ krypton::shaders::CrossCompileResult krypton::shaders::crossCompile(const std::v
 
     spvc_context_destroy(context);
 
-    return { target, std::string { result }, };
+    return {
+        target,
+        std::string {result},
+    };
 }

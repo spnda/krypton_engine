@@ -26,14 +26,15 @@ void carbon::Queue::create(const vkb::QueueType queueType) {
 
 std::vector<VkCheckpointDataNV> carbon::Queue::getCheckpointData(uint32_t queryCount) const {
 #ifdef WITH_NV_AFTERMATH
-    if (device->vkGetQueueCheckpointDataNV == nullptr) return {};
+    if (device->vkGetQueueCheckpointDataNV == nullptr)
+        return {};
 
     uint32_t count = queryCount;
     device->vkGetQueueCheckpointDataNV(handle, &count, nullptr); // We first get the count.
 
-    std::vector<VkCheckpointDataNV> checkpoints(count, { VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV });
+    std::vector<VkCheckpointDataNV> checkpoints(count, {VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV});
     device->vkGetQueueCheckpointDataNV(handle, &count, checkpoints.data()); // Then allocate the array and get the checkpoints.
-    return { checkpoints.begin(), checkpoints.end() };
+    return {checkpoints.begin(), checkpoints.end()};
 #else
     return {};
 #endif // #ifdef WITH_NV_AFTERMATH

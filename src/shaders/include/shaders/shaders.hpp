@@ -52,9 +52,9 @@ namespace krypton::shaders {
 
     Shader readShaderFile(std::filesystem::path path);
 
-    /** Compiles GLSL shaders to SPIR-V */ 
+    /** Compiles GLSL shaders to SPIR-V */
     [[nodiscard]] auto compileGlslShader(const std::string& shaderName, const std::string& shaderSource, ShaderStage shaderStage, TargetSpirv target) -> ShaderCompileResult;
-    
+
     /** Can cross compile shaders from given SPIR-V to target */
     [[nodiscard]] auto crossCompile(const std::vector<uint32_t>& spirv, CrossCompileTarget target) -> krypton::shaders::CrossCompileResult;
-}
+} // namespace krypton::shaders

@@ -1,0 +1,27 @@
+---
+# We'll let every language be based on the LLVM formatting rules
+BasedOnStyle: LLVM
+AllowShortCaseLabelsOnASingleLine: true
+ColumnLimit: 0
+IndentCaseLabels: true
+IndentWidth: 4
+NamespaceIndentation: All
+PointerAlignment: Left
+SortIncludes: true
+UseTab: Never
+
+---
+Language: Cpp
+AlignOperands: Align
+AllowAllArgumentsOnNextLine: true
+SortUsingDeclarations: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+Standard: Latest
+---
+Language: ObjC
+ObjCBlockIndentWidth: 4
+...

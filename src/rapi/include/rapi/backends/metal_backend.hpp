@@ -18,8 +18,8 @@ namespace krypton::rapi {
         std::shared_ptr<krypton::rapi::Window> window;
 
         std::vector<krypton::rapi::RenderObjectHandle> handlesForFrame = {};
-        
-    public:
+
+      public:
         Metal_RAPI();
         ~Metal_RAPI();
 
@@ -35,6 +35,6 @@ namespace krypton::rapi {
         void resize(int width, int height) override;
         void shutdown() override;
     };
-}
+} // namespace krypton::rapi
 
 #endif // #ifdef RAPI_WITH_METAL

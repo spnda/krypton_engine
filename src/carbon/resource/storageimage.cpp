@@ -1,8 +1,7 @@
 #include <carbon/resource/storageimage.hpp>
 
 carbon::StorageImage::StorageImage(std::shared_ptr<carbon::Device>, VmaAllocator allocator, VkExtent2D windowExtent)
-        : carbon::Image(device, allocator, windowExtent, "storageImage") {
-
+    : carbon::Image(device, allocator, windowExtent, "storageImage") {
 }
 
 void carbon::StorageImage::create() {
@@ -16,6 +15,6 @@ void carbon::StorageImage::recreateImage(VkExtent2D windowExtent) {
 }
 
 void carbon::StorageImage::changeLayout(std::shared_ptr<carbon::CommandBuffer> commandBuffer, VkImageLayout newLayout,
-                                    VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+                                        VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
     carbon::Image::changeLayout(commandBuffer, newLayout, subresourceRange, srcStage, dstStage);
 }

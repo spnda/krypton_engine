@@ -21,12 +21,12 @@ namespace carbon {
 
     /** The base of any acceleration structure */
     struct AccelerationStructure {
-    protected:
+      protected:
         const std::string name;
         std::shared_ptr<carbon::Device> device;
         VmaAllocator allocator = nullptr;
 
-    public:
+      public:
         std::shared_ptr<carbon::Buffer> resultBuffer;
         std::shared_ptr<carbon::Buffer> scratchBuffer;
         carbon::AccelerationStructureType type = AccelerationStructureType::Generic;
@@ -54,7 +54,7 @@ namespace carbon {
         carbon::StagingBuffer vertexStagingBuffer;
         carbon::StagingBuffer indexStagingBuffer;
 
-    public:
+      public:
         carbon::Buffer transformBuffer;
         carbon::Buffer vertexBuffer;
         carbon::Buffer indexBuffer;
@@ -68,7 +68,7 @@ namespace carbon {
     };
 
     struct TopLevelAccelerationStructure final : public AccelerationStructure {
-    public:
+      public:
         explicit TopLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
     };
-}
+} // namespace carbon

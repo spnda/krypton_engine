@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -14,7 +14,7 @@ namespace carbon {
 
         VkSemaphore handle = nullptr;
 
-    public:
+      public:
         explicit Semaphore(std::shared_ptr<carbon::Device> device, std::string name = {});
         Semaphore(const Semaphore& semaphore) = default;
 
@@ -25,4 +25,4 @@ namespace carbon {
 
         operator VkSemaphore() const;
     };
-}
+} // namespace carbon

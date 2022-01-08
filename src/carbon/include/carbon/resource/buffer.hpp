@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
 #include <memory>
 #include <mutex>
+#include <string>
 
-#include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
 
 namespace carbon {
     class CommandBuffer;
@@ -31,7 +31,7 @@ namespace carbon {
         static auto getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddressInfoKHR;
         static auto getBufferDeviceAddress(carbon::Device* device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress;
 
-    public:
+      public:
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name);
         Buffer(const Buffer& buffer);

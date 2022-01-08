@@ -15,7 +15,7 @@ namespace carbon {
         std::shared_ptr<carbon::PhysicalDevice> physicalDevice;
         vkb::Device handle = {};
 
-    public:
+      public:
         PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
         PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR = nullptr;
@@ -44,11 +44,11 @@ namespace carbon {
         [[nodiscard]] auto getPhysicalDevice() const -> std::shared_ptr<carbon::PhysicalDevice>;
         [[nodiscard]] auto waitIdle() const -> VkResult;
 
-        template<class T>
+        template <class T>
         [[nodiscard]] T getFunctionAddress(const std::string& functionName) const {
             return reinterpret_cast<T>(vkGetDeviceProcAddr(handle, functionName.c_str()));
         }
-        
+
         void setDebugUtilsName(const VkAccelerationStructureKHR& as, const std::string& name) const;
         void setDebugUtilsName(const VkBuffer& buffer, const std::string& name) const;
         void setDebugUtilsName(const VkCommandBuffer& cmdBuffer, const std::string& name) const;

@@ -13,7 +13,7 @@ void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> newPhysicalD
     VkDeviceDiagnosticsConfigCreateInfoNV deviceDiagnosticsConfigCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV,
         .flags = VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV |
-            VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV,
+                 VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV,
     };
     deviceBuilder.add_pNext(&deviceDiagnosticsConfigCreateInfo);
 #endif // #ifdef WITH_NV_AFTERMATH
@@ -79,7 +79,7 @@ void carbon::Device::setDebugUtilsName(const VkBuffer& buffer, const std::string
 }
 
 void carbon::Device::setDebugUtilsName(const VkCommandBuffer& cmdBuffer, const std::string& name) const {
-    setDebugUtilsName<VkCommandBuffer>(cmdBuffer, name, VK_OBJECT_TYPE_COMMAND_BUFFER);   
+    setDebugUtilsName<VkCommandBuffer>(cmdBuffer, name, VK_OBJECT_TYPE_COMMAND_BUFFER);
 }
 
 void carbon::Device::setDebugUtilsName(const VkFence& fence, const std::string& name) const {
@@ -112,15 +112,15 @@ void carbon::Device::setDebugUtilsName(const VkShaderModule& shaderModule, const
 
 template <typename T>
 void carbon::Device::setDebugUtilsName(const T& object, const std::string& name, VkObjectType objectType) const {
-    if (vkSetDebugUtilsObjectNameEXT == nullptr) return;
+    if (vkSetDebugUtilsObjectNameEXT == nullptr)
+        return;
 
     VkDebugUtilsObjectNameInfoEXT nameInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .pNext = nullptr,
         .objectType = objectType,
         .objectHandle = reinterpret_cast<const uint64_t&>(object),
-        .pObjectName = name.c_str()
-    };
+        .pObjectName = name.c_str()};
 
     auto result = vkSetDebugUtilsObjectNameEXT(handle, &nameInfo);
     checkResult(result, "Failed to set debug utils object name");

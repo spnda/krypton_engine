@@ -37,15 +37,14 @@ static inline const std::unordered_map<GFSDK_Aftermath_Result, std::string> afte
     {GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled, "GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled"},
     {GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered, "GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered"},
     {GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered, "GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered"},
-    {GFSDK_Aftermath_Result_FAIL_Disabled, "GFSDK_Aftermath_Result_FAIL_Disabled"}
-};
+    {GFSDK_Aftermath_Result_FAIL_Disabled, "GFSDK_Aftermath_Result_FAIL_Disabled"}};
 
 namespace carbon {
     // Wrapper around NVIDIA Aftermath
     class GpuCrashTracker {
         mutable std::mutex crashMutex;
 
-    public:
+      public:
         explicit GpuCrashTracker();
         GpuCrashTracker(const GpuCrashTracker& c);
 
@@ -67,6 +66,6 @@ namespace carbon {
          */
         static bool checkAftermathError(GFSDK_Aftermath_Result result, const std::string& message = {});
     };
-}
+} // namespace carbon
 
 #endif // #ifdef WITH_NV_AFTERMATH

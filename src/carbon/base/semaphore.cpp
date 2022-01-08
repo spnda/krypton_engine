@@ -4,8 +4,7 @@
 #include <carbon/base/semaphore.hpp>
 
 carbon::Semaphore::Semaphore(std::shared_ptr<carbon::Device> device, std::string name)
-        : device(std::move(device)), name(std::move(name)) {
-
+    : device(std::move(device)), name(std::move(name)) {
 }
 
 carbon::Semaphore::operator VkSemaphore() const {

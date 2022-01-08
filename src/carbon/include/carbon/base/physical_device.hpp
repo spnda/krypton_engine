@@ -27,7 +27,7 @@ namespace carbon {
         };
         vkb::PhysicalDevice handle = {};
 
-    public:
+      public:
         explicit PhysicalDevice() = default;
 
         void addExtensions(const std::vector<const char*>& extensions);
@@ -36,4 +36,4 @@ namespace carbon {
 
         operator VkPhysicalDevice() const;
     };
-}
+} // namespace carbon

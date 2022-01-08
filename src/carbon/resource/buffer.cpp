@@ -7,17 +7,16 @@
 #include <carbon/utils.hpp>
 
 carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator)
-        : device(std::move(device)), allocator(allocator) {
+    : device(std::move(device)), allocator(allocator) {
 }
 
 carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name)
-        : device(std::move(device)), allocator(allocator), name(std::move(name)) {
+    : device(std::move(device)), allocator(allocator), name(std::move(name)) {
 }
 
 carbon::Buffer::Buffer(const carbon::Buffer& buffer)
-        : device(buffer.device), name(buffer.name), allocator(buffer.allocator),
-          allocation(buffer.allocation), handle(buffer.handle), address(buffer.address) {
-    
+    : device(buffer.device), name(buffer.name), allocator(buffer.allocator),
+      allocation(buffer.allocation), handle(buffer.handle), address(buffer.address) {
 }
 
 carbon::Buffer& carbon::Buffer::operator=(const carbon::Buffer& buffer) {
@@ -54,7 +53,8 @@ void carbon::Buffer::create(const VkDeviceSize newSize, const VkBufferUsageFlags
 }
 
 void carbon::Buffer::destroy() {
-    if (handle == nullptr || allocation == nullptr) return;
+    if (handle == nullptr || allocation == nullptr)
+        return;
     vmaDestroyBuffer(allocator, handle, allocation);
     handle = nullptr;
 }
@@ -103,11 +103,13 @@ auto carbon::Buffer::getHandle() const -> const VkBuffer {
 }
 
 auto carbon::Buffer::getDeviceOrHostConstAddress() const -> const VkDeviceOrHostAddressConstKHR {
-    return { .deviceAddress = address, };
+    return {
+        .deviceAddress = address,
+    };
 }
 
 auto carbon::Buffer::getDeviceOrHostAddress() const -> const VkDeviceOrHostAddressKHR {
-    return { .deviceAddress = address };
+    return {.deviceAddress = address};
 }
 
 auto carbon::Buffer::getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dstAccess) const -> VkBufferMemoryBarrier {
@@ -119,8 +121,7 @@ auto carbon::Buffer::getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dst
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .buffer = getHandle(),
         .offset = 0,
-        .size = getSize()
-    };
+        .size = getSize()};
 }
 
 auto carbon::Buffer::getSize() const -> VkDeviceSize {
@@ -145,7 +146,8 @@ void carbon::Buffer::unmapMemory() const {
 }
 
 void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer& destination) {
-    if (handle == nullptr || size == 0) return;
+    if (handle == nullptr || size == 0)
+        return;
     VkBufferCopy copy = {
         .srcOffset = 0,
         .dstOffset = 0,

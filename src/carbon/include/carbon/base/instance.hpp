@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <set>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -32,7 +32,7 @@ namespace carbon {
         std::unique_ptr<carbon::GpuCrashTracker> crashTracker;
 #endif // #ifdef WITH_NV_AFTERMATH
 
-    public:
+      public:
         PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
         PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
         PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
@@ -45,7 +45,7 @@ namespace carbon {
         void destroy() const;
         void setApplicationData(ApplicationData data);
 
-        template<class T>
+        template <class T>
         T getFunctionAddress(const std::string& functionName) const {
             return reinterpret_cast<T>(vkGetInstanceProcAddr(handle, functionName.c_str()));
         }

@@ -75,7 +75,7 @@ void carbon::PhysicalDevice::create(std::shared_ptr<carbon::Instance> instance, 
 }
 
 std::string carbon::PhysicalDevice::getDeviceName() const {
-    return std::string { handle.properties.deviceName };
+    return std::string {handle.properties.deviceName};
 }
 
 carbon::PhysicalDevice::operator VkPhysicalDevice() const {

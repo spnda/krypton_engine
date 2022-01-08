@@ -4,12 +4,12 @@
 #include <carbon/utils.hpp>
 
 carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle, carbon::Device* device)
-        : handle(handle), device(device) {
-    
+    : handle(handle), device(device) {
 }
 
 void carbon::CommandBuffer::begin(VkCommandBufferUsageFlags usageFlags) {
-    if (handle == nullptr) return;
+    if (handle == nullptr)
+        return;
 
     VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -19,8 +19,9 @@ void carbon::CommandBuffer::begin(VkCommandBufferUsageFlags usageFlags) {
 }
 
 void carbon::CommandBuffer::end(carbon::Queue* queue) {
-    if (handle == nullptr) return;
-    
+    if (handle == nullptr)
+        return;
+
     auto res = vkEndCommandBuffer(handle);
     checkResult(std::move(queue), res, "Failed to end command buffer");
 }
@@ -31,8 +32,7 @@ void carbon::CommandBuffer::buildAccelerationStructures(const std::vector<VkAcce
         handle,
         static_cast<uint32_t>(geometryInfos.size()),
         geometryInfos.data(),
-        rangeInfos.data()
-    );
+        rangeInfos.data());
 }
 
 void carbon::CommandBuffer::setCheckpoint(const char* checkpoint) {
@@ -41,15 +41,15 @@ void carbon::CommandBuffer::setCheckpoint(const char* checkpoint) {
 }
 
 void carbon::CommandBuffer::pipelineBarrier(
-        VkPipelineStageFlags srcStageMask,
-        VkPipelineStageFlags dstStageMask,
-        VkDependencyFlags dependencyFlags,
-        uint32_t                                    memoryBarrierCount,
-        const VkMemoryBarrier*                      pMemoryBarriers,
-        uint32_t                                    bufferMemoryBarrierCount,
-        const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
-        uint32_t                                    imageMemoryBarrierCount,
-        const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
+    VkPipelineStageFlags srcStageMask,
+    VkPipelineStageFlags dstStageMask,
+    VkDependencyFlags dependencyFlags,
+    uint32_t memoryBarrierCount,
+    const VkMemoryBarrier* pMemoryBarriers,
+    uint32_t bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+    uint32_t imageMemoryBarrierCount,
+    const VkImageMemoryBarrier* pImageMemoryBarriers) {
     vkCmdPipelineBarrier(
         handle, srcStageMask,
         dstStageMask, dependencyFlags,

@@ -3,8 +3,8 @@
 #include <map>
 #include <vector>
 
-#include <vulkan/vulkan.h>
 #include <shaderc/shaderc.hpp>
+#include <vulkan/vulkan.h>
 
 #include <shaders/shaders.hpp>
 
@@ -32,7 +32,7 @@ namespace carbon {
 
         void createShaderModule();
 
-    public:
+      public:
         explicit ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, carbon::ShaderStage shaderStage);
 
         void createShader(const std::string& filename);

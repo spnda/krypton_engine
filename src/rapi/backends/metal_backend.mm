@@ -10,9 +10,9 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include <shaders/shaders.hpp>
 #include <rapi/backends/metal_backend.hpp>
 #include <rapi/render_object_handle.hpp>
+#include <shaders/shaders.hpp>
 #include <util/free_list.hpp>
 #include <util/large_vector.hpp>
 
@@ -46,11 +46,9 @@ krypton::rapi::Metal_RAPI::Metal_RAPI() {
 }
 
 krypton::rapi::Metal_RAPI::~Metal_RAPI() {
-
 }
 
 void krypton::rapi::Metal_RAPI::beginFrame() {
-
 }
 
 krypton::rapi::RenderObjectHandle krypton::rapi::Metal_RAPI::createRenderObject() {
@@ -72,9 +70,9 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
         id<CAMetalDrawable> surface = [swapchain nextDrawable];
 
         // Create render pass
-        MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
+        MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
         pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.25);
-        pass.colorAttachments[0].loadAction  = MTLLoadActionClear;
+        pass.colorAttachments[0].loadAction = MTLLoadActionClear;
         pass.colorAttachments[0].storeAction = MTLStoreActionStore;
         pass.colorAttachments[0].texture = surface.texture;
 
@@ -87,11 +85,11 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
 
             [encoder setRenderPipelineState:pipelineState];
             [encoder setVertexBuffer:object.vertexBuffer offset:0 atIndex:0];
-            [encoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-                                indexCount: object.totalIndexCount
-                                 indexType: MTLIndexTypeUInt32
-                               indexBuffer: object.indexBuffer
-                         indexBufferOffset: 0];
+            [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                                indexCount:object.totalIndexCount
+                                 indexType:MTLIndexTypeUInt32
+                               indexBuffer:object.indexBuffer
+                         indexBufferOffset:0];
             // Could also pass instanceCount and baseINstance to the above function
             // to instance rendering
         }
@@ -113,7 +111,7 @@ std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() {
 }
 
 void krypton::rapi::Metal_RAPI::init() {
-    __autoreleasing NSError *error = nil;
+    __autoreleasing NSError* error = nil;
 
     window->create(krypton::rapi::Backend::Metal);
 
@@ -135,7 +133,7 @@ void krypton::rapi::Metal_RAPI::init() {
     defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
     NSString* shaderSource = [NSString stringWithUTF8String:defaultShader.content.c_str()];
     library = [device newLibraryWithSource:shaderSource options:0 error:&error];
-    if(!library) {
+    if (!library) {
         [NSException raise:@"Failed to compile shaders" format:@"%@", [error localizedDescription]];
     }
 
@@ -143,7 +141,7 @@ void krypton::rapi::Metal_RAPI::init() {
     id<MTLFunction> vertexProgram = [library newFunctionWithName:@"basic_vertex"];
     id<MTLFunction> fragmentProgram = [library newFunctionWithName:@"basic_fragment"];
 
-    MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+    MTLRenderPipelineDescriptor* pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     [pipelineStateDescriptor setVertexFunction:vertexProgram];
     [pipelineStateDescriptor setFragmentFunction:fragmentProgram];
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
@@ -156,7 +154,7 @@ void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObj
         krypton::rapi::metal::RenderObject& renderObject = objects.getFromHandle(handle);
 
         size_t accumulatedVertexBufferSize = 0,
-             accumulatedIndexBufferSize = 0;
+               accumulatedIndexBufferSize = 0;
 
         for (const auto& prim : mesh->primitives) {
             renderObject.totalVertexCount += prim.vertices.size();
@@ -166,7 +164,7 @@ void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObj
             size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index);
 
             renderObject.bufferVertexOffsets.push_back(accumulatedVertexBufferSize + vertexDataSize);
-            renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize  + indexDataSize);
+            renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize + indexDataSize);
 
             accumulatedVertexBufferSize += vertexDataSize;
             accumulatedIndexBufferSize += indexDataSize;
@@ -178,7 +176,8 @@ void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObj
         // Copy the vertex data for each primitive into the shared buffer.
         void* vertexData = [renderObject.vertexBuffer contents];
         void* indexData = [renderObject.indexBuffer contents];
-        accumulatedVertexBufferSize = 0; accumulatedIndexBufferSize = 0;
+        accumulatedVertexBufferSize = 0;
+        accumulatedIndexBufferSize = 0;
         for (const auto& prim : mesh->primitives) {
             size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
             size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index); // index size == 32
@@ -202,7 +201,6 @@ void krypton::rapi::Metal_RAPI::resize(int width, int height) {
 }
 
 void krypton::rapi::Metal_RAPI::shutdown() {
-
 }
 
 #endif // #ifdef RAPI_WITH_METAL

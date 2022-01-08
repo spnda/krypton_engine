@@ -64,8 +64,7 @@ void carbon::GpuCrashTracker::enable() {
         gpuCrashDumpCallback,
         shaderDebugInfoCallback,
         crashDumpDescriptionCallback,
-        this
-    ));
+        this));
 }
 
 void carbon::GpuCrashTracker::disable() const {
@@ -80,9 +79,9 @@ void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint3
         GFSDK_Aftermath_Version_API,
         pGpuCrashDump,
         gpuCrashDumpSize,
-        &decoder
-    );
-    if (!checkAftermathError(result, "Failed to create crash dump decoder")) return;
+        &decoder);
+    if (!checkAftermathError(result, "Failed to create crash dump decoder"))
+        return;
 
     // Query shader information
     uint32_t shaderCount = 0;
@@ -95,7 +94,7 @@ void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint3
         if (checkAftermathError(result)) {
             for (const auto& shaderInfo : shaderInfos) {
                 fmt::print("Active shader: hash = {:#x}, instance = {:#x}, type = {}\n",
-                    shaderInfo.shaderHash, shaderInfo.shaderInstance, static_cast<uint32_t>(shaderInfo.shaderType));
+                           shaderInfo.shaderHash, shaderInfo.shaderInstance, static_cast<uint32_t>(shaderInfo.shaderType));
             }
         }
     }
@@ -111,18 +110,18 @@ void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint3
         if (pageFaultInfo.bHasResourceInfo) {
             fmt::print("Fault in resource starting at {:#x}\n", pageFaultInfo.resourceInfo.gpuVa);
             fmt::print("Size of resource: ({}, {}, {}, {}) = {} bytes\n",
-                            pageFaultInfo.resourceInfo.width,
-                            pageFaultInfo.resourceInfo.height,
-                            pageFaultInfo.resourceInfo.depth,
-                            pageFaultInfo.resourceInfo.mipLevels,
-                            pageFaultInfo.resourceInfo.size);
+                       pageFaultInfo.resourceInfo.width,
+                       pageFaultInfo.resourceInfo.height,
+                       pageFaultInfo.resourceInfo.depth,
+                       pageFaultInfo.resourceInfo.mipLevels,
+                       pageFaultInfo.resourceInfo.size);
             fmt::print("Format of resource: {}\n", pageFaultInfo.resourceInfo.format);
             fmt::print("Resource was destroyed: {}\n", pageFaultInfo.resourceInfo.bWasDestroyed);
         }
     }
 
     // Generate JSON for general crash dump information
-    const uint32_t jsonDecoderFlags = GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO | GFSDK_Aftermath_GpuCrashDumpDecoderFlags_SHADER_INFO ; // Simple & quick
+    const uint32_t jsonDecoderFlags = GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO | GFSDK_Aftermath_GpuCrashDumpDecoderFlags_SHADER_INFO; // Simple & quick
     uint32_t jsonSize = 0;
     result = GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
         decoder, jsonDecoderFlags, GFSDK_Aftermath_GpuCrashDumpFormatterFlags_UTF8_OUTPUT,
@@ -151,9 +150,9 @@ void carbon::GpuCrashTracker::onShaderDebugInfo(const void* shaderDebugInfo, con
         GFSDK_Aftermath_Version_API,
         shaderDebugInfo,
         shaderDebugInfoSize,
-        &identifier
-    );
-    if (!checkAftermathError(result, "Failed to get shader debug info")) return;
+        &identifier);
+    if (!checkAftermathError(result, "Failed to get shader debug info"))
+        return;
 
     // Store shader debug info in map.
     std::vector<uint8_t> data((uint8_t*)shaderDebugInfo, (uint8_t*)shaderDebugInfo + shaderDebugInfoSize);
@@ -161,7 +160,7 @@ void carbon::GpuCrashTracker::onShaderDebugInfo(const void* shaderDebugInfo, con
 }
 
 void carbon::GpuCrashTracker::onShaderLookup(const GFSDK_Aftermath_ShaderHash* shaderHash,
-                                         PFN_GFSDK_Aftermath_SetData setShaderBinary) {
+                                             PFN_GFSDK_Aftermath_SetData setShaderBinary) {
     std::vector<uint32_t> shaderBinary;
     if (!carbon::ShaderDatabase::findShaderBinary(shaderHash, shaderBinary)) {
         return; // Shader not found.
@@ -174,7 +173,7 @@ void carbon::GpuCrashTracker::onShaderLookup(const GFSDK_Aftermath_ShaderHash* s
  * Used to map SPIR-V lines to GLSL source lines.
  */
 void carbon::GpuCrashTracker::onShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* identifier,
-                                                  PFN_GFSDK_Aftermath_SetData setShaderDebugInfo) {
+                                                      PFN_GFSDK_Aftermath_SetData setShaderDebugInfo) {
     std::vector<uint8_t> debugInfos;
     if (!carbon::ShaderDatabase::findShaderDebugInfos(identifier, debugInfos))
         return;
@@ -183,7 +182,7 @@ void carbon::GpuCrashTracker::onShaderDebugInfoLookup(const GFSDK_Aftermath_Shad
 
 /** Lookup callback for shader source with debug information. */
 void carbon::GpuCrashTracker::onShaderSourceLookup(const GFSDK_Aftermath_ShaderDebugName* shaderDebugName,
-                                               PFN_GFSDK_Aftermath_SetData setShaderBinary) {
+                                                   PFN_GFSDK_Aftermath_SetData setShaderBinary) {
     std::vector<uint32_t> shaderBinary;
     if (!carbon::ShaderDatabase::findShaderBinaryWithDebugInfo(shaderDebugName, shaderBinary)) {
         return; // Shader not found.

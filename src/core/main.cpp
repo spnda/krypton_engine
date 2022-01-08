@@ -10,14 +10,13 @@
 
 // This is just a simple triangles
 std::vector<krypton::mesh::Vertex> vertexData = {
-    {.pos = {  0.0,  1.0,  0.0,  1.0 }, .color = {0,0,1,1}},
-    {.pos = { -1.0, -1.0,  0.0,  1.0 }, .color = {1,0,0,1}},
-    {.pos = {  1.0, -1.0,  0.0,  1.0 }, .color = {0,1,0,1}}
-};
+    {.pos = {0.0, 1.0, 0.0, 1.0}, .color = {0, 0, 1, 1}},
+    {.pos = {-1.0, -1.0, 0.0, 1.0}, .color = {1, 0, 0, 1}},
+    {.pos = {1.0, -1.0, 0.0, 1.0}, .color = {0, 1, 0, 1}}};
 
 krypton::mesh::Primitive primitive = {
     .vertices = vertexData,
-    .indices = { 0, 1, 2 },
+    .indices = {0, 1, 2},
     .materialIndex = 0,
 };
 

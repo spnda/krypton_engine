@@ -23,7 +23,7 @@ namespace krypton::models {
         void loadGltfNode(tinygltf::Model& model, const tinygltf::Node& node);
         [[nodiscard]] bool loadGltfFile(const fs::path& path);
 
-    public:
+      public:
         [[nodiscard]] bool loadFile(const fs::path& path);
     };
-}
+} // namespace krypton::models

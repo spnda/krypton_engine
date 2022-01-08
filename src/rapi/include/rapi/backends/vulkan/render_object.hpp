@@ -10,7 +10,7 @@
 namespace carbon {
     class BottomLevelAccelerationStructure;
     class Buffer;
-}
+} // namespace carbon
 
 namespace krypton::rapi::vulkan {
     /**
@@ -24,6 +24,6 @@ namespace krypton::rapi::vulkan {
 
         explicit RenderObject() = default;
     };
-}
+} // namespace krypton::rapi::vulkan
 
 #endif // #ifdef RAPI_WITH_VULKAN

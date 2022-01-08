@@ -6,7 +6,7 @@
 #include <carbon/utils.hpp>
 
 carbon::Image::Image(std::shared_ptr<carbon::Device> context, VmaAllocator allocator, const VkExtent2D extent, std::string name)
-        : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {
+    : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {
 }
 
 carbon::Image::operator VkImage() const {
@@ -14,7 +14,8 @@ carbon::Image::operator VkImage() const {
 }
 
 carbon::Image& carbon::Image::operator=(const carbon::Image& newImage) {
-    if (this == &newImage) return *this;
+    if (this == &newImage)
+        return *this;
     this->image = newImage.image;
     this->imageExtent = newImage.imageExtent;
     this->imageView = newImage.imageView;
@@ -31,7 +32,7 @@ void carbon::Image::create(const VkFormat newFormat, const VkImageUsageFlags usa
 
     imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
     imageCreateInfo.format = newFormat;
-    imageCreateInfo.extent = { imageExtent.width, imageExtent.height, 1 };
+    imageCreateInfo.extent = {imageExtent.width, imageExtent.height, 1};
     imageCreateInfo.mipLevels = 1;
     imageCreateInfo.arrayLayers = 1;
     imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -81,10 +82,10 @@ void carbon::Image::create(VkImageCreateInfo* imageCreateInfo, VkImageViewCreate
 
 void carbon::Image::copyImage(VkCommandBuffer cmdBuffer, VkImage destination, VkImageLayout destinationLayout) {
     VkImageCopy copyRegion = {
-        .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-        .srcOffset = { 0, 0, 0 },
-        .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-        .dstOffset = { 0, 0, 0 },
+        .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+        .srcOffset = {0, 0, 0},
+        .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+        .dstOffset = {0, 0, 0},
         .extent = getImageSize3d(),
     };
     vkCmdCopyImage(cmdBuffer, this->image, this->getImageLayout(), destination, destinationLayout, 1, &copyRegion);
@@ -125,18 +126,18 @@ VkImageLayout carbon::Image::getImageLayout() {
 }
 
 void carbon::Image::changeLayout(
-        std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
-        const VkImageLayout newLayout,
-        const VkImageSubresourceRange& subresourceRange,
-        const VkPipelineStageFlags srcStage, const VkPipelineStageFlags dstStage) {
+    std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
+    const VkImageLayout newLayout,
+    const VkImageSubresourceRange& subresourceRange,
+    const VkPipelineStageFlags srcStage, const VkPipelineStageFlags dstStage) {
     carbon::Image::changeLayout(image, cmdBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage, subresourceRange);
     currentLayouts[subresourceRange.baseMipLevel] = newLayout;
 }
 
 void carbon::Image::changeLayout(VkImage image, std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
-                             VkImageLayout oldLayout, VkImageLayout newLayout,
-                             VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
-                             const VkImageSubresourceRange& subresourceRange) {
+                                 VkImageLayout oldLayout, VkImageLayout newLayout,
+                                 VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
+                                 const VkImageSubresourceRange& subresourceRange) {
     uint32_t srcAccessMask, dstAccessMask;
     switch (srcStage) {
         default:

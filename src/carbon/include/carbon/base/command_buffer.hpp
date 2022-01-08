@@ -13,7 +13,7 @@ namespace carbon {
         carbon::Device* device = nullptr;
         VkCommandBuffer handle = nullptr;
 
-    public:
+      public:
         explicit CommandBuffer(VkCommandBuffer handle, carbon::Device* device);
 
         void begin(VkCommandBufferUsageFlags usageFlags);
@@ -24,16 +24,16 @@ namespace carbon {
                                          const std::vector<VkAccelerationStructureBuildRangeInfoKHR*>& rangeInfos);
         void setCheckpoint(const char* checkpoint);
         void pipelineBarrier(
-                VkPipelineStageFlags srcStageMask,
-                VkPipelineStageFlags dstStageMask,
-                VkDependencyFlags dependencyFlags,
-                uint32_t                                    memoryBarrierCount,
-                const VkMemoryBarrier*                      pMemoryBarriers,
-                uint32_t                                    bufferMemoryBarrierCount,
-                const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
-                uint32_t                                    imageMemoryBarrierCount,
-                const VkImageMemoryBarrier*                 pImageMemoryBarriers);
+            VkPipelineStageFlags srcStageMask,
+            VkPipelineStageFlags dstStageMask,
+            VkDependencyFlags dependencyFlags,
+            uint32_t memoryBarrierCount,
+            const VkMemoryBarrier* pMemoryBarriers,
+            uint32_t bufferMemoryBarrierCount,
+            const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+            uint32_t imageMemoryBarrierCount,
+            const VkImageMemoryBarrier* pImageMemoryBarriers);
 
         operator VkCommandBuffer() const;
     };
-}
+} // namespace carbon

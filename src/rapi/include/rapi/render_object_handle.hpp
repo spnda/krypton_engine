@@ -5,6 +5,6 @@
 namespace krypton::rapi {
     struct RenderObjectHandle : public krypton::util::FreeListHandle {
         explicit RenderObjectHandle(krypton::util::FreeListHandle handle)
-                : krypton::util::FreeListHandle(handle.index, handle.generation) {}
+            : krypton::util::FreeListHandle(handle.index, handle.generation) {}
     };
-}
+} // namespace krypton::rapi

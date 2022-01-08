@@ -15,4 +15,4 @@ namespace krypton::mesh {
         Index emissiveTextureIndex = -1;
         Index pbrTextureIndex = -1;
     };
-}
+} // namespace krypton::mesh
