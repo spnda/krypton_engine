@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class CommandBuffer;

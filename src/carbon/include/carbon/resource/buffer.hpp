@@ -4,8 +4,7 @@
 #include <mutex>
 #include <string>
 
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class CommandBuffer;
@@ -65,7 +64,7 @@ namespace carbon {
         void mapMemory(void** destination) const;
         void unmapMemory() const;
 
-        void copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer& destination);
-        void copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy);
+        void copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer* destination);
+        void copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout, VkBufferImageCopy* copy);
     };
 } // namespace carbon

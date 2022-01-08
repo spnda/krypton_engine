@@ -3,7 +3,7 @@
 #include <carbon/resource/stagingbuffer.hpp>
 #include <carbon/rt/acceleration_structure.hpp>
 
-carbon::AccelerationStructure::AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, carbon::AccelerationStructureType asType, const std::string name)
+carbon::AccelerationStructure::AccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, carbon::AccelerationStructureType asType, std::string name)
     : device(std::move(device)), allocator(allocator), type(asType), name(std::move(name)) {
 }
 
@@ -46,8 +46,10 @@ void carbon::AccelerationStructure::createStructure(VkAccelerationStructureBuild
 
 void carbon::AccelerationStructure::destroy() {
     device->vkDestroyAccelerationStructureKHR(*device, handle, nullptr);
-    resultBuffer->destroy();
-    scratchBuffer->destroy();
+    if (resultBuffer != nullptr)
+        resultBuffer->destroy();
+    if (scratchBuffer != nullptr)
+        scratchBuffer->destroy();
 }
 
 VkAccelerationStructureBuildSizesInfoKHR carbon::AccelerationStructure::getBuildSizes(const uint32_t* primitiveCount,
@@ -77,13 +79,14 @@ VkWriteDescriptorSetAccelerationStructureKHR carbon::AccelerationStructure::getD
 }
 
 carbon::BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name)
-    : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::BottomLevel, name),
-      vertexBuffer(device, allocator, "vertexBuffer"),
-      indexBuffer(device, allocator, "indexBuffer"),
-      transformBuffer(device, allocator, "transformBuffer"),
-      vertexStagingBuffer(device, allocator, "vertexStagingBuffer"),
-      indexStagingBuffer(device, allocator, "indexStagingBuffer"),
-      transformStagingBuffer(device, allocator, "transformStagingBuffer") {
+    : AccelerationStructure(device, allocator, carbon::AccelerationStructureType::BottomLevel, name) {
+    vertexStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "vertexStagingBuffer");
+    indexStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "indexStagingBuffer");
+    transformStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "transformStagingBuffer");
+
+    vertexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "vertexBuffer");
+    indexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "indexBuffer");
+    transformBuffer = std::make_unique<carbon::Buffer>(device, allocator, "transformBuffer");
 }
 
 void carbon::BottomLevelAccelerationStructure::createMeshBuffers(std::vector<PrimitiveData> primitiveData, VkTransformMatrixKHR transform) {
@@ -98,9 +101,9 @@ void carbon::BottomLevelAccelerationStructure::createMeshBuffers(std::vector<Pri
         totalIndexSize += prim.second.size();
     }
 
-    vertexStagingBuffer.create(totalVertexSize);
-    indexStagingBuffer.create(totalIndexSize);
-    transformStagingBuffer.create(sizeof(VkTransformMatrixKHR));
+    vertexStagingBuffer->create(totalVertexSize);
+    indexStagingBuffer->create(totalIndexSize);
+    transformStagingBuffer->create(sizeof(VkTransformMatrixKHR));
 
     // Copy the data into the big buffer at an offset.
     uint64_t currentVertexOffset = 0, currentIndexOffset = 0;
@@ -108,14 +111,14 @@ void carbon::BottomLevelAccelerationStructure::createMeshBuffers(std::vector<Pri
         uint64_t vertexSize = prim.first.size();
         uint64_t indexSize = prim.second.size();
 
-        vertexStagingBuffer.memoryCopy(prim.first.data(), vertexSize, currentVertexOffset);
-        indexStagingBuffer.memoryCopy(prim.second.data(), indexSize, currentIndexOffset);
+        vertexStagingBuffer->memoryCopy(prim.first.data(), vertexSize, currentVertexOffset);
+        indexStagingBuffer->memoryCopy(prim.second.data(), indexSize, currentIndexOffset);
 
         currentVertexOffset += vertexSize;
         currentIndexOffset += indexSize;
     }
 
-    transformStagingBuffer.memoryCopy(&transform, sizeof(VkTransformMatrixKHR));
+    transformStagingBuffer->memoryCopy(&transform, sizeof(VkTransformMatrixKHR));
 
     // At last, we create the real buffers that reside on the GPU.
     VkBufferUsageFlags asInputBufferUsage =
@@ -123,27 +126,27 @@ void carbon::BottomLevelAccelerationStructure::createMeshBuffers(std::vector<Pri
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
-    vertexBuffer.create(totalVertexSize, asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
-    indexBuffer.create(totalIndexSize, asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
-    transformBuffer.create(sizeof(VkTransformMatrixKHR), asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
+    vertexBuffer->create(totalVertexSize, asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
+    indexBuffer->create(totalIndexSize, asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
+    transformBuffer->create(sizeof(VkTransformMatrixKHR), asInputBufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
 }
 
 void carbon::BottomLevelAccelerationStructure::copyMeshBuffers(carbon::CommandBuffer* cmdBuffer) {
-    vertexStagingBuffer.copyToBuffer(cmdBuffer, vertexBuffer);
-    indexStagingBuffer.copyToBuffer(cmdBuffer, indexBuffer);
-    transformStagingBuffer.copyToBuffer(cmdBuffer, transformBuffer);
+    vertexStagingBuffer->copyToBuffer(cmdBuffer, vertexBuffer.get());
+    indexStagingBuffer->copyToBuffer(cmdBuffer, indexBuffer.get());
+    transformStagingBuffer->copyToBuffer(cmdBuffer, transformBuffer.get());
 }
 
 void carbon::BottomLevelAccelerationStructure::destroyMeshBuffers() {
-    vertexStagingBuffer.destroy();
-    indexStagingBuffer.destroy();
-    transformStagingBuffer.destroy();
+    vertexStagingBuffer->destroy();
+    indexStagingBuffer->destroy();
+    transformStagingBuffer->destroy();
 }
 
 void carbon::BottomLevelAccelerationStructure::destroy() {
-    vertexBuffer.destroy();
-    indexBuffer.destroy();
-    transformBuffer.destroy();
+    vertexBuffer->destroy();
+    indexBuffer->destroy();
+    transformBuffer->destroy();
     carbon::AccelerationStructure::destroy(); /* Call base */
 }
 

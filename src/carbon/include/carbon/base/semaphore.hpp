@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class Device;

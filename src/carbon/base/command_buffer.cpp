@@ -35,11 +35,6 @@ void carbon::CommandBuffer::buildAccelerationStructures(const std::vector<VkAcce
         rangeInfos.data());
 }
 
-void carbon::CommandBuffer::setCheckpoint(const char* checkpoint) {
-    if (device->vkCmdSetCheckpointNV != nullptr) /* We might not be using the extension */
-        device->vkCmdSetCheckpointNV(handle, checkpoint);
-}
-
 void carbon::CommandBuffer::pipelineBarrier(
     VkPipelineStageFlags srcStageMask,
     VkPipelineStageFlags dstStageMask,
@@ -56,6 +51,21 @@ void carbon::CommandBuffer::pipelineBarrier(
         memoryBarrierCount, pMemoryBarriers,
         bufferMemoryBarrierCount, pBufferMemoryBarriers,
         imageMemoryBarrierCount, pImageMemoryBarriers);
+}
+
+void carbon::CommandBuffer::traceRays(VkStridedDeviceAddressRegionKHR* rayGenSbt,
+                                      VkStridedDeviceAddressRegionKHR* missSbt,
+                                      VkStridedDeviceAddressRegionKHR* hitSbt,
+                                      VkStridedDeviceAddressRegionKHR* callableSbt,
+                                      VkExtent3D imageSize) {
+    device->vkCmdTraceRaysKHR(handle,
+                              rayGenSbt, missSbt, hitSbt, callableSbt,
+                              imageSize.width, imageSize.height, imageSize.depth);
+}
+
+void carbon::CommandBuffer::setCheckpoint(const char* checkpoint) {
+    if (device->vkCmdSetCheckpointNV != nullptr) /* We might not be using the extension */
+        device->vkCmdSetCheckpointNV(handle, checkpoint);
 }
 
 carbon::CommandBuffer::operator VkCommandBuffer() const {

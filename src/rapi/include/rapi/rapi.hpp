@@ -4,6 +4,7 @@
 
 #include <mesh/mesh.hpp>
 
+#include <rapi/camera.hpp>
 #include <rapi/render_object_handle.hpp>
 #include <rapi/window.hpp>
 
@@ -54,6 +55,8 @@ namespace krypton::rapi {
         virtual void render(RenderObjectHandle& handle) = 0;
 
         virtual void resize(int width, int height) = 0;
+
+        virtual void setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) = 0;
 
         /**
          * Shutdowns the rendering backend and makes it useless

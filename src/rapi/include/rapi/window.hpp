@@ -19,8 +19,9 @@ namespace krypton::rapi {
     class RenderAPI;
 
     /**
-     * Simple abstraction over a SDL2 window, including helper
-     * functions for various SDL functions.
+     * Abstraction over a GLFW3 window, including helper
+     * functions for various GLFW functionality. It also
+     * handles input and other window events.
      */
     class Window final {
         std::string title = {};

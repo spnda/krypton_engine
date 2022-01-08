@@ -61,6 +61,7 @@ add_files(
     "include/carbon/shaders/shader_database.hpp"
     "include/carbon/shaders/shader.hpp"
     "include/carbon/utils.hpp"
+    "include/carbon/vulkan.hpp"
 
     "base/command_pool.cpp"
     "base/command_buffer.cpp"

@@ -66,7 +66,7 @@ void carbon::Texture::createTexture(VkFormat newFormat, uint32_t mipLevels, uint
     checkResult(result, "Failed to create sampler");
 }
 
-void carbon::Texture::generateMipmaps(std::shared_ptr<carbon::CommandBuffer> cmdBuffer) {
+void carbon::Texture::generateMipmaps(carbon::CommandBuffer* cmdBuffer) {
     // Check if format properties support blitting on this hardware.
     if (!formatSupportsBlit(device, imageFormat))
         return;

@@ -34,6 +34,7 @@ add_files(
     "include/rapi/backends/vulkan/render_object.hpp"
     "include/rapi/backends/metal_backend.hpp"
     "include/rapi/backends/vulkan_rt_backend.hpp"
+    "include/rapi/camera.hpp"
     "include/rapi/rapi_backends.hpp"
     "include/rapi/rapi.hpp"
     "include/rapi/render_object_handle.hpp"

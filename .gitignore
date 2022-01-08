@@ -6,19 +6,22 @@ out/*
 CMakeSettings.json
 vcpkg_installed/*
 
-# This currently only includes dependencies we're not publishing.
+# IDE specific folders
+.idea/*
+.vscode/*
+.vs/*
+
+# Optional externel dependencies we don't want to host.
 external/*
 
-# We'll include the .vscode launch configurations but leave other settings
-# out.
-.vscode/*
+# We'll include the VSCode launch configurations.
 !.vscode/tasks.json
 !.vscode/launch.json
 
-# Debugging stuff is unwanted too.
+# Folders for debugging
 nsight/*
 
-# Binary files are not wanted either.
+# Binary files
 *.spv
 *.exe
 *.dll
@@ -28,3 +31,5 @@ nsight/*
 
 # Metal/Apple specific files
 **/.DS_Store
+*.metallib
+*.air

@@ -6,19 +6,18 @@
 
 #include <carbon/base/device.hpp>
 #include <carbon/shaders/shader.hpp>
-#include <shaders/file_includer.hpp>
 
 #ifdef WITH_NV_AFTERMATH
 #include <carbon/shaders/shader_database.hpp>
 #endif // #ifdef WITH_NV_AFTERMATH
 
-static std::map<carbon::ShaderStage, shaderc_shader_kind> shader_kinds {
-    {carbon::ShaderStage::RayGeneration, shaderc_raygen_shader},
-    {carbon::ShaderStage::ClosestHit, shaderc_closesthit_shader},
-    {carbon::ShaderStage::RayMiss, shaderc_miss_shader},
-    {carbon::ShaderStage::AnyHit, shaderc_anyhit_shader},
-    {carbon::ShaderStage::Intersection, shaderc_intersection_shader},
-    {carbon::ShaderStage::Callable, shaderc_callable_shader},
+static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> shader_kinds = {
+    {carbon::ShaderStage::RayGeneration, krypton::shaders::ShaderStage::RayGen},
+    {carbon::ShaderStage::ClosestHit, krypton::shaders::ShaderStage::ClosestHit},
+    {carbon::ShaderStage::RayMiss, krypton::shaders::ShaderStage::Miss},
+    {carbon::ShaderStage::AnyHit, krypton::shaders::ShaderStage::AnyHit},
+    {carbon::ShaderStage::Intersection, krypton::shaders::ShaderStage::Intersect},
+    {carbon::ShaderStage::Callable, krypton::shaders::ShaderStage::Callable},
 };
 
 carbon::ShaderModule::ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, const carbon::ShaderStage shaderStage)
@@ -30,7 +29,7 @@ void carbon::ShaderModule::createShaderModule() {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .codeSize = shaderCompileResult.binary.size() * 4,
+        .codeSize = shaderCompileResult.binary.size() * sizeof(uint32_t), /* Vulkan actually uses size_t for once */
         .pCode = shaderCompileResult.binary.data(),
     };
 
@@ -46,7 +45,8 @@ void carbon::ShaderModule::createShaderModule() {
 void carbon::ShaderModule::createShader(const std::string& filename) {
     auto shaderFile = krypton::shaders::readShaderFile(std::filesystem::path {filename});
     shaderCompileResult = krypton::shaders::compileGlslShader(shaderFile.filePath.filename().string(),
-                                                              shaderFile.content, shader_kinds.at(shaderStage));
+                                                              shaderFile.content, shader_kinds.at(shaderStage),
+                                                              krypton::shaders::TargetSpirv::SPV_1_5);
 
     createShaderModule();
 }

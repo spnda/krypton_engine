@@ -5,11 +5,8 @@
 #include <iostream>
 #include <unordered_map>
 
-#include <vulkan/vulkan.h>
-
-#include "VkBootstrap.h"
-
 #include <carbon/base/queue.hpp>
+#include <carbon/vulkan.hpp>
 
 #define INSTANCE_FUNCTION_POINTER(name, instance) \
     name = instance.getFunctionAddress<PFN_##name>(#name);

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     // fwd

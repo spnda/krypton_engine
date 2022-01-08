@@ -39,6 +39,8 @@ CAMetalLayer* swapchain = nullptr;
 NSWindow* nswindow = nullptr;
 krypton::shaders::Shader defaultShader;
 
+id<MTLBuffer> cameraBuffer;
+
 krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject> objects = {};
 
 krypton::rapi::Metal_RAPI::Metal_RAPI() {
@@ -49,6 +51,9 @@ krypton::rapi::Metal_RAPI::~Metal_RAPI() {
 }
 
 void krypton::rapi::Metal_RAPI::beginFrame() {
+    /** Update camera data */
+    void* cameraBufferData = [cameraBuffer contents];
+    memcpy(cameraBufferData, cameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 }
 
 krypton::rapi::RenderObjectHandle krypton::rapi::Metal_RAPI::createRenderObject() {
@@ -84,13 +89,16 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
             krypton::rapi::metal::RenderObject& object = objects.getFromHandle(handle);
 
             [encoder setRenderPipelineState:pipelineState];
-            [encoder setVertexBuffer:object.vertexBuffer offset:0 atIndex:0];
+            [encoder setVertexBuffer:object.vertexBuffer offset:0 atIndex:0]; /* Vertex buffer is at 0 */
+            [encoder setVertexBuffer:cameraBuffer offset:0 atIndex:1];        /* Camera buffer is at 1 */
+
+            /* Dispatch draw call */
             [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
                                 indexCount:object.totalIndexCount
                                  indexType:MTLIndexTypeUInt32
                                indexBuffer:object.indexBuffer
                          indexBufferOffset:0];
-            // Could also pass instanceCount and baseINstance to the above function
+            // Could also pass instanceCount and baseInstance to the above function
             // to instance rendering
         }
 
@@ -147,6 +155,12 @@ void krypton::rapi::Metal_RAPI::init() {
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
 
     pipelineState = [device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
+    
+    if (cameraData == nullptr)
+        cameraData = std::make_shared<krypton::rapi::CameraData>();
+
+    cameraBuffer = [device newBufferWithLength:krypton::rapi::CAMERA_DATA_SIZE
+                                       options:0];
 }
 
 void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) {
@@ -198,6 +212,11 @@ void krypton::rapi::Metal_RAPI::render(RenderObjectHandle& handle) {
 
 void krypton::rapi::Metal_RAPI::resize(int width, int height) {
     // Metal auto-resizes for us.
+}
+
+void krypton::rapi::Metal_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) {
+    this->cameraData.reset();
+    this->cameraData = std::move(cameraData);
 }
 
 void krypton::rapi::Metal_RAPI::shutdown() {

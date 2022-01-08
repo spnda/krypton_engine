@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "GFSDK_Aftermath_GpuCrashDumpDecoding.h"
-#include <vulkan/vulkan.h> // Needed for vulkan-specific definitions
+#include <shaders/shaders.hpp> // Needed for vulkan-specific definitions
 
 namespace carbon::ShaderDatabase {
     void addShaderBinary(std::vector<uint32_t>& binary);

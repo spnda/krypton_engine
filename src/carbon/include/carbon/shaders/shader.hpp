@@ -3,12 +3,9 @@
 #include <map>
 #include <vector>
 
-#include <shaderc/shaderc.hpp>
-#include <vulkan/vulkan.h>
-
-#include <shaders/shaders.hpp>
-
 #include <carbon/shaders/shader_stage.hpp>
+#include <carbon/vulkan.hpp>
+#include <shaders/shaders.hpp>
 
 namespace carbon {
     class Device;

@@ -3,8 +3,7 @@
 #include <memory>
 #include <mutex>
 
-#include <VkBootstrap.h>
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     // fwd

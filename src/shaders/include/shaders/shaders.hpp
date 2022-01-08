@@ -24,8 +24,10 @@ namespace krypton::shaders {
         Fragment = GLSLANG_STAGE_FRAGMENT,
         RayGen = GLSLANG_STAGE_RAYGEN_NV,
         ClosestHit = GLSLANG_STAGE_CLOSESTHIT_NV,
+        Miss = GLSLANG_STAGE_MISS_NV,
         AnyHit = GLSLANG_STAGE_ANYHIT_NV,
         Intersect = GLSLANG_STAGE_INTERSECT_NV,
+        Callable = GLSLANG_STAGE_CALLABLE_NV,
     };
 
     enum class TargetSpirv {

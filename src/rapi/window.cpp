@@ -8,35 +8,41 @@
 #include <rapi/rapi_backends.hpp>
 #include <rapi/window.hpp>
 
-void errorCallback(int error, const char* desc) {
-    fmt::print(stderr, "{}\n", desc);
-}
-
-void resizeCallback(GLFWwindow* window, int width, int height) {
-    if (width > 0 && height > 0) {
-        krypton::rapi::RenderAPI* w =
-            reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
-        if (w != nullptr)
-            w->resize(width, height);
+namespace krypton::rapi::window {
+    void errorCallback(int error, const char* desc) {
+        fmt::print(stderr, "{}\n", desc);
     }
-}
+
+    void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    }
+
+    void resizeCallback(GLFWwindow* window, int width, int height) {
+        if (width > 0 && height > 0) {
+            krypton::rapi::RenderAPI* w =
+                reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
+            if (w != nullptr)
+                w->resize(width, height);
+        }
+    }
+} // namespace krypton::rapi::window
 
 krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height)
     : title(title), width(width), height(height) {
 }
 
 void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
+    using namespace krypton::rapi;
     if (!glfwInit())
         throw std::runtime_error("glfwInit failed.");
 
-    glfwSetErrorCallback(errorCallback);
+    glfwSetErrorCallback(window::errorCallback);
 
     switch (backend) {
-        case krypton::rapi::Backend::Vulkan:
+        case Backend::Vulkan:
             if (!glfwVulkanSupported())
                 throw std::runtime_error("glfw doesn't support Vulkan.");
             break;
-        case krypton::rapi::Backend::Metal:
+        case Backend::Metal:
             break;
     }
 
@@ -52,8 +58,8 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
         throw std::runtime_error("Failed to create window.");
     }
 
-    glfwSetErrorCallback(errorCallback);
-    glfwSetWindowSizeCallback(window, resizeCallback);
+    glfwSetKeyCallback(window, window::keyCallback);
+    glfwSetWindowSizeCallback(window, window::resizeCallback);
 }
 
 void krypton::rapi::Window::destroy() {

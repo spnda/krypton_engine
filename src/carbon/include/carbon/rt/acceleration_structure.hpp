@@ -50,14 +50,14 @@ namespace carbon {
     struct BottomLevelAccelerationStructure final : public AccelerationStructure {
         using PrimitiveData = std::pair<std::span<std::byte>, std::span<std::byte>>;
 
-        carbon::StagingBuffer transformStagingBuffer;
-        carbon::StagingBuffer vertexStagingBuffer;
-        carbon::StagingBuffer indexStagingBuffer;
+        std::unique_ptr<carbon::StagingBuffer> transformStagingBuffer;
+        std::unique_ptr<carbon::StagingBuffer> vertexStagingBuffer;
+        std::unique_ptr<carbon::StagingBuffer> indexStagingBuffer;
 
       public:
-        carbon::Buffer transformBuffer;
-        carbon::Buffer vertexBuffer;
-        carbon::Buffer indexBuffer;
+        std::unique_ptr<carbon::Buffer> transformBuffer;
+        std::unique_ptr<carbon::Buffer> vertexBuffer;
+        std::unique_ptr<carbon::Buffer> indexBuffer;
 
         explicit BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name);
 

@@ -3,9 +3,7 @@
 #include <set>
 #include <string>
 
-#include <vulkan/vulkan.h>
-
-#include "VkBootstrap.h"
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     // fwd
@@ -34,9 +32,9 @@ namespace carbon {
 
       public:
         PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
-        PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-        PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
-        PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+        PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
+        PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
+        PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR = nullptr;
 
         explicit Instance() = default;
 

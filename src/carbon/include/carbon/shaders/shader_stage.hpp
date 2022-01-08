@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     enum class ShaderStage : uint64_t {

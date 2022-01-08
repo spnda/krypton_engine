@@ -145,7 +145,7 @@ void carbon::Buffer::unmapMemory() const {
     vmaUnmapMemory(allocator, allocation);
 }
 
-void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer& destination) {
+void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer* destination) {
     if (handle == nullptr || size == 0)
         return;
     VkBufferCopy copy = {
@@ -153,9 +153,9 @@ void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon
         .dstOffset = 0,
         .size = size,
     };
-    vkCmdCopyBuffer(VkCommandBuffer(*cmdBuffer), handle, destination.handle, 1, &copy);
+    vkCmdCopyBuffer(VkCommandBuffer(*cmdBuffer), handle, destination->handle, 1, &copy);
 }
 
-void carbon::Buffer::copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image& destination, VkImageLayout imageLayout, VkBufferImageCopy* copy) {
-    vkCmdCopyBufferToImage(VkCommandBuffer(*cmdBuffer), handle, VkImage(destination), imageLayout, 1, copy);
+void carbon::Buffer::copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout, VkBufferImageCopy* copy) {
+    vkCmdCopyBufferToImage(VkCommandBuffer(*cmdBuffer), handle, destination->handle, imageLayout, 1, copy);
 }

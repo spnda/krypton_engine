@@ -28,7 +28,7 @@ namespace carbon {
 
         explicit operator VkPipeline() const;
 
-        void destroy(std::shared_ptr<carbon::Device> device) const;
+        void destroy(carbon::Device* device) const;
     };
 
     class RayTracingPipelineBuilder {
@@ -43,7 +43,7 @@ namespace carbon {
         VkDescriptorSetLayout descriptorSetLayout = nullptr;
         std::vector<VkDescriptorSetLayoutBinding> descriptorLayoutBindings;
         std::vector<VkWriteDescriptorSet> descriptorWrites;
-        VkPushConstantRange pushConstants;
+        VkPushConstantRange pushConstants = {};
 
         explicit RayTracingPipelineBuilder(std::shared_ptr<carbon::Device> device)
             : device(std::move(device)) {}
@@ -54,11 +54,11 @@ namespace carbon {
         RayTracingPipelineBuilder& addShaderGroup(RtShaderGroup group, std::initializer_list<carbon::ShaderModule> shaders);
         RayTracingPipelineBuilder& addImageDescriptor(uint32_t binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, carbon::ShaderStage stageFlags, uint32_t count = 1);
         RayTracingPipelineBuilder& addBufferDescriptor(uint32_t binding, VkDescriptorBufferInfo* bufferInfo, VkDescriptorType type, carbon::ShaderStage stageFlags, uint32_t count = 1);
-        RayTracingPipelineBuilder& addAccelerationStructureDescriptor(uint32_t binding, VkWriteDescriptorSetAccelerationStructureKHR* asInfo, VkDescriptorType type, carbon::ShaderStage stageFlags);
+        RayTracingPipelineBuilder& addAccelerationStructureDescriptor(uint32_t binding, VkWriteDescriptorSetAccelerationStructureKHR* asInfo, carbon::ShaderStage stageFlags);
         RayTracingPipelineBuilder& addPushConstants(uint32_t pushConstantSize, carbon::ShaderStage shaderStage);
 
         // Builds the descriptor set layout and pipeline layout, then creates
         // a VkRayTracingPipeline based on that.
-        RayTracingPipeline build();
+        std::unique_ptr<RayTracingPipeline> build();
     };
 } // namespace carbon

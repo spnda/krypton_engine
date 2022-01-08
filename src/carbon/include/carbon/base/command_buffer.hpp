@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class Device;
@@ -22,7 +22,6 @@ namespace carbon {
         /* Vulkan commands */
         void buildAccelerationStructures(const std::vector<VkAccelerationStructureBuildGeometryInfoKHR>& geometryInfos,
                                          const std::vector<VkAccelerationStructureBuildRangeInfoKHR*>& rangeInfos);
-        void setCheckpoint(const char* checkpoint);
         void pipelineBarrier(
             VkPipelineStageFlags srcStageMask,
             VkPipelineStageFlags dstStageMask,
@@ -33,6 +32,12 @@ namespace carbon {
             const VkBufferMemoryBarrier* pBufferMemoryBarriers,
             uint32_t imageMemoryBarrierCount,
             const VkImageMemoryBarrier* pImageMemoryBarriers);
+        void traceRays(VkStridedDeviceAddressRegionKHR* rayGenSbt,
+                       VkStridedDeviceAddressRegionKHR* missSbt,
+                       VkStridedDeviceAddressRegionKHR* hitSbt,
+                       VkStridedDeviceAddressRegionKHR* callableSbt,
+                       VkExtent3D imageSize);
+        void setCheckpoint(const char* checkpoint);
 
         operator VkCommandBuffer() const;
     };

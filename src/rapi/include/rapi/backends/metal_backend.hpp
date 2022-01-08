@@ -19,6 +19,8 @@ namespace krypton::rapi {
 
         std::vector<krypton::rapi::RenderObjectHandle> handlesForFrame = {};
 
+        std::shared_ptr<krypton::rapi::CameraData> cameraData;
+
       public:
         Metal_RAPI();
         ~Metal_RAPI();
@@ -33,6 +35,7 @@ namespace krypton::rapi {
         void loadMeshForRenderObject(RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) override;
         void render(RenderObjectHandle& handle) override;
         void resize(int width, int height) override;
+        void setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) override;
         void shutdown() override;
     };
 } // namespace krypton::rapi

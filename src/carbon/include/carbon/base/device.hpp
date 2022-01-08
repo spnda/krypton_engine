@@ -2,9 +2,7 @@
 
 #include <memory>
 
-#include <vulkan/vulkan.h>
-
-#include "VkBootstrap.h"
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class Instance;

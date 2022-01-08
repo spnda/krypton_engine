@@ -4,19 +4,22 @@
 #include <memory>
 #include <string>
 
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
+    class Buffer;
     class CommandBuffer;
     class Device;
 
     class Image {
+        friend class Buffer;
+
         std::string name;
 
         VmaAllocator allocator = nullptr;
         VmaAllocation allocation = nullptr;
-        VkImage image = nullptr;
+
+        VkImage handle = nullptr;
         VkImageView imageView = nullptr;
         VkFormat format = VK_FORMAT_UNDEFINED;
 
@@ -33,7 +36,7 @@ namespace carbon {
 
         void create(VkFormat newFormat, VkImageUsageFlags usageFlags, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
         void create(VkImageCreateInfo* createInfo, VkImageViewCreateInfo* viewCreateInfo, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
-        void copyImage(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout imageLayout);
+        void copyImage(carbon::CommandBuffer* cmdBuffer, VkImage image, VkImageLayout imageLayout);
         /** Destroys the image view, frees all memory and destroys the image. */
         void destroy();
 
@@ -44,7 +47,7 @@ namespace carbon {
         [[nodiscard]] VkImageLayout getImageLayout();
 
         void changeLayout(
-            std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
+            carbon::CommandBuffer* cmdBuffer,
             VkImageLayout newLayout,
             const VkImageSubresourceRange& subresourceRange,
             VkPipelineStageFlags srcStage,
@@ -52,7 +55,7 @@ namespace carbon {
 
         static void changeLayout(
             VkImage image,
-            std::shared_ptr<carbon::CommandBuffer> cmdBuffer,
+            carbon::CommandBuffer* cmdBuffer,
             VkImageLayout oldLayout, VkImageLayout newLayout,
             VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
             const VkImageSubresourceRange& subresourceRange);

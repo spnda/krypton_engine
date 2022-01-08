@@ -16,7 +16,7 @@ namespace carbon {
         void recreateImage(VkExtent2D windowExtent);
 
         void changeLayout(
-            std::shared_ptr<carbon::CommandBuffer> commandBuffer,
+            carbon::CommandBuffer* commandBuffer,
             VkImageLayout newLayout,
             VkPipelineStageFlags srcStage,
             VkPipelineStageFlags dstStage);

@@ -2,9 +2,8 @@
 
 #include <memory>
 
-#include <vulkan/vulkan.h>
-
 #include <carbon/resource/image.hpp>
+#include <carbon/vulkan.hpp>
 
 namespace carbon {
     class CommandBuffer;
@@ -25,7 +24,7 @@ namespace carbon {
         Texture& operator=(const Texture& newImage);
 
         void createTexture(VkFormat newFormat = VK_FORMAT_R8G8B8A8_SRGB, uint32_t mipLevels = 1, uint32_t arrayLayers = 1);
-        void generateMipmaps(std::shared_ptr<carbon::CommandBuffer> cmdBuffer);
+        void generateMipmaps(carbon::CommandBuffer* cmdBuffer);
 
         [[nodiscard]] VkSampler getSampler() const;
 

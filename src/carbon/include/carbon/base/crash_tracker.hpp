@@ -7,7 +7,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include <vulkan/vulkan.h>
+#include <carbon/vulkan.hpp>
 
 #include "GFSDK_Aftermath.h"
 #include "GFSDK_Aftermath_GpuCrashDump.h"

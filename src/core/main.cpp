@@ -2,6 +2,8 @@
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 
 #include <mesh/mesh.hpp>
 #include <mesh/scene.hpp>
@@ -25,8 +27,22 @@ auto main(int argc, char* argv[]) -> int {
         auto smesh = std::make_shared<krypton::mesh::Mesh>();
         smesh->primitives.push_back(primitive);
 
+        auto cameraData = std::make_shared<krypton::rapi::CameraData>();
+
         auto rapi = std::move(krypton::rapi::getRenderApi());
+        rapi->setCameraData(cameraData);
         rapi->init();
+
+        int width, height;
+        rapi->getWindow()->getWindowSize(&width, &height);
+
+        cameraData->projection = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
+        cameraData->view = glm::perspective(
+            glm::radians(70.0f),
+            (float)width / (float)height,
+            cameraData->near,
+            cameraData->far
+        );
 
         auto meshHandle = rapi->createRenderObject();
         rapi->loadMeshForRenderObject(meshHandle, smesh);
