@@ -1,6 +1,7 @@
 #ifdef WITH_NV_AFTERMATH
 
 #include <carbon/base/crash_tracker.hpp>
+#include <carbon/shaders/shader.hpp>
 #include <carbon/shaders/shader_database.hpp>
 #include <map>
 
@@ -21,14 +22,14 @@ inline bool operator<(GFSDK_Aftermath_ShaderDebugInfoIdentifier a, GFSDK_Afterma
     return a.id[0] < b.id[0];
 }
 
-std::map<GFSDK_Aftermath_ShaderHash, std::vector<uint32_t>> shaderBinaries = {};
+std::map<GFSDK_Aftermath_ShaderHash, carbon::ShaderDatabase::ShaderBinary> shaderBinaries = {};
 std::map<GFSDK_Aftermath_ShaderDebugName, std::vector<uint32_t>> shaderBinariesWithDebugInfo;
-std::map<GFSDK_Aftermath_ShaderDebugInfoIdentifier, std::vector<uint8_t>> shaderDebugInfos = {};
+std::map<GFSDK_Aftermath_ShaderDebugInfoIdentifier, carbon::ShaderDatabase::ShaderDebugInfos> shaderDebugInfos = {};
 
-void carbon::ShaderDatabase::addShaderBinary(std::vector<uint32_t>& binary) {
+void carbon::ShaderDatabase::addShaderBinary(ShaderBinary binary) {
     const GFSDK_Aftermath_SpirvCode shader {
-        binary.data(),
-        static_cast<uint32_t>(binary.size()),
+        binary.ptr,
+        static_cast<uint32_t>(binary.size),
     };
     GFSDK_Aftermath_ShaderHash shaderHash;
     carbon::GpuCrashTracker::checkAftermathError(GFSDK_Aftermath_GetShaderHashSpirv(
@@ -36,12 +37,12 @@ void carbon::ShaderDatabase::addShaderBinary(std::vector<uint32_t>& binary) {
         &shader,
         &shaderHash));
 
-    shaderBinaries[shaderHash].assign(binary.begin(), binary.end());
+    shaderBinaries[shaderHash] = binary;
 }
 
 void carbon::ShaderDatabase::addShaderDebugInfos(const GFSDK_Aftermath_ShaderDebugInfoIdentifier& identifier,
-                                                 std::vector<uint8_t>& debugInfos) {
-    shaderDebugInfos[identifier].swap(debugInfos);
+                                                 ShaderDebugInfos debugInfos) {
+    shaderDebugInfos[identifier] = debugInfos;
 }
 
 void carbon::ShaderDatabase::addShaderWithDebugInfo(std::vector<uint32_t>& strippedBinary, std::vector<uint32_t>& binary) {
@@ -57,7 +58,7 @@ void carbon::ShaderDatabase::addShaderWithDebugInfo(std::vector<uint32_t>& strip
     shaderBinariesWithDebugInfo[debugName].assign(binary.begin(), binary.end());
 }
 
-bool carbon::ShaderDatabase::findShaderBinary(const GFSDK_Aftermath_ShaderHash* shaderHash, std::vector<uint32_t>& binary) {
+bool carbon::ShaderDatabase::findShaderBinary(const GFSDK_Aftermath_ShaderHash* shaderHash, ShaderBinary& binary) {
     auto shader = shaderBinaries.find(*shaderHash);
     if (shader == shaderBinaries.end())
         return false;
@@ -66,7 +67,7 @@ bool carbon::ShaderDatabase::findShaderBinary(const GFSDK_Aftermath_ShaderHash* 
 }
 
 bool carbon::ShaderDatabase::findShaderDebugInfos(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* identifier,
-                                                  std::vector<uint8_t>& debugInfos) {
+                                                  ShaderDebugInfos& debugInfos) {
     auto dbg = shaderDebugInfos.find(*identifier);
     if (dbg == shaderDebugInfos.end())
         return false;

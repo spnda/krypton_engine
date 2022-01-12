@@ -3,6 +3,8 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+import urllib.request
+import zipfile
 
 class colors:
     green = "\033[92m"
@@ -29,13 +31,31 @@ def main():
         Path("build/debug").mkdir(parents=True, exist_ok=True)
         Path("build/release").mkdir(parents=True, exist_ok=True)
 
-    # Check if the user has installed metal-cpp correctly
-    # if not os.path.isdir("src/metal/metal-cpp") and platform.system() == "Darwin":
-    #     print(f"{colors.yellow}metal-cpp was not installed correctly. See src/metal/README.md.{colors.end}")
-
     # Clone submodules if the user hasn't already
     print(f"{colors.green}Cloning submodules...{colors.end}")
     call(["git", "submodule", "update", "--init", "--recursive"], ".")
+
+    print(f"{colors.green}Downloading slang...{colors.end}")
+    if not os.path.isdir("external/slang"):
+        Path("external/slang").mkdir(parents=True, exist_ok=True)
+
+    # Determine slang build URL
+    slang_zip_url = ""
+    match platform.system():
+        case "Darwin": # MacOS
+            print(f"{colors.orange}slang does not provide MacOS builds.")
+        case "Windows": # Windows
+            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.24-win64.zip"
+        case "Linux": # Linux
+            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.24-linux-x86_64.zip"
+
+    # Download slang build from GitHub
+    if len(slang_zip_url) > 0 and not os.path.exists("external/slang/slang.zip"):
+        urllib.request.urlretrieve(slang_zip_url, "external/slang/slang.zip")
+
+        # Extract slang build zip file
+        with zipfile.ZipFile("external/slang/slang.zip", "r") as zip_ref:
+            zip_ref.extractall("external/slang")
 
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.

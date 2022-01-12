@@ -13,6 +13,7 @@
 #include <carbon/base/fence.hpp>
 #include <carbon/base/instance.hpp>
 #include <carbon/base/physical_device.hpp>
+#include <carbon/base/queue.hpp>
 #include <carbon/base/semaphore.hpp>
 #include <carbon/base/swapchain.hpp>
 #include <carbon/resource/buffer.hpp>
@@ -28,6 +29,17 @@
 #include <rapi/backends/vulkan_rt_backend.hpp>
 #include <rapi/render_object_handle.hpp>
 
+#include <shaders/shaders.hpp>
+
+static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShaderKinds = {
+    {carbon::ShaderStage::RayGeneration, krypton::shaders::ShaderStage::RayGen},
+    {carbon::ShaderStage::ClosestHit, krypton::shaders::ShaderStage::ClosestHit},
+    {carbon::ShaderStage::RayMiss, krypton::shaders::ShaderStage::Miss},
+    {carbon::ShaderStage::AnyHit, krypton::shaders::ShaderStage::AnyHit},
+    {carbon::ShaderStage::Intersection, krypton::shaders::ShaderStage::Intersect},
+    {carbon::ShaderStage::Callable, krypton::shaders::ShaderStage::Callable},
+};
+
 krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
     instance = std::make_shared<carbon::Instance>();
     instance->setApplicationData({.apiVersion = VK_MAKE_API_VERSION(0, 1, 2, 0),
@@ -41,18 +53,20 @@ krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
     device = std::make_shared<carbon::Device>();
     window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
 
-    commandPool = std::make_shared<carbon::CommandPool>(device);
-
     renderFence = std::make_shared<carbon::Fence>(device, "renderFence");
     presentCompleteSemaphore = std::make_shared<carbon::Semaphore>(device, "presentComplete");
     renderCompleteSemaphore = std::make_shared<carbon::Semaphore>(device, "renderComplete");
 
     swapchain = std::make_shared<carbon::Swapchain>(instance, device);
     graphicsQueue = std::make_shared<carbon::Queue>(device, "graphicsQueue");
+    commandPool = std::make_shared<carbon::CommandPool>(device);
+
+    blasComputeQueue = std::make_unique<carbon::Queue>(device, "blasComputeQueue");
+    computeCommandPool = std::make_shared<carbon::CommandPool>(device);
 }
 
 krypton::rapi::VulkanRT_RAPI::~VulkanRT_RAPI() {
-    shutdown();
+    // Do nothing.
 }
 
 void krypton::rapi::VulkanRT_RAPI::beginFrame() {
@@ -159,7 +173,7 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
     rangeInfoPtrs.push_back(rangeInfos.data());
 
     /** Dispatch the commands */
-    oneTimeSubmit(graphicsQueue.get(), commandPool.get(), [&](carbon::CommandBuffer* cmdBuffer) {
+    oneTimeSubmit(blasComputeQueue.get(), computeCommandPool.get(), [&](carbon::CommandBuffer* cmdBuffer) {
         /* First copy our mesh buffers */
         cmdBuffer->setCheckpoint("Copying mesh buffers!");
         renderObject.blas->copyMeshBuffers(cmdBuffer);
@@ -194,20 +208,20 @@ void krypton::rapi::VulkanRT_RAPI::buildPipeline() {
                        .addShaderGroup(carbon::RtShaderGroup::TriangleHit, {*closestHitShader.shader, *anyHitShader.shader});
 
     /* Add descriptors */
+    VkDescriptorBufferInfo cameraBufferInfo = cameraBuffer->getDescriptorInfo(VK_WHOLE_SIZE);
+    builder.addBufferDescriptor(
+        0, &cameraBufferInfo,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, carbon::ShaderStage::RayGeneration);
+
     auto tlasDescriptor = tlas->getDescriptorWrite();
     builder.addAccelerationStructureDescriptor(
-        0, &tlasDescriptor,
+        1, &tlasDescriptor,
         carbon::ShaderStage::RayGeneration | carbon::ShaderStage::ClosestHit);
 
     VkDescriptorImageInfo storageImageDescriptor = storageImage->getDescriptorImageInfo();
     builder.addImageDescriptor(
-        1, &storageImageDescriptor,
+        2, &storageImageDescriptor,
         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, carbon::ShaderStage::RayGeneration);
-
-    VkDescriptorBufferInfo cameraBufferInfo = cameraBuffer->getDescriptorInfo(VK_WHOLE_SIZE);
-    builder.addBufferDescriptor(
-        2, &cameraBufferInfo,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, carbon::ShaderStage::RayGeneration);
 
     pipeline = std::move(builder.build());
 }
@@ -272,6 +286,10 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 
     std::vector<VkAccelerationStructureInstanceKHR> instances(primitiveCount, VkAccelerationStructureInstanceKHR {});
     for (auto& handle : handlesForFrame) {
+        auto& object = objects.getFromHandle(handle);
+        if (!object.blas)
+            continue; /* The BLAS is invalid, currently being rebuilt, or not yet built */
+
         size_t index = &handle - &handlesForFrame[0];
         // clang-format off
         instances[index].transform = {
@@ -284,7 +302,7 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
         instances[index].mask = 0xFF;
         instances[index].flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         instances[index].instanceShaderBindingTableRecordOffset = 0;
-        instances[index].accelerationStructureReference = objects.getFromHandle(handle).blas->address;
+        instances[index].accelerationStructureReference = object.blas->address;
     }
 
     VkDeviceAddress instanceDataDeviceAddress = {};
@@ -356,7 +374,7 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = &tlasDescriptorWrite,
             .dstSet = pipeline->descriptorSet,
-            .dstBinding = 0,
+            .dstBinding = TLAS_DESCRIPTOR_BINDING,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         };
@@ -392,6 +410,15 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 
 krypton::rapi::RenderObjectHandle krypton::rapi::VulkanRT_RAPI::createRenderObject() {
     return static_cast<krypton::rapi::RenderObjectHandle>(objects.getNewHandle());
+}
+
+std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanRT_RAPI::createShader(const std::string& name, carbon::ShaderStage stage, krypton::shaders::ShaderCompileResult& result) {
+    if (result.resultType == krypton::shaders::CompileResultType::String)
+        return nullptr;
+
+    auto shader = std::make_unique<carbon::ShaderModule>(device, name, stage);
+    shader->createShaderModule((uint32_t*)result.result, result.resultSize);
+    return shader;
 }
 
 bool krypton::rapi::VulkanRT_RAPI::destroyRenderObject(krypton::rapi::RenderObjectHandle& handle) {
@@ -520,36 +547,55 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     presentCompleteSemaphore->create();
     renderCompleteSemaphore->create();
 
-    // Create our simple command buffers
+    // Create our main graphics queue
     commandPool->create(device->getQueueIndex(vkb::QueueType::graphics), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     drawCommandBuffer = commandPool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 0);
-
-    // Create queue and swapchain
     graphicsQueue->create(vkb::QueueType::graphics);
+
+    // Create the swapchain
     swapchain->create(surface, {frameBufferWidth, frameBufferHeight});
 
-    pipeline = nullptr;
+    // Create our secondary compute queue
+    blasComputeQueue->create(vkb::QueueType::compute);
+    computeCommandPool->create(device->getQueueIndex(vkb::QueueType::compute), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    /* These all need the allocator in their ctor and the allocator was only constructed now,
+     * therefore these are here. */
     shaderBindingTable = std::make_unique<carbon::Buffer>(device, allocator, "shaderBindingTable");
     storageImage = std::make_unique<carbon::StorageImage>(device, allocator, VkExtent2D {frameBufferWidth, frameBufferHeight});
 
-    tlas = std::make_unique<carbon::TopLevelAccelerationStructure>(device, allocator); /* TLAS needs the allocator, which doesn't exist in the ctor */
+    tlas = std::make_unique<carbon::TopLevelAccelerationStructure>(device, allocator);
     tlasInstanceBuffer = std::make_unique<carbon::Buffer>(device, allocator, "tlasInstanceBuffer");
     tlasInstanceStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "tlasInstanceStagingBuffer");
+
+    // Create camera buffer
+    if (cameraData == nullptr)
+        cameraData = std::make_shared<krypton::rapi::CameraData>();
 
     cameraBuffer = std::make_unique<carbon::Buffer>(device, allocator, "cameraBuffer");
     cameraBuffer->create(krypton::rapi::CAMERA_DATA_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     cameraBuffer->memoryCopy(&cameraData, krypton::rapi::CAMERA_DATA_SIZE);
 
     // Create shaders
-    rayGenShader.shader = std::make_unique<carbon::ShaderModule>(device, "RayGen", carbon::ShaderStage::RayGeneration);
-    missShader.shader = std::make_unique<carbon::ShaderModule>(device, "RayMiss", carbon::ShaderStage::RayMiss);
-    closestHitShader.shader = std::make_unique<carbon::ShaderModule>(device, "ClosestHit", carbon::ShaderStage::ClosestHit);
-    anyHitShader.shader = std::make_unique<carbon::ShaderModule>(device, "AnyHit", carbon::ShaderStage::AnyHit);
+    using namespace krypton::shaders;
+    auto shaderFile = readShaderFile("shaders/main.slang");
+    auto input = std::vector {ShaderCompileInput {
+        .filePath = "shaders/main.slang",
+        .source = shaderFile.content,
+        .entryPoints = {"raygen", "miss", "closesthit"},
+        .shaderStages = {ShaderStage::RayGen, ShaderStage::Miss, ShaderStage::ClosestHit},
+        .sourceType = ShaderSourceType::SLANG,
+        .targetType = ShaderTargetType::SPIRV,
+    }};
+    auto mainShader = compileShaders(input);
 
-    rayGenShader.shader->createShader("shaders/raygen.rgen");
-    missShader.shader->createShader("shaders/miss.rmiss");
-    closestHitShader.shader->createShader("shaders/closesthit.rchit");
-    anyHitShader.shader->createShader("shaders/anyhit.rahit");
+    assert(mainShader.size() == input.front().entryPoints.size());
+    rayGenShader.shader = createShader("raygen", carbon::ShaderStage::RayGeneration, mainShader[0]);
+    missShader.shader = createShader("miss", carbon::ShaderStage::RayMiss, mainShader[1]);
+    closestHitShader.shader = createShader("closesthit", carbon::ShaderStage::ClosestHit, mainShader[2]);
+
+    auto rahitShader = compileShaders("shaders/anyhit.rahit", ShaderStage::AnyHit, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
+    anyHitShader.shader = createShader("anyhit", carbon::ShaderStage::AnyHit, rahitShader.front());
 
     window->setRapiPointer(this);
 
@@ -576,13 +622,19 @@ void krypton::rapi::VulkanRT_RAPI::loadMeshForRenderObject(
         renderObject.mesh = std::move(mesh);
         renderObject.blas = std::make_unique<carbon::BottomLevelAccelerationStructure>(device, allocator, renderObject.mesh->name);
 
-        /** We'll build the BLAS here too */
-        buildBLAS(renderObject);
+        /** We'll also dispatch the BLAS build here too */
+        auto build = [this, handle]() -> void {
+            buildBLAS(objects.getFromHandle(handle));
+        };
+        std::thread buildThread(build);
+        buildThreads.push_back(std::move(buildThread));
     }
 }
 
 void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
                                                  const std::function<void(carbon::CommandBuffer*)>& callback) const {
+    auto queueGuard = std::move(blasComputeQueue->getLock());
+
     auto cmdBuffer = pool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     cmdBuffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     callback(cmdBuffer.get());
@@ -601,6 +653,8 @@ void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::C
 
     fence.wait();
     fence.destroy();
+
+    queueGuard.unlock();
 }
 
 void krypton::rapi::VulkanRT_RAPI::render(RenderObjectHandle& handle) {
@@ -630,7 +684,7 @@ void krypton::rapi::VulkanRT_RAPI::resize(int width, int height) {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .pNext = nullptr,
         .dstSet = pipeline->descriptorSet,
-        .dstBinding = 1,
+        .dstBinding = 2,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &storageImageDescriptor,
@@ -643,6 +697,15 @@ void krypton::rapi::VulkanRT_RAPI::resize(int width, int height) {
 void krypton::rapi::VulkanRT_RAPI::shutdown() {
     checkResult(graphicsQueue.get(), device->waitIdle(),
                 "Failed waiting on device idle");
+
+    for (auto& thread : buildThreads) {
+        thread.detach();
+    }
+
+    rayGenShader.shader->destroy();
+    closestHitShader.shader->destroy();
+    missShader.shader->destroy();
+    anyHitShader.shader->destroy();
 
     pipeline->destroy(device.get());
 
@@ -662,6 +725,7 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
 
     vkDestroySurfaceKHR(*instance, surface, nullptr);
 
+    computeCommandPool->destroy();
     commandPool->destroy();
 
     vmaDestroyAllocator(allocator);
@@ -672,6 +736,7 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
 }
 
 void krypton::rapi::VulkanRT_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) {
+    this->cameraData.reset();
     this->cameraData = std::move(cameraData);
 }
 

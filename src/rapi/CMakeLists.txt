@@ -28,18 +28,8 @@ elseif (APPLE)
     add_files(TARGET krypton_rapi "backends/metal_backend.mm")
 endif()
 
-add_files(
-    TARGET krypton_rapi
-    "include/rapi/backends/vulkan/buffer_descriptions.hpp"
-    "include/rapi/backends/vulkan/render_object.hpp"
-    "include/rapi/backends/metal_backend.hpp"
-    "include/rapi/backends/vulkan_rt_backend.hpp"
-    "include/rapi/camera.hpp"
-    "include/rapi/rapi_backends.hpp"
-    "include/rapi/rapi.hpp"
-    "include/rapi/render_object_handle.hpp"
-    "include/rapi/window.hpp"
+add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/backends/vulkan/")
+add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/backends/")
+add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/")
 
-    "rapi.cpp"
-    "window.cpp"
-)
+add_source_directory(TARGET krypton_rapi FOLDER ".")

@@ -1,9 +1,9 @@
 #include <iostream>
 
 #include <fmt/core.h>
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
-#include <glm/ext/matrix_clip_space.hpp>
 
 #include <mesh/mesh.hpp>
 #include <mesh/scene.hpp>
@@ -41,8 +41,7 @@ auto main(int argc, char* argv[]) -> int {
             glm::radians(70.0f),
             (float)width / (float)height,
             cameraData->near,
-            cameraData->far
-        );
+            cameraData->far);
 
         auto meshHandle = rapi->createRenderObject();
         rapi->loadMeshForRenderObject(meshHandle, smesh);

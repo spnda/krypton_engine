@@ -5,23 +5,10 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-mem-alloc"
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/vk-bootstrap"
     "${CMAKE_BINARY_DIR}/vk-bootstrap")
 
-# Add NVIDIA Aftermath if found in external/nv-aftermath
-string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
-if (EXISTS "${CMAKE_SOURCE_DIR}/external/nv-aftermath" AND build_type STREQUAL "debug" AND WIN32)
-    set(NV_AFTERMATH_DIRECTORY "${CMAKE_SOURCE_DIR}/external/nv-aftermath")
-    message(STATUS "Found NVIDIA Aftermath")
-    add_library(nv-aftermath UNKNOWN IMPORTED)
-    set_target_properties(nv-aftermath PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/nv-aftermath/lib/x64/GFSDK_Aftermath_Lib.x64.lib")
-    set_property(TARGET nv-aftermath PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/external/nv-aftermath/include")
-    target_link_libraries(carbon PRIVATE nv-aftermath)
-    option(WITH_NV_AFTERMATH "Use NVIDIA Aftermath" ON)
+# Add NVIDIA Aftermath if it exists
+if (TARGET nv::aftermath)
+    target_link_libraries(carbon PRIVATE nv::aftermath)
     add_compile_definitions(WITH_NV_AFTERMATH)
-
-    # Move the Aftermath DLL into the binary folder.
-    add_custom_command(TARGET carbon POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${CMAKE_SOURCE_DIR}/external/nv-aftermath/lib/x64/GFSDK_Aftermath_Lib.x64.dll"
-      "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/")
 endif()
 
 find_package(fmt CONFIG REQUIRED)
@@ -29,7 +16,6 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 
 target_link_libraries(carbon PRIVATE fmt::fmt)
-target_link_libraries(carbon PUBLIC krypton::shaders)
 target_link_libraries(carbon PUBLIC vk-bootstrap::vk-bootstrap)
 target_link_libraries(carbon PUBLIC VulkanMemoryAllocator)
 target_link_libraries(carbon PUBLIC Vulkan::Vulkan)
@@ -38,49 +24,13 @@ target_compile_features(carbon PRIVATE cxx_std_20)
 
 target_include_directories(carbon PUBLIC "./include")
 
-add_files(
-    TARGET carbon
-    "include/carbon/base/command_pool.hpp"
-    "include/carbon/base/command_buffer.hpp"
-    "include/carbon/base/crash_tracker.hpp"
-    "include/carbon/base/device.hpp"
-    "include/carbon/base/fence.hpp"
-    "include/carbon/base/instance.hpp"
-    "include/carbon/base/physical_device.hpp"
-    "include/carbon/base/queue.hpp"
-    "include/carbon/base/renderpass.hpp"
-    "include/carbon/base/semaphore.hpp"
-    "include/carbon/base/swapchain.hpp"
-    "include/carbon/resource/buffer.hpp"
-    "include/carbon/resource/image.hpp"
-    "include/carbon/resource/stagingbuffer.hpp"
-    "include/carbon/resource/storageimage.hpp"
-    "include/carbon/resource/texture.hpp"
-    "include/carbon/rt/acceleration_structure.hpp"
-    "include/carbon/rt/rt_pipeline.hpp"
-    "include/carbon/shaders/shader_database.hpp"
-    "include/carbon/shaders/shader.hpp"
-    "include/carbon/utils.hpp"
-    "include/carbon/vulkan.hpp"
+add_source_directory(TARGET carbon FOLDER "include/carbon/base")
+add_source_directory(TARGET carbon FOLDER "include/carbon/resource")
+add_source_directory(TARGET carbon FOLDER "include/carbon/rt")
+add_source_directory(TARGET carbon FOLDER "include/carbon/shaders")
+add_source_directory(TARGET carbon FOLDER "include/carbon")
 
-    "base/command_pool.cpp"
-    "base/command_buffer.cpp"
-    "base/crash_tracker.cpp"
-    "base/device.cpp"
-    "base/fence.cpp"
-    "base/instance.cpp"
-    "base/physical_device.cpp"
-    "base/queue.cpp"
-    "base/renderpass.cpp"
-    "base/semaphore.cpp"
-    "base/swapchain.cpp"
-    "resource/buffer.cpp"
-    "resource/image.cpp"
-    "resource/stagingbuffer.cpp"
-    "resource/storageimage.cpp"
-    "resource/texture.cpp"
-    "rt/acceleration_structure.cpp"
-    "rt/rt_pipeline.cpp"
-    "shaders/shader_database.cpp"
-    "shaders/shader.cpp"
-)
+add_source_directory(TARGET carbon FOLDER "base")
+add_source_directory(TARGET carbon FOLDER "resource")
+add_source_directory(TARGET carbon FOLDER "rt")
+add_source_directory(TARGET carbon FOLDER "shaders")

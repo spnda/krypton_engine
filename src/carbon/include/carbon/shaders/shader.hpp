@@ -1,11 +1,13 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <vector>
 
 #include <carbon/shaders/shader_stage.hpp>
 #include <carbon/vulkan.hpp>
-#include <shaders/shaders.hpp>
+
+namespace fs = std::filesystem;
 
 namespace carbon {
     class Device;
@@ -22,17 +24,18 @@ namespace carbon {
         std::shared_ptr<carbon::Device> device;
         std::string name;
 
-        VkShaderModule shaderModule = nullptr;
+        VkShaderModule handle = nullptr;
         carbon::ShaderStage shaderStage;
 
-        krypton::shaders::ShaderCompileResult shaderCompileResult;
-
-        void createShaderModule();
+        uint32_t* shaderBinary = nullptr;
+        size_t shaderBinarySize = 0;
+        std::vector<fs::path> includedFiles;
 
       public:
         explicit ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, carbon::ShaderStage shaderStage);
 
-        void createShader(const std::string& filename);
+        void createShaderModule(uint32_t* spv, size_t spvSize);
+        void destroy();
         [[nodiscard]] auto getShaderStageCreateInfo() const -> VkPipelineShaderStageCreateInfo;
         [[nodiscard]] auto getShaderStage() const -> carbon::ShaderStage;
         [[nodiscard]] auto getHandle() const -> VkShaderModule;

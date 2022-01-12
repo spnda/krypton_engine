@@ -1,6 +1,17 @@
 add_library(krypton_shaders)
 add_library(krypton::shaders ALIAS krypton_shaders)
 
+add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross"
+    "${CMAKE_BINARY_DIR}/SPIRV-Cross")
+
+find_package(fmt CONFIG REQUIRED)
+
+if (TARGET slang::core)
+    add_compile_definitions(WITH_SLANG_SHADERS)
+    target_link_libraries(krypton_shaders PUBLIC slang::core slang::gfx)
+endif()
+
+add_compile_definitions(WITH_GLSLANG_SHADERS)
 execute_process(
     COMMAND "${CMAKE_SOURCE_DIR}/submodules/glslang/update_glslang_sources.py"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/submodules/glslang"
@@ -9,13 +20,9 @@ execute_process(
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/glslang"
     "${CMAKE_BINARY_DIR}/glslang")
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross"
-    "${CMAKE_BINARY_DIR}/SPIRV-Cross")
-
-find_package(fmt CONFIG REQUIRED)
+target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
 
 target_link_libraries(krypton_shaders PUBLIC fmt::fmt)
-target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
 target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
 
 target_compile_features(krypton_shaders PRIVATE cxx_std_20)
@@ -24,6 +31,7 @@ target_include_directories(krypton_shaders PUBLIC "./include")
 
 add_files(
     TARGET krypton_shaders
+    "include/shaders/glslang_resource.hpp"
     "include/shaders/shaders.hpp"
     
     "shaders.cpp"
@@ -33,7 +41,8 @@ add_files(
 
 file(GLOB_RECURSE ALL_SHADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/metal/*"
-    "${CMAKE_CURRENT_SOURCE_DIR}/glsl/*")
+    "${CMAKE_CURRENT_SOURCE_DIR}/glsl/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/slang/*")
 
 # We copy each shader we find into the shader directory
 foreach(SHADER IN LISTS ALL_SHADERS)

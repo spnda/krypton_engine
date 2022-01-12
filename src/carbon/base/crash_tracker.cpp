@@ -155,17 +155,17 @@ void carbon::GpuCrashTracker::onShaderDebugInfo(const void* shaderDebugInfo, con
         return;
 
     // Store shader debug info in map.
-    std::vector<uint8_t> data((uint8_t*)shaderDebugInfo, (uint8_t*)shaderDebugInfo + shaderDebugInfoSize);
-    carbon::ShaderDatabase::addShaderDebugInfos(identifier, data);
+    carbon::ShaderDatabase::addShaderDebugInfos(identifier, {(uint8_t*)shaderDebugInfo, shaderDebugInfoSize});
 }
 
 void carbon::GpuCrashTracker::onShaderLookup(const GFSDK_Aftermath_ShaderHash* shaderHash,
                                              PFN_GFSDK_Aftermath_SetData setShaderBinary) {
-    std::vector<uint32_t> shaderBinary;
+    carbon::ShaderDatabase::ShaderBinary shaderBinary;
     if (!carbon::ShaderDatabase::findShaderBinary(shaderHash, shaderBinary)) {
         return; // Shader not found.
     }
-    setShaderBinary(shaderBinary.data(), static_cast<uint32_t>(shaderBinary.size()));
+
+    setShaderBinary(shaderBinary.ptr, shaderBinary.size);
 }
 
 /**
@@ -174,10 +174,10 @@ void carbon::GpuCrashTracker::onShaderLookup(const GFSDK_Aftermath_ShaderHash* s
  */
 void carbon::GpuCrashTracker::onShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* identifier,
                                                       PFN_GFSDK_Aftermath_SetData setShaderDebugInfo) {
-    std::vector<uint8_t> debugInfos;
+    carbon::ShaderDatabase::ShaderDebugInfos debugInfos;
     if (!carbon::ShaderDatabase::findShaderDebugInfos(identifier, debugInfos))
         return;
-    setShaderDebugInfo(debugInfos.data(), static_cast<uint32_t>(debugInfos.size()));
+    setShaderDebugInfo(debugInfos.ptr, debugInfos.size);
 }
 
 /** Lookup callback for shader source with debug information. */

@@ -28,6 +28,7 @@ void carbon::AccelerationStructure::createResultBuffer(VkAccelerationStructureBu
 }
 
 void carbon::AccelerationStructure::createStructure(VkAccelerationStructureBuildSizesInfoKHR buildSizes) {
+    mutex.lock();
     VkAccelerationStructureCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
         .pNext = nullptr,
@@ -42,14 +43,17 @@ void carbon::AccelerationStructure::createStructure(VkAccelerationStructureBuild
         .accelerationStructure = handle,
     };
     address = device->vkGetAccelerationStructureDeviceAddressKHR(*device, &addressInfo);
+    mutex.unlock();
 }
 
 void carbon::AccelerationStructure::destroy() {
+    mutex.lock();
     device->vkDestroyAccelerationStructureKHR(*device, handle, nullptr);
     if (resultBuffer != nullptr)
         resultBuffer->destroy();
     if (scratchBuffer != nullptr)
         scratchBuffer->destroy();
+    mutex.unlock();
 }
 
 VkAccelerationStructureBuildSizesInfoKHR carbon::AccelerationStructure::getBuildSizes(const uint32_t* primitiveCount,
@@ -76,6 +80,12 @@ VkWriteDescriptorSetAccelerationStructureKHR carbon::AccelerationStructure::getD
         .accelerationStructureCount = 1,
         .pAccelerationStructures = &handle,
     };
+}
+
+carbon::AccelerationStructure::operator bool() const noexcept {
+    auto guard = std::unique_lock(mutex);
+    guard.lock();
+    return handle != nullptr;
 }
 
 carbon::BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, const std::string& name)

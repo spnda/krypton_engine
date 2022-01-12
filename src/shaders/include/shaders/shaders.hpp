@@ -1,62 +1,136 @@
 #pragma once
 
 #include <filesystem>
+#include <span>
 #include <vector>
 
+#ifdef WITH_SLANG_SHADERS
+#include <slang.h>
+#endif
+
+#ifdef WITH_GLSLANG_SHADERS
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Include/glslang_c_shader_types.h>
+#endif
 
 #include <spirv_cross_c.h> // We're using the C API from the submodule, as the C++ API is not 100% stable
 
+namespace fs = std::filesystem;
+
 namespace krypton::shaders {
-    enum class CrossCompileTarget {
-        TARGET_GLSL = SPVC_BACKEND_GLSL,
-        TARGET_METAL = SPVC_BACKEND_MSL,
+    enum class ShaderSourceType : int {
+        GLSL,
+        HLSL,
+        SLANG,
+        SPIRV,
     };
 
-    enum class ShaderSourceType {
-        SOURCE_GLSL = GLSLANG_SOURCE_GLSL,
-        SOURCE_HLSL = GLSLANG_SOURCE_HLSL,
+    enum class ShaderTargetType {
+        GLSL,
+        HLSL,
+        SPIRV,
+        METAL,
     };
+
+    inline bool operator==(ShaderSourceType a, ShaderTargetType b) {
+        switch (a) {
+            case ShaderSourceType::GLSL:
+                return b == ShaderTargetType::GLSL;
+            case ShaderSourceType::HLSL:
+                return b == ShaderTargetType::HLSL;
+            case ShaderSourceType::SPIRV:
+                return b == ShaderTargetType::SPIRV;
+            default:
+                /* Other inputs can only be slang, which we can't set
+                 * as a target or the target is Metal, which we cannot
+                 * take as a input. */
+                return false;
+        }
+    }
 
     enum class ShaderStage {
-        Vertex = GLSLANG_STAGE_VERTEX,
-        Fragment = GLSLANG_STAGE_FRAGMENT,
-        RayGen = GLSLANG_STAGE_RAYGEN_NV,
-        ClosestHit = GLSLANG_STAGE_CLOSESTHIT_NV,
-        Miss = GLSLANG_STAGE_MISS_NV,
-        AnyHit = GLSLANG_STAGE_ANYHIT_NV,
-        Intersect = GLSLANG_STAGE_INTERSECT_NV,
-        Callable = GLSLANG_STAGE_CALLABLE_NV,
+        Vertex,
+        Fragment,
+        RayGen,
+        ClosestHit,
+        Miss,
+        AnyHit,
+        Intersect,
+        Callable,
     };
 
     enum class TargetSpirv {
-        SPV_1_5 = GLSLANG_TARGET_SPV_1_5,
-        SPV_1_6 = GLSLANG_TARGET_SPV_1_6
+        /* slang compiler doesn't specify a SPIR-V Version, we default to 1.5 */
+        SPV_1_5,
+        SPV_1_6
     };
 
     /* Represents a shader file. */
-    struct Shader {
+    struct ShaderFile {
         std::filesystem::path filePath;
         std::string content;
     };
 
+    /** Represents input data for shader compilation */
+    struct ShaderCompileInput {
+        fs::path filePath;
+        std::string source;
+
+        std::vector<std::string> entryPoints;
+        std::vector<ShaderStage> shaderStages;
+
+        ShaderSourceType sourceType;
+        ShaderTargetType targetType;
+    };
+
+    /**
+     * Specifies the type of output of a compilation
+     * operation.
+     */
+    enum class CompileResultType {
+        Spirv,
+        String,
+    };
+
     /** Represents a compiled shader */
     struct ShaderCompileResult {
-        std::vector<uint32_t> binary;
-        std::vector<uint32_t> debugBinary;
+        /**
+         * This might be SPIR-V binary or a string, determined
+         * by the resultType member. This memory also has to be
+         * freed by the caller.
+         */
+        void* result;
+
+        /**
+         * The result type of the result. Usually SPIR-V, meaning
+         * that the result points to a array of uint32_t's.
+         */
+        CompileResultType resultType = CompileResultType::Spirv;
+
+        /**
+         * This is the actual size of the data in bytes. This is
+         * automatically adjusted to what actual type the result
+         * is in.
+         */
+        size_t resultSize;
     };
 
-    struct CrossCompileResult {
-        krypton::shaders::CrossCompileTarget target;
-        std::string result;
-    };
+    /**
+     * Reads given file into a Shader object which effectively
+     * just consists of the filesystem path and a string
+     * of its contents.
+     */
+    ShaderFile readShaderFile(const fs::path& path);
 
-    Shader readShaderFile(std::filesystem::path path);
+    /**
+     * Compiles a shader from [sourceType] to [targetType]. May use
+     * SPIRV-Cross if the types cannot be directly converted.
+     * This also automatically reads the file contents depending
+     * on [sourceType].
+     */
+    [[nodiscard]] auto compileShaders(const fs::path& shaderFileName, ShaderStage stage, ShaderSourceType sourceType, ShaderTargetType targetType)
+        -> std::vector<ShaderCompileResult>;
 
-    /** Compiles GLSL shaders to SPIR-V */
-    [[nodiscard]] auto compileGlslShader(const std::string& shaderName, const std::string& shaderSource, ShaderStage shaderStage, TargetSpirv target) -> ShaderCompileResult;
-
-    /** Can cross compile shaders from given SPIR-V to target */
-    [[nodiscard]] auto crossCompile(const std::vector<uint32_t>& spirv, CrossCompileTarget target) -> krypton::shaders::CrossCompileResult;
+    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs)
+        -> std::vector<ShaderCompileResult>;
 } // namespace krypton::shaders

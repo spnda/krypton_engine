@@ -5,7 +5,7 @@
 layout(location = 0) rayPayloadInEXT bool hitPayload;
 hitAttributeEXT vec2 attribs;
 
-layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(binding = 1, set = 0) uniform accelerationStructureEXT tlas;
 
 void main() {
 	hitPayload = true;

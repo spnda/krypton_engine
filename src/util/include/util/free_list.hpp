@@ -39,9 +39,9 @@ namespace krypton::util {
         /** We create the first 'hole' right away */
         LargeFreeList();
 
-        [[nodiscard]] auto getFromHandle(FreeListHandle& handle) -> Object&;
+        [[nodiscard]] auto getFromHandle(const FreeListHandle& handle) -> Object&;
         [[nodiscard]] auto getNewHandle() -> FreeListHandle;
-        [[nodiscard]] bool isHandleValid(FreeListHandle& handle);
+        [[nodiscard]] bool isHandleValid(const FreeListHandle& handle);
         void removeHandle(FreeListHandle& handle);
     };
 
@@ -71,7 +71,7 @@ namespace krypton::util {
     }
 
     template <typename Object>
-    Object& krypton::util::LargeFreeList<Object>::getFromHandle(FreeListHandle& handle) {
+    Object& krypton::util::LargeFreeList<Object>::getFromHandle(const FreeListHandle& handle) {
         /* Verify first that the handle is valid */
         assert(isHandleValid(handle));
 
@@ -85,7 +85,7 @@ namespace krypton::util {
     }
 
     template <typename Object>
-    bool krypton::util::LargeFreeList<Object>::isHandleValid(FreeListHandle& handle) {
+    bool krypton::util::LargeFreeList<Object>::isHandleValid(const FreeListHandle& handle) {
         return (*this)[handle.index].generation == handle.generation;
     }
 

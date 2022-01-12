@@ -32,15 +32,22 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 include(add_files)
+include(add_source_directory)
+
+# We add this first as this provides targets other
+# subdirectories required
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/external")
 
 if (WIN32 OR UNIX AND NOT APPLE)
   add_subdirectory("${CMAKE_SOURCE_DIR}/src/carbon")
 endif()
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/mesh")
+
 if (APPLE)
   add_subdirectory("${CMAKE_SOURCE_DIR}/src/metal")
 endif()
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/mesh")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/models")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/rapi")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/shaders")

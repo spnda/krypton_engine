@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 #include <span>
 #include <utility>
 #include <vector>
@@ -26,6 +27,8 @@ namespace carbon {
         std::shared_ptr<carbon::Device> device;
         VmaAllocator allocator = nullptr;
 
+        mutable std::mutex mutex;
+
       public:
         std::shared_ptr<carbon::Buffer> resultBuffer;
         std::shared_ptr<carbon::Buffer> scratchBuffer;
@@ -45,6 +48,12 @@ namespace carbon {
                            VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
                            VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties) -> VkAccelerationStructureBuildSizesInfoKHR;
         auto getDescriptorWrite() const -> VkWriteDescriptorSetAccelerationStructureKHR;
+
+        /**
+         * Converts to a bool whether this acceleration structure
+         * is valid or not.
+         */
+        operator bool() const noexcept;
     };
 
     struct BottomLevelAccelerationStructure final : public AccelerationStructure {

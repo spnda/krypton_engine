@@ -9,8 +9,10 @@
 
 #include <functional>
 #include <string>
+#include <thread>
 
-#include <vk_mem_alloc.h>
+#include <carbon/shaders/shader_stage.hpp>
+#include <carbon/vulkan.hpp>
 
 #include <mesh/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
@@ -18,6 +20,7 @@
 #include <rapi/rapi.hpp>
 #include <rapi/render_object_handle.hpp>
 #include <rapi/window.hpp>
+#include <shaders/shaders.hpp>
 #include <util/free_list.hpp>
 #include <util/large_vector.hpp>
 
@@ -54,10 +57,6 @@ namespace krypton::rapi {
         std::shared_ptr<carbon::Device> device;
         VmaAllocator allocator = nullptr;
 
-        // Command buffers
-        std::shared_ptr<carbon::CommandPool> commandPool;
-        std::shared_ptr<carbon::CommandBuffer> drawCommandBuffer;
-
         // Sync structures
         std::shared_ptr<carbon::Fence> renderFence;
         std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore;
@@ -65,13 +64,16 @@ namespace krypton::rapi {
 
         // Graphics
         VkSurfaceKHR surface = nullptr;
+        std::shared_ptr<carbon::CommandPool> commandPool;
+        std::shared_ptr<carbon::CommandBuffer> drawCommandBuffer;
         std::shared_ptr<carbon::Queue> graphicsQueue;
         std::shared_ptr<carbon::Swapchain> swapchain;
-        std::unique_ptr<carbon::RayTracingPipeline> pipeline;
+
+        // RT pipeline
+        std::unique_ptr<carbon::RayTracingPipeline> pipeline = nullptr;
         std::unique_ptr<carbon::Buffer> shaderBindingTable;
         std::unique_ptr<carbon::StorageImage> storageImage;
         uint32_t sbtStride = 0;
-        uint32_t frameBufferWidth = 0, frameBufferHeight = 0;
 
         // Shaders
         RtShaderModule rayGenShader = {};
@@ -83,6 +85,12 @@ namespace krypton::rapi {
         std::unique_ptr<carbon::TopLevelAccelerationStructure> tlas;
         std::unique_ptr<carbon::Buffer> tlasInstanceBuffer;
         std::unique_ptr<carbon::StagingBuffer> tlasInstanceStagingBuffer;
+        static const uint32_t TLAS_DESCRIPTOR_BINDING = 1;
+
+        // BLAS Async Compute
+        std::shared_ptr<carbon::CommandPool> computeCommandPool;
+        std::unique_ptr<carbon::Queue> blasComputeQueue;
+        std::vector<std::thread> buildThreads; /* We need to keep track of the threads, else they destruct */
 
         // Camera information
         std::shared_ptr<krypton::rapi::CameraData> cameraData;
@@ -90,6 +98,7 @@ namespace krypton::rapi {
 
         bool needsResize = false;
         uint32_t swapchainIndex = 0;
+        uint32_t frameBufferWidth = 0, frameBufferHeight = 0;
 
         // Render Objects
         krypton::util::LargeFreeList<krypton::rapi::vulkan::RenderObject> objects = {};
@@ -100,6 +109,7 @@ namespace krypton::rapi {
         void buildSBT();
         /** If the TLAS already exists, this will only update it */
         void buildTLAS(carbon::CommandBuffer* cmdBuffer);
+        auto createShader(const std::string& name, carbon::ShaderStage stage, krypton::shaders::ShaderCompileResult& result) -> std::unique_ptr<carbon::ShaderModule>;
         void oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool, const std::function<void(carbon::CommandBuffer*)>& callback) const;
         auto submitFrame() -> VkResult;
         auto waitForFrame() -> VkResult;
