@@ -9,9 +9,46 @@
 #include <carbon/base/swapchain.hpp>
 #include <carbon/utils.hpp>
 
-carbon::Swapchain::Swapchain(std::shared_ptr<carbon::Instance> instance,
+carbon::SwapchainImage::SwapchainImage(std::shared_ptr<carbon::Device> device, VkExtent2D extent)
+    : carbon::Image(device, nullptr, extent) {
+}
+
+void carbon::SwapchainImage::create(VkImage newImage, VkFormat newFormat) {
+    handle = newImage;
+    format = newFormat;
+
+    VkImageViewCreateInfo imageViewCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = handle,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format,
+        .components = {
+            .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+        },
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    auto res = vkCreateImageView(*device, &imageViewCreateInfo, nullptr, &imageView);
+    checkResult(res, "Failed to create swapchain image view");
+}
+
+void carbon::SwapchainImage::destroy() {
+    vkDestroyImageView(*device, imageView, nullptr);
+    imageView = nullptr;
+}
+
+carbon::Swapchain::Swapchain(carbon::Instance* instance,
                              std::shared_ptr<carbon::Device> device)
-    : instance(std::move(instance)), device(std::move(device)) {
+    : instance(instance), device(std::move(device)) {
 }
 
 bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
@@ -20,16 +57,16 @@ bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
     imageExtent = chooseSwapExtent(windowExtent);
     auto presentMode = chooseSwapPresentMode();
 
-    uint32_t imageCount = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
-        imageCount = capabilities.maxImageCount;
+    uint32_t minImageCount = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 && minImageCount > capabilities.maxImageCount) {
+        minImageCount = capabilities.maxImageCount;
     }
 
     VkSwapchainCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = surface,
 
-        .minImageCount = imageCount,
+        .minImageCount = minImageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,
         .imageExtent = imageExtent,
@@ -52,39 +89,31 @@ bool carbon::Swapchain::create(VkSurfaceKHR surface, VkExtent2D windowExtent) {
     checkResult(res, "Failed to create swapchain");
     swapchain = newSwapchain;
 
+    // First, destroy the previous swapchain image views
+    for (auto& image : swapchainImages)
+        image->destroy();
+
     // Get the swapchain images
     device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, nullptr);
-    swapchainImages.resize(imageCount);
-    device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, swapchainImages.data());
+    std::vector<VkImage> vulkanImages(imageCount);
+    device->vkGetSwapchainImagesKHR(*device, swapchain, &imageCount, vulkanImages.data());
 
     // Get the swapchain image views
-    swapchainImageViews.resize(imageCount);
-    for (size_t i = 0; i < swapchainImages.size(); ++i) {
-        VkImageViewCreateInfo imageViewCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = swapchainImages[i],
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = surfaceFormat.format,
-            .components = {
-                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-            },
-            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1},
-        };
-
-        res = vkCreateImageView(*device, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
-        checkResult(res, "Failed to create swapchain image view");
-    }
+    swapchainImages.resize(imageCount);
+    std::transform(vulkanImages.begin(), vulkanImages.end(), swapchainImages.begin(), [&](VkImage vkImage) {
+        // We want the ctor of SwapchainImage to be private and will therefore have to
+        // call new as make_unique wouldn't be able to call the private function.
+        auto image = std::unique_ptr<carbon::SwapchainImage>(new carbon::SwapchainImage(device, imageExtent));
+        image->create(vkImage, surfaceFormat.format);
+        return image;
+    });
 
     return true;
 }
 
 void carbon::Swapchain::destroy() {
-    for (auto& view : swapchainImageViews) {
-        vkDestroyImageView(*device, view, nullptr);
-        view = nullptr;
+    for (auto& image : swapchainImages) {
+        image->destroy();
     }
     vkDestroySwapchainKHR(*device, swapchain, nullptr);
     swapchain = nullptr;
@@ -136,22 +165,22 @@ VkPresentModeKHR carbon::Swapchain::chooseSwapPresentMode() {
     return res != presentModes.end() ? *res : VK_PRESENT_MODE_FIFO_KHR;
 }
 
-void carbon::Swapchain::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    instance->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+void carbon::Swapchain::querySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
+    instance->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
 
     uint32_t formatCount;
-    instance->vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    instance->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 
     if (formatCount != 0) {
         formats.resize(formatCount);
-        instance->vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
+        instance->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
     }
 
     uint32_t presentModeCount;
-    instance->vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    instance->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
 
     if (presentModeCount != 0) {
         presentModes.resize(presentModeCount);
-        instance->vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
+        instance->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data());
     }
 }

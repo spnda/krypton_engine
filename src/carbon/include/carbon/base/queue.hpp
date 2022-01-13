@@ -19,7 +19,7 @@ namespace carbon {
         VkQueue handle = nullptr;
         mutable std::mutex queueMutex = {};
 
-      public:
+    public:
         explicit Queue(std::shared_ptr<carbon::Device> device, std::string name = {});
         Queue(const carbon::Queue& queue);
 

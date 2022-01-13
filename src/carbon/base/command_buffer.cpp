@@ -3,11 +3,11 @@
 #include <carbon/base/queue.hpp>
 #include <carbon/utils.hpp>
 
-carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle, carbon::Device* device)
-    : handle(handle), device(device) {
+carbon::CommandBuffer::CommandBuffer(VkCommandBuffer handle, carbon::Device* device, VkCommandBufferUsageFlags usageFlags)
+    : handle(handle), device(device), usageFlags(usageFlags) {
 }
 
-void carbon::CommandBuffer::begin(VkCommandBufferUsageFlags usageFlags) {
+void carbon::CommandBuffer::begin() {
     if (handle == nullptr)
         return;
 

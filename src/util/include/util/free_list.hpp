@@ -35,7 +35,7 @@ namespace krypton::util {
     class LargeFreeList : public LargeVector<FreeListObject<Object>> {
         [[nodiscard]] auto createSlot() -> uint32_t;
 
-      public:
+    public:
         /** We create the first 'hole' right away */
         LargeFreeList();
 
@@ -67,7 +67,7 @@ namespace krypton::util {
 
         /** There are no holes yet, we extend the array. */
         this->resize(this->size() + 1);
-        return this->size() - 1;
+        return static_cast<uint32_t>(this->size() - 1);
     }
 
     template <typename Object>

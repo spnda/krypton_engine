@@ -21,7 +21,7 @@ namespace krypton::rapi {
 
         std::shared_ptr<krypton::rapi::CameraData> cameraData;
 
-      public:
+    public:
         Metal_RAPI();
         ~Metal_RAPI();
 

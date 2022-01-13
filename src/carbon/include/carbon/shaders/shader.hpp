@@ -31,7 +31,7 @@ namespace carbon {
         size_t shaderBinarySize = 0;
         std::vector<fs::path> includedFiles;
 
-      public:
+    public:
         explicit ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, carbon::ShaderStage shaderStage);
 
         void createShaderModule(uint32_t* spv, size_t spvSize);

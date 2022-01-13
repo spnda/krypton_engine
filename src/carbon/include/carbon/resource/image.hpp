@@ -19,17 +19,17 @@ namespace carbon {
         VmaAllocator allocator = nullptr;
         VmaAllocation allocation = nullptr;
 
-        VkImage handle = nullptr;
-        VkImageView imageView = nullptr;
-        VkFormat format = VK_FORMAT_UNDEFINED;
-
-      protected:
+    protected:
         std::shared_ptr<carbon::Device> device;
         VkExtent2D imageExtent = {0, 0};
         std::map<uint32_t, VkImageLayout> currentLayouts = {
             {0, VK_IMAGE_LAYOUT_UNDEFINED}};
 
-      public:
+        VkImage handle = nullptr;
+        VkImageView imageView = nullptr;
+        VkFormat format = VK_FORMAT_UNDEFINED;
+
+    public:
         Image(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D extent, std::string name = {});
 
         Image& operator=(const Image& newImage);
@@ -38,7 +38,7 @@ namespace carbon {
         void create(VkImageCreateInfo* createInfo, VkImageViewCreateInfo* viewCreateInfo, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
         void copyImage(carbon::CommandBuffer* cmdBuffer, VkImage image, VkImageLayout imageLayout);
         /** Destroys the image view, frees all memory and destroys the image. */
-        void destroy();
+        virtual void destroy();
 
         [[nodiscard]] VkDescriptorImageInfo getDescriptorImageInfo();
         [[nodiscard]] VkImageView getImageView() const;

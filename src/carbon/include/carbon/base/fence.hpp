@@ -16,7 +16,7 @@ namespace carbon {
         mutable std::mutex waitMutex = {};
         VkFence handle = nullptr;
 
-      public:
+    public:
         explicit Fence(std::shared_ptr<carbon::Device> device, std::string name = {});
         Fence(const Fence& fence);
 

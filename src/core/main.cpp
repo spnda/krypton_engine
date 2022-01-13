@@ -29,19 +29,22 @@ auto main(int argc, char* argv[]) -> int {
 
         auto cameraData = std::make_shared<krypton::rapi::CameraData>();
 
-        auto rapi = std::move(krypton::rapi::getRenderApi());
+        auto rapi = krypton::rapi::getRenderApi();
         rapi->setCameraData(cameraData);
         rapi->init();
 
         int width, height;
         rapi->getWindow()->getWindowSize(&width, &height);
 
-        cameraData->projection = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
-        cameraData->view = glm::perspective(
+        cameraData->projection = glm::perspective(
             glm::radians(70.0f),
             (float)width / (float)height,
             cameraData->near,
             cameraData->far);
+        cameraData->view = glm::lookAt(
+            glm::vec3(10, 0, 0), // position in world
+            glm::vec3(0, 0, 0),  // look at position; center of world
+            glm::vec3(0, 1, 0));
 
         auto meshHandle = rapi->createRenderObject();
         rapi->loadMeshForRenderObject(meshHandle, smesh);

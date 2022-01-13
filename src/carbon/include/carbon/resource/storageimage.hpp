@@ -9,7 +9,7 @@ namespace carbon {
         static const uint32_t imageUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
         const VkImageSubresourceRange subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-      public:
+    public:
         explicit StorageImage(std::shared_ptr<carbon::Device>, VmaAllocator allocator, VkExtent2D windowExtent);
 
         void create();

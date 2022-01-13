@@ -96,10 +96,9 @@ namespace krypton::shaders {
     struct ShaderCompileResult {
         /**
          * This might be SPIR-V binary or a string, determined
-         * by the resultType member. This memory also has to be
-         * freed by the caller.
+         * by the resultType member.
          */
-        void* result;
+        std::vector<uint8_t> resultBytes;
 
         /**
          * The result type of the result. Usually SPIR-V, meaning

@@ -17,7 +17,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/external/nv-aftermath" AND CMAKE_BUILD_TYPE STRE
 endif()
 
 # slang doesn't provide builds for MacOS.
-if (EXISTS "${CMAKE_SOURCE_DIR}/external/slang" AND NOT APPLE)
+if (EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
     message(STATUS "Found slang")
 
     # slang

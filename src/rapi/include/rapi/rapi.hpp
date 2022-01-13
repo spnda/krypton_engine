@@ -18,7 +18,7 @@ namespace krypton::rapi {
      * render backends.
      */
     class RenderAPI {
-      public:
+    public:
         virtual ~RenderAPI() {}
 
         virtual void beginFrame() = 0;

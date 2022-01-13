@@ -82,6 +82,10 @@ void carbon::Device::setDebugUtilsName(const VkCommandBuffer& cmdBuffer, const s
     setDebugUtilsName<VkCommandBuffer>(cmdBuffer, name, VK_OBJECT_TYPE_COMMAND_BUFFER);
 }
 
+void carbon::Device::setDebugUtilsName(const VkCommandPool& cmdPool, const std::string& name) const {
+    setDebugUtilsName<VkCommandPool>(cmdPool, name, VK_OBJECT_TYPE_COMMAND_POOL);
+}
+
 void carbon::Device::setDebugUtilsName(const VkFence& fence, const std::string& name) const {
     setDebugUtilsName<VkFence>(fence, name, VK_OBJECT_TYPE_FENCE);
 }

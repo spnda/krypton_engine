@@ -3,7 +3,8 @@
 #include <carbon/base/device.hpp>
 #include <carbon/utils.hpp>
 
-carbon::CommandPool::CommandPool(std::shared_ptr<carbon::Device> device) : device(std::move(device)) {
+carbon::CommandPool::CommandPool(std::shared_ptr<carbon::Device> device, std::string name)
+    : device(std::move(device)), name(std::move(name)) {
 }
 
 void carbon::CommandPool::create(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags) {
@@ -14,6 +15,8 @@ void carbon::CommandPool::create(const uint32_t queueFamilyIndex, const VkComman
     };
 
     vkCreateCommandPool(*device, &commandPoolCreateInfo, nullptr, &handle);
+
+    device->setDebugUtilsName(handle, name);
 }
 
 std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(
@@ -28,7 +31,7 @@ std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(
     VkCommandBuffer cmdBuffer = nullptr;
     auto res = vkAllocateCommandBuffers(*device, &allocateInfo, &cmdBuffer);
     checkResult(res, "Failed to allocate command buffer");
-    return std::make_shared<carbon::CommandBuffer>(cmdBuffer, device.get());
+    return std::make_shared<carbon::CommandBuffer>(cmdBuffer, device.get(), bufferUsageFlags);
 }
 
 std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocateBuffers(
@@ -48,7 +51,8 @@ std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocat
     commandBuffers.resize(cmdBuffers.size());
 
     for (size_t i = 0; i < cmdBuffers.size(); ++i) {
-        commandBuffers[i] = std::make_shared<carbon::CommandBuffer>(cmdBuffers[i], device.get());
+        commandBuffers[i] =
+            std::make_shared<carbon::CommandBuffer>(cmdBuffers[i], device.get(), bufferUsageFlags);
     }
 
     return commandBuffers;

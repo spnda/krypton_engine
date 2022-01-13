@@ -37,7 +37,7 @@ id<MTLCommandQueue> queue;
 id<MTLRenderPipelineState> pipelineState;
 CAMetalLayer* swapchain = nullptr;
 NSWindow* nswindow = nullptr;
-krypton::shaders::Shader defaultShader;
+krypton::shaders::ShaderFile defaultShader;
 
 id<MTLBuffer> cameraBuffer;
 

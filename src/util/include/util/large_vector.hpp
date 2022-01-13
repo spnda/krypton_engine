@@ -27,7 +27,7 @@ namespace krypton::util {
             /* Private so that only our friend, LargeVector, can create a instance */
             explicit Iterator(LargeVector* vector, size_t pos);
 
-          public:
+        public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = T;
             using difference_type = std::ptrdiff_t;
@@ -51,7 +51,7 @@ namespace krypton::util {
 
         void addNewBlocks(size_t count = 1) noexcept;
 
-      public:
+    public:
         /** The constructor automatically adds a first block */
         LargeVector();
         ~LargeVector() = default;

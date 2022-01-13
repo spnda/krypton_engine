@@ -8,7 +8,7 @@
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
 
 namespace carbon {
-    class BottomLevelAccelerationStructure;
+    struct BottomLevelAccelerationStructure;
     class Buffer;
 } // namespace carbon
 

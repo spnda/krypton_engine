@@ -12,6 +12,7 @@ UseTab: Never
 
 ---
 Language: Cpp
+AccessModifierOffset: -4
 AlignOperands: Align
 AllowAllArgumentsOnNextLine: true
 SortUsingDeclarations: true

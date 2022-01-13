@@ -30,15 +30,23 @@ namespace carbon {
         static auto getBufferAddressInfo(VkBuffer handle) -> VkBufferDeviceAddressInfoKHR;
         static auto getBufferDeviceAddress(carbon::Device* device, VkBufferDeviceAddressInfoKHR* addressInfo) -> VkDeviceAddress;
 
-      public:
+    public:
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator);
         explicit Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name);
         Buffer(const Buffer& buffer);
 
         Buffer& operator=(const Buffer& buffer);
 
-        [[nodiscard]] static constexpr auto alignedSize(size_t value, size_t alignment) -> size_t {
-            return (value + alignment - 1) & -alignment;
+        [[nodiscard]] static constexpr auto alignedSize(uint64_t value, uint64_t alignment) -> uint64_t {
+            return (value + alignment - 1) & ~(alignment - 1);
+        }
+
+        [[nodiscard]] static constexpr auto alignedSize(uint64_t value, uint32_t alignment) -> uint64_t {
+            return (value + alignment - 1) & ~(static_cast<size_t>(alignment) - 1);
+        }
+
+        [[nodiscard]] static constexpr auto alignedSize(uint32_t value, uint32_t alignment) -> uint32_t {
+            return (value + alignment - 1) & ~(alignment - 1);
         }
 
         void create(VkDeviceSize newSize, VkBufferUsageFlags bufferUsage, VmaMemoryUsage usage, VkMemoryPropertyFlags properties = 0);

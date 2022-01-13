@@ -68,7 +68,7 @@ VkAccelerationStructureBuildSizesInfoKHR carbon::AccelerationStructure::getBuild
                                                     primitiveCount,
                                                     &buildSizes);
 
-    buildSizes.accelerationStructureSize = carbon::Buffer::alignedSize(buildSizes.accelerationStructureSize, 256); // Apparently, this is part of the Vulkan Spec
+    buildSizes.accelerationStructureSize = carbon::Buffer::alignedSize(buildSizes.accelerationStructureSize, static_cast<uint32_t>(256)); // Apparently, this is part of the Vulkan Spec
     buildSizes.buildScratchSize = carbon::Buffer::alignedSize(buildSizes.buildScratchSize, asProperties.minAccelerationStructureScratchOffsetAlignment);
     return buildSizes;
 }

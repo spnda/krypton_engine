@@ -13,7 +13,7 @@ namespace carbon {
         std::shared_ptr<carbon::PhysicalDevice> physicalDevice;
         vkb::Device handle = {};
 
-      public:
+    public:
         PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
         PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR = nullptr;
@@ -50,6 +50,7 @@ namespace carbon {
         void setDebugUtilsName(const VkAccelerationStructureKHR& as, const std::string& name) const;
         void setDebugUtilsName(const VkBuffer& buffer, const std::string& name) const;
         void setDebugUtilsName(const VkCommandBuffer& cmdBuffer, const std::string& name) const;
+        void setDebugUtilsName(const VkCommandPool& cmdPool, const std::string& name) const;
         void setDebugUtilsName(const VkFence& fence, const std::string& name) const;
         void setDebugUtilsName(const VkImage& image, const std::string& name) const;
         void setDebugUtilsName(const VkPipeline& pipeline, const std::string& name) const;

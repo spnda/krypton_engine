@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -43,11 +44,11 @@ def main():
     slang_zip_url = ""
     match platform.system():
         case "Darwin": # MacOS
-            print(f"{colors.orange}slang does not provide MacOS builds.")
+            print(f"{colors.yellow}slang does not provide MacOS builds.")
         case "Windows": # Windows
-            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.24-win64.zip"
+            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.25-win64.zip"
         case "Linux": # Linux
-            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.24-linux-x86_64.zip"
+            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.25-linux-x86_64.zip"
 
     # Download slang build from GitHub
     if len(slang_zip_url) > 0 and not os.path.exists("external/slang/slang.zip"):
@@ -60,7 +61,7 @@ def main():
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.
     if "VCPKG_ROOT" not in os.environ:
-        print(f"{colors.yellow}VCPKG_ROOT is not defined as an environment variable. This might cause issues with dependencies.{colors.end}")
+        print(f"{colors.yellow}VCPKG_ROOT is not defined as an environment variable. This may lead to missing dependencies.{colors.end}")
 
     match platform.system():
         case "Darwin": # MacOS
@@ -69,19 +70,28 @@ def main():
             # the packages through e.g. brew
             call(["vcpkg", "install"])
 
-            # glslang uses behaviour which was deprecated with CMake 3.13,
-            # therefore we'll disable that warning using -Wno-dev
-            print(f"{colors.green}Configuring build files...{colors.end}")
-            call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/debug")
-            call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/release")
+            if shutil.which('cmake') is None:
+                print(f"{colors.red}cmake is not installed. The project cannot be built.{colors.end}")
+            else:
+                # glslang uses behaviour which was deprecated with CMake 3.13,
+                # therefore we'll disable that warning using -Wno-dev
+                print(f"{colors.green}Configuring build files...{colors.end}")
+                call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/debug")
+                call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/release")
         case _: # Windows / Linux
             print(f"{colors.green}Installing dependencies through vcpkg...{colors.end}")
-            if not call(["vcpkg", "install"], "."):
-                print(f"{colors.red}The command 'vcpkg install' failed. Perhaps vcpkg is not installed?{colors.end}")
+            if (shutil.which('vcpkg') is not None):
+                if not call(["vcpkg", "install"], "."):
+                    print(f"{colors.red}The command 'vcpkg install' failed.{colors.end}")
+            else:
+                print(f"{colors.yellow}vcpkg is not installed. This may lead to missing dependencies.{colors.end}")
 
-            print(f"{colors.green}Configuring build files...{colors.end}")
-            call(["cmake", "-Wno-dev", "../.."], "build/debug", True)
-            call(["cmake", "-Wno-dev", "../.."], "build/release", True)
+            if shutil.which('cmake') is None:
+                print(f"{colors.red}cmake is not installed. The project cannot be built.{colors.end}")
+            else:
+                print(f"{colors.green}Configuring build files...{colors.end}")
+                call(["cmake", "-Wno-dev", "../.."], "build/debug", platform.system() == "Windows")
+                call(["cmake", "-Wno-dev", "../.."], "build/release", platform.system() == "Windows")
 
     print(f"{colors.green}Finished configuring project files in /build/debug/ and /build/release.{colors.end}")
 

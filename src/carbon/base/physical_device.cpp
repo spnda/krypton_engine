@@ -8,7 +8,7 @@ void carbon::PhysicalDevice::addExtensions(const std::vector<const char*>& exten
     }
 }
 
-void carbon::PhysicalDevice::create(std::shared_ptr<carbon::Instance> instance, VkSurfaceKHR surface) {
+void carbon::PhysicalDevice::create(carbon::Instance* instance, VkSurfaceKHR surface) {
     // Get the physical device.
     vkb::PhysicalDeviceSelector physicalDeviceSelector(instance->handle);
 
@@ -76,6 +76,15 @@ void carbon::PhysicalDevice::create(std::shared_ptr<carbon::Instance> instance, 
 
 std::string carbon::PhysicalDevice::getDeviceName() const {
     return std::string {handle.properties.deviceName};
+}
+
+VkPhysicalDeviceProperties2 carbon::PhysicalDevice::getProperties(void* pNext) const {
+    VkPhysicalDeviceProperties2 deviceProperties = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = pNext,
+    };
+    vkGetPhysicalDeviceProperties2(handle, &deviceProperties);
+    return deviceProperties;
 }
 
 carbon::PhysicalDevice::operator VkPhysicalDevice() const {

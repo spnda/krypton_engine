@@ -53,8 +53,6 @@
 
 carbon::GpuCrashTracker::GpuCrashTracker() {}
 
-carbon::GpuCrashTracker::GpuCrashTracker(const GpuCrashTracker& c) {}
-
 void carbon::GpuCrashTracker::enable() {
     // Enable crash dumps
     checkAftermathError(GFSDK_Aftermath_EnableGpuCrashDumps(
@@ -130,7 +128,8 @@ void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint3
 
     if (checkAftermathError(result)) {
         std::vector<char> json(jsonSize);
-        result = GFSDK_Aftermath_GpuCrashDump_GetJSON(decoder, json.size(), json.data());
+        result = GFSDK_Aftermath_GpuCrashDump_GetJSON(decoder,
+                                                      static_cast<uint32_t>(json.size()), json.data());
 
         if (checkAftermathError(result)) {
             std::ofstream file("crashdump.json", std::ios::out);
@@ -165,7 +164,7 @@ void carbon::GpuCrashTracker::onShaderLookup(const GFSDK_Aftermath_ShaderHash* s
         return; // Shader not found.
     }
 
-    setShaderBinary(shaderBinary.ptr, shaderBinary.size);
+    setShaderBinary(shaderBinary.ptr, static_cast<uint32_t>(shaderBinary.size));
 }
 
 /**

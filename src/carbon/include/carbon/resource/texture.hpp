@@ -16,7 +16,7 @@ namespace carbon {
         std::string name;
         VkSampler sampler = nullptr;
 
-      public:
+    public:
         static const VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
         Texture(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, VkExtent2D imageSize, std::string name = "texture");

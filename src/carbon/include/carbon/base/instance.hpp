@@ -31,17 +31,21 @@ namespace carbon {
         std::unique_ptr<carbon::GpuCrashTracker> crashTracker;
 #endif // #ifdef WITH_NV_AFTERMATH
 
-      public:
+    public:
         PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
         PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
         PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
         PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR = nullptr;
 
-        explicit Instance() = default;
+        explicit Instance();
+        ~Instance();
+        Instance(const Instance& other) = delete;
+        Instance(Instance&& other) = delete;
 
         void addExtensions(const std::vector<std::string>& extensions);
         void create();
         void destroy() const;
+        auto getApiVersion() const -> uint32_t;
         void setApplicationData(ApplicationData data);
 
         template <class T>
@@ -49,6 +53,8 @@ namespace carbon {
             return reinterpret_cast<T>(vkGetInstanceProcAddr(handle, functionName.c_str()));
         }
 
+        Instance& operator=(const Instance& other) = delete;
+        Instance& operator=(Instance&& other) = delete;
         operator VkInstance() const;
     };
 } // namespace carbon

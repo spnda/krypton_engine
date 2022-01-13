@@ -5,6 +5,12 @@
 #include <carbon/base/instance.hpp>
 #include <carbon/utils.hpp>
 
+carbon::Instance::Instance() {
+}
+
+carbon::Instance::~Instance() {
+}
+
 void carbon::Instance::addExtensions(const std::vector<std::string>& extensions) {
     for (auto ext : extensions) {
         requiredExtensions.insert(ext);
@@ -59,6 +65,10 @@ void carbon::Instance::destroy() const {
 #endif // #ifdef WITH_NV_AFTERMATH
 
     vkb::destroy_instance(handle);
+}
+
+uint32_t carbon::Instance::getApiVersion() const {
+    return appData.apiVersion;
 }
 
 void carbon::Instance::setApplicationData(ApplicationData data) {

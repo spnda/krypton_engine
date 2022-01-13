@@ -16,11 +16,13 @@ project("krypton_engine")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:> is a generator expression to remove the Debug/Release folders.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
-if (MSVC)
+if (MSVC) # cl.exe or clang-cl.exe
   # Microsoft not properly setting __cplusplus by default.
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc")
-else()
-  # string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address") # This works on clang, msvc and g++.
+  # AVX should be supported by any AMD/Intel CPU newer than 2011/2012.
+  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc /W4 /sdl /O2 /Ob2 /arch:AVX /analyze")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # Clang, AppleClang, or GCC
+  string(APPEND CMAKE_CXX_FLAGS " -Wall -O2")
 endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
@@ -35,7 +37,7 @@ include(add_files)
 include(add_source_directory)
 
 # We add this first as this provides targets other
-# subdirectories required
+# subdirectories require
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/external")
 
 if (WIN32 OR UNIX AND NOT APPLE)

@@ -25,6 +25,7 @@ carbon::Image& carbon::Image::operator=(const carbon::Image& newImage) {
 
 void carbon::Image::create(const VkFormat newFormat, const VkImageUsageFlags usageFlags, const VkImageLayout initialLayout) {
     currentLayouts[0] = initialLayout;
+    format = newFormat;
 
     VkImageCreateInfo imageCreateInfo = {};
     imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -93,7 +94,8 @@ void carbon::Image::copyImage(carbon::CommandBuffer* cmdBuffer, VkImage destinat
 
 void carbon::Image::destroy() {
     vkDestroyImageView(*device, imageView, nullptr);
-    vmaDestroyImage(allocator, handle, allocation);
+    if (allocation != nullptr) // Swapchain images have no allocation.
+        vmaDestroyImage(allocator, handle, allocation);
     imageView = nullptr;
     handle = nullptr;
 }

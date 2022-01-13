@@ -238,7 +238,7 @@ std::unique_ptr<carbon::RayTracingPipeline> carbon::RayTracingPipelineBuilder::b
     device->vkCreateRayTracingPipelinesKHR(
         *device,
         nullptr, nullptr,
-        createInfos.size(),
+        static_cast<uint32_t>(createInfos.size()),
         createInfos.data(),
         nullptr,
         &pipeline->pipeline);

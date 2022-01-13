@@ -44,9 +44,10 @@ namespace carbon {
     class GpuCrashTracker {
         mutable std::mutex crashMutex;
 
-      public:
+    public:
         explicit GpuCrashTracker();
-        GpuCrashTracker(const GpuCrashTracker& c);
+        GpuCrashTracker(const GpuCrashTracker& c) = delete;
+        GpuCrashTracker(GpuCrashTracker&& c) = delete;
 
         void enable();
         void disable() const;

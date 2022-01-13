@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <carbon/resource/image.hpp>
 #include <carbon/vulkan.hpp>
 
 namespace carbon {
@@ -9,9 +10,20 @@ namespace carbon {
     class Instance;
     class Queue;
     class Semaphore;
+    class Swapchain;
+
+    class SwapchainImage : public Image {
+        friend class carbon::Swapchain;
+
+        explicit SwapchainImage();
+        explicit SwapchainImage(std::shared_ptr<carbon::Device> device, VkExtent2D extent);
+
+        void create(VkImage image, VkFormat newFormat);
+        void destroy() override;
+    };
 
     class Swapchain {
-        std::shared_ptr<carbon::Instance> instance;
+        carbon::Instance* instance;
         std::shared_ptr<carbon::Device> device;
 
         VkSwapchainKHR swapchain = nullptr;
@@ -25,15 +37,14 @@ namespace carbon {
         VkPresentModeKHR chooseSwapPresentMode();
         void querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-      public:
+    public:
         VkSurfaceFormatKHR surfaceFormat = {};
         VkExtent2D imageExtent = {};
 
         uint32_t imageCount = 0;
-        std::vector<VkImage> swapchainImages = {};
-        std::vector<VkImageView> swapchainImageViews = {};
+        std::vector<std::unique_ptr<carbon::SwapchainImage>> swapchainImages = {};
 
-        Swapchain(std::shared_ptr<carbon::Instance> instance, std::shared_ptr<carbon::Device> device);
+        Swapchain(carbon::Instance* instance, std::shared_ptr<carbon::Device> device);
 
         /**
          * Creates a new swapchain. If a swapchain already exists, we

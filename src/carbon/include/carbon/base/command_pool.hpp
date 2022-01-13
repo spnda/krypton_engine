@@ -10,12 +10,13 @@ namespace carbon {
     class Device;
 
     class CommandPool {
+        const std::string name;
         std::shared_ptr<carbon::Device> device;
 
         VkCommandPool handle = nullptr;
 
-      public:
-        explicit CommandPool(std::shared_ptr<carbon::Device> device);
+    public:
+        explicit CommandPool(std::shared_ptr<carbon::Device> device, std::string name);
 
         void create(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags);
         auto allocateBuffer(VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags)

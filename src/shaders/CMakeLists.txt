@@ -4,6 +4,9 @@ add_library(krypton::shaders ALIAS krypton_shaders)
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross"
     "${CMAKE_BINARY_DIR}/SPIRV-Cross")
 
+# Disable the SPIRV-Cross executable from being built.
+set_target_properties(spirv-cross PROPERTIES EXCLUDE_FROM_ALL 1)
+
 find_package(fmt CONFIG REQUIRED)
 
 if (TARGET slang::core)
@@ -19,6 +22,10 @@ execute_process(
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/glslang"
     "${CMAKE_BINARY_DIR}/glslang")
+
+# Disable the glslang executables from being built.
+set_target_properties(glslangValidator PROPERTIES EXCLUDE_FROM_ALL 1)
+set_target_properties(spirv-remap PROPERTIES EXCLUDE_FROM_ALL 1)
 
 target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
 

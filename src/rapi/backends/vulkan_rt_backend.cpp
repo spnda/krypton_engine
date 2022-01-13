@@ -41,7 +41,7 @@ static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShader
 };
 
 krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
-    instance = std::make_shared<carbon::Instance>();
+    instance = std::make_unique<carbon::Instance>();
     instance->setApplicationData({.apiVersion = VK_MAKE_API_VERSION(0, 1, 2, 0),
                                   .applicationVersion = 1,
                                   .engineVersion = 1,
@@ -57,12 +57,12 @@ krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
     presentCompleteSemaphore = std::make_shared<carbon::Semaphore>(device, "presentComplete");
     renderCompleteSemaphore = std::make_shared<carbon::Semaphore>(device, "renderComplete");
 
-    swapchain = std::make_shared<carbon::Swapchain>(instance, device);
+    swapchain = std::make_shared<carbon::Swapchain>(instance.get(), device);
     graphicsQueue = std::make_shared<carbon::Queue>(device, "graphicsQueue");
-    commandPool = std::make_shared<carbon::CommandPool>(device);
+    commandPool = std::make_shared<carbon::CommandPool>(device, "commandPool");
 
     blasComputeQueue = std::make_unique<carbon::Queue>(device, "blasComputeQueue");
-    computeCommandPool = std::make_shared<carbon::CommandPool>(device);
+    computeCommandPool = std::make_shared<carbon::CommandPool>(device, "computeCommandPool");
 }
 
 krypton::rapi::VulkanRT_RAPI::~VulkanRT_RAPI() {
@@ -90,8 +90,6 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
     std::vector<carbon::BottomLevelAccelerationStructure::PrimitiveData> primitiveData(primitiveSize);
     uint64_t totalVertexSize = 0, totalIndexSize = 0;
     for (auto& prim : renderObject.mesh->primitives) {
-        uint64_t primitiveIndex = &prim - &renderObject.mesh->primitives.front();
-
         auto& description = renderObject.geometryDescriptions.emplace_back();
         description.materialIndex = prim.materialIndex;
         description.meshBufferVertexOffset = totalVertexSize;
@@ -112,7 +110,8 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
     /** Generate the geometry data with the buffer info just generated */
     for (const auto& prim : renderObject.mesh->primitives) {
         uint64_t primitiveIndex = &prim - &renderObject.mesh->primitives.front();
-        primitiveCounts[primitiveIndex] = std::min(prim.indices.size() / 3, (size_t)536870911); /* Specific value for my 2080 */
+        // maxPrimitiveCount may not be larger than UINT32_MAX
+        primitiveCounts[primitiveIndex] = std::min((uint32_t)prim.indices.size() / 3, (uint32_t)asProperties->maxPrimitiveCount);
 
         geometries[primitiveIndex] = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -155,10 +154,7 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
 
     /** Create the structure's memory */
     auto sizes = renderObject.blas->getBuildSizes(
-        primitiveCounts.data(), &buildGeometryInfo,
-        VkPhysicalDeviceAccelerationStructurePropertiesKHR {
-            .minAccelerationStructureScratchOffsetAlignment = 128, /* Specific value for my 2080 */
-        });
+        primitiveCounts.data(), &buildGeometryInfo, *asProperties);
     renderObject.blas->createScratchBuffer(sizes);
     renderObject.blas->createResultBuffer(sizes);
     renderObject.blas->createStructure(sizes);
@@ -196,6 +192,10 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
 }
 
 void krypton::rapi::VulkanRT_RAPI::buildPipeline() {
+    rtProperties = std::make_unique<VkPhysicalDeviceRayTracingPipelinePropertiesKHR>();
+    rtProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+    physicalDevice->getProperties(rtProperties.get());
+
     if (pipeline != nullptr && pipeline->pipeline != nullptr) {
         vkDestroyDescriptorSetLayout(*device, pipeline->descriptorLayout, nullptr);
         vkDestroyPipelineLayout(*device, pipeline->pipelineLayout, nullptr);
@@ -231,17 +231,17 @@ void krypton::rapi::VulkanRT_RAPI::buildSBT() {
     uint32_t chitCount = 1; // 1 hit group (with closest and any)
     uint32_t callCount = 0;
     auto handleCount = 1 + missCount + chitCount + callCount;
-    const uint32_t handleSize = 32;                          // Specific value for my 2080
-    sbtStride = carbon::Buffer::alignedSize(handleSize, 32); // Specific value for my 2080
+    const uint32_t handleSize = rtProperties->shaderGroupHandleSize;
+    sbtStride = carbon::Buffer::alignedSize(handleSize, rtProperties->shaderGroupHandleAlignment);
 
-    rayGenShader.region.stride = carbon::Buffer::alignedSize(sbtStride, 64); // Specific value for my 2080
-    rayGenShader.region.size = rayGenShader.region.stride;                   // RayGen size must be equal to the stride.
+    rayGenShader.region.stride = carbon::Buffer::alignedSize(sbtStride, rtProperties->shaderGroupBaseAlignment);
+    rayGenShader.region.size = rayGenShader.region.stride; // RayGen size must be equal to the stride.
     missShader.region.stride = sbtStride;
-    missShader.region.size = carbon::Buffer::alignedSize(missCount * sbtStride, 64); // Specific value for my 2080
+    missShader.region.size = carbon::Buffer::alignedSize(missCount * sbtStride, rtProperties->shaderGroupBaseAlignment);
     closestHitShader.region.stride = sbtStride;
-    closestHitShader.region.size = carbon::Buffer::alignedSize(chitCount * sbtStride, 64); // Specific value for my 2080
+    closestHitShader.region.size = carbon::Buffer::alignedSize(chitCount * sbtStride, rtProperties->shaderGroupBaseAlignment);
 
-    const uint32_t sbtSize = rayGenShader.region.size + missShader.region.size + closestHitShader.region.size;
+    const size_t sbtSize = rayGenShader.region.size + missShader.region.size + closestHitShader.region.size;
     std::vector<uint8_t> handleStorage(sbtSize);
     auto result = device->vkGetRayTracingShaderGroupHandlesKHR(*device, pipeline->pipeline, 0, handleCount, sbtSize, handleStorage.data());
     checkResult(result, "Failed to get ray tracing shader group handles!");
@@ -253,8 +253,6 @@ void krypton::rapi::VulkanRT_RAPI::buildSBT() {
     rayGenShader.region.deviceAddress = sbtAddress;
     missShader.region.deviceAddress = sbtAddress + rayGenShader.region.size;
     closestHitShader.region.deviceAddress = missShader.region.deviceAddress + missShader.region.size;
-
-    shaderBindingTable->memoryCopy(handleStorage.data(), sbtSize);
 
     auto getHandleOffset = [&](uint32_t i) -> auto {
         return handleStorage.data() + i * handleSize;
@@ -282,7 +280,9 @@ void krypton::rapi::VulkanRT_RAPI::buildSBT() {
 }
 
 void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
-    const uint32_t primitiveCount = handlesForFrame.size();
+    // As per the Vulkan spec, no more than UINT32_MAX primitives/instances are
+    // allowed inside of a single TLAS.
+    const uint32_t primitiveCount = static_cast<uint32_t>(handlesForFrame.size());
 
     std::vector<VkAccelerationStructureInstanceKHR> instances(primitiveCount, VkAccelerationStructureInstanceKHR {});
     for (auto& handle : handlesForFrame) {
@@ -351,10 +351,7 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     };
 
     auto sizes = tlas->getBuildSizes(
-        &primitiveCount, &buildGeometryInfo,
-        VkPhysicalDeviceAccelerationStructurePropertiesKHR {
-            .minAccelerationStructureScratchOffsetAlignment = 128, /* Specific value for my 2080 */
-        });
+        &primitiveCount, &buildGeometryInfo, *asProperties);
 
     if (tlas->scratchBuffer == nullptr || sizes.buildScratchSize > tlas->scratchBuffer->getSize()) {
         if (tlas->scratchBuffer != nullptr)
@@ -417,7 +414,7 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanRT_RAPI::createShader
         return nullptr;
 
     auto shader = std::make_unique<carbon::ShaderModule>(device, name, stage);
-    shader->createShaderModule((uint32_t*)result.result, result.resultSize);
+    shader->createShaderModule((uint32_t*)result.resultBytes.data(), result.resultSize);
     return shader;
 }
 
@@ -438,22 +435,25 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
     if (needsResize)
         return;
 
-    /* We'll firstly update the camera buffer */
-    cameraBuffer->memoryCopy(cameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
+    // We'll update the camera data buffer first
+    // We transpose the matrices because slang uses HLSL
+    // matrix multiplication which is row-major, unlike
+    // glm's column-major.
+    convertedCameraData->projection = glm::transpose(glm::inverse(cameraData->projection));
+    convertedCameraData->view = glm::transpose(glm::inverse(cameraData->view));
+    cameraBuffer->memoryCopy(convertedCameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 
-    auto image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
-    drawCommandBuffer->begin(0);
+    auto& image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
+    drawCommandBuffer->begin();
 
     this->buildTLAS(drawCommandBuffer.get());
 
     if (handlesForFrame.empty()) {
         /* We won't render anything this frame anyway. Just transition the 
          * swapchain image and end the command buffer. */
-        carbon::Image::changeLayout(image, drawCommandBuffer.get(),
-                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                    {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
-
+        image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
         drawCommandBuffer->end(graphicsQueue.get());
         return;
     }
@@ -475,22 +475,20 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
         drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-    carbon::Image::changeLayout(image, drawCommandBuffer.get(),
-                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+    image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+                        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     drawCommandBuffer->setCheckpoint("Copying storage image.");
-    storageImage->copyImage(drawCommandBuffer.get(), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    storageImage->copyImage(drawCommandBuffer.get(), *image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     storageImage->changeLayout(
         drawCommandBuffer.get(), VK_IMAGE_LAYOUT_GENERAL,
         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    carbon::Image::changeLayout(image, drawCommandBuffer.get(),
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                // Fragment shader here, as the next stage will be imgui drawing.
-                                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+                        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     drawCommandBuffer->end(graphicsQueue.get());
 }
@@ -529,7 +527,7 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     surface = window->createVulkanSurface(VkInstance(*instance));
 
     // Create device and allocator
-    physicalDevice->create(instance, surface);
+    physicalDevice->create(instance.get(), surface);
     device->create(physicalDevice);
 
     fmt::print("Setting up Vulkan on: {}\n", physicalDevice->getDeviceName());
@@ -539,7 +537,8 @@ void krypton::rapi::VulkanRT_RAPI::init() {
         .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
         .physicalDevice = *physicalDevice,
         .device = *device,
-        .instance = *instance};
+        .instance = *instance,
+        .vulkanApiVersion = instance->getApiVersion()};
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     // Create our render sync structures
@@ -568,9 +567,14 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     tlasInstanceBuffer = std::make_unique<carbon::Buffer>(device, allocator, "tlasInstanceBuffer");
     tlasInstanceStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "tlasInstanceStagingBuffer");
 
+    asProperties = std::make_unique<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();
+    asProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+    physicalDevice->getProperties(asProperties.get());
+
     // Create camera buffer
     if (cameraData == nullptr)
         cameraData = std::make_shared<krypton::rapi::CameraData>();
+    convertedCameraData = std::make_unique<krypton::rapi::CameraData>();
 
     cameraBuffer = std::make_unique<carbon::Buffer>(device, allocator, "cameraBuffer");
     cameraBuffer->create(krypton::rapi::CAMERA_DATA_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -636,7 +640,7 @@ void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::C
     auto queueGuard = std::move(blasComputeQueue->getLock());
 
     auto cmdBuffer = pool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    cmdBuffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    cmdBuffer->begin();
     callback(cmdBuffer.get());
     cmdBuffer->end(queue);
 
@@ -735,9 +739,9 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
     window->destroy();
 }
 
-void krypton::rapi::VulkanRT_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) {
-    this->cameraData.reset();
-    this->cameraData = std::move(cameraData);
+void krypton::rapi::VulkanRT_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> newCameraData) {
+    cameraData.reset();
+    cameraData = std::move(newCameraData);
 }
 
 VkResult krypton::rapi::VulkanRT_RAPI::submitFrame() {

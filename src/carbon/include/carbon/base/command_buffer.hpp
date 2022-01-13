@@ -13,10 +13,12 @@ namespace carbon {
         carbon::Device* device = nullptr;
         VkCommandBuffer handle = nullptr;
 
-      public:
-        explicit CommandBuffer(VkCommandBuffer handle, carbon::Device* device);
+        VkCommandBufferUsageFlags usageFlags = 0;
 
-        void begin(VkCommandBufferUsageFlags usageFlags);
+    public:
+        explicit CommandBuffer(VkCommandBuffer handle, carbon::Device* device, VkCommandBufferUsageFlags usageFlags);
+
+        void begin();
         void end(carbon::Queue* queue);
 
         /* Vulkan commands */

@@ -17,7 +17,7 @@ namespace carbon {
 
         VkRenderPass handle = VK_NULL_HANDLE;
 
-      public:
+    public:
         RenderPass(std::shared_ptr<carbon::Device> device, std::shared_ptr<carbon::Swapchain> swapchain);
 
         void create(VkAttachmentLoadOp colorBufferLoadOp, const std::string& name = {});

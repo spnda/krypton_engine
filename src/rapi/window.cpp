@@ -75,8 +75,8 @@ GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
     return window;
 }
 
-void krypton::rapi::Window::getWindowSize(int* width, int* height) const {
-    glfwGetFramebufferSize(window, width, height);
+void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
+    glfwGetFramebufferSize(window, tWidth, tHeight);
 }
 
 void krypton::rapi::Window::pollEvents() const {

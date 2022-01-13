@@ -39,7 +39,7 @@ namespace carbon {
     class StagingBuffer;
     class StorageImage;
     class Swapchain;
-    class TopLevelAccelerationStructure;
+    struct TopLevelAccelerationStructure;
 } // namespace carbon
 
 namespace krypton::rapi {
@@ -52,7 +52,7 @@ namespace krypton::rapi {
         // Base Vulkan context
         std::shared_ptr<krypton::rapi::Window> window;
         std::vector<std::string> instanceExtensions;
-        std::shared_ptr<carbon::Instance> instance;
+        std::unique_ptr<carbon::Instance> instance;
         std::shared_ptr<carbon::PhysicalDevice> physicalDevice;
         std::shared_ptr<carbon::Device> device;
         VmaAllocator allocator = nullptr;
@@ -73,6 +73,7 @@ namespace krypton::rapi {
         std::unique_ptr<carbon::RayTracingPipeline> pipeline = nullptr;
         std::unique_ptr<carbon::Buffer> shaderBindingTable;
         std::unique_ptr<carbon::StorageImage> storageImage;
+        std::unique_ptr<VkPhysicalDeviceRayTracingPipelinePropertiesKHR> rtProperties;
         uint32_t sbtStride = 0;
 
         // Shaders
@@ -85,6 +86,7 @@ namespace krypton::rapi {
         std::unique_ptr<carbon::TopLevelAccelerationStructure> tlas;
         std::unique_ptr<carbon::Buffer> tlasInstanceBuffer;
         std::unique_ptr<carbon::StagingBuffer> tlasInstanceStagingBuffer;
+        std::unique_ptr<VkPhysicalDeviceAccelerationStructurePropertiesKHR> asProperties;
         static const uint32_t TLAS_DESCRIPTOR_BINDING = 1;
 
         // BLAS Async Compute
@@ -93,7 +95,10 @@ namespace krypton::rapi {
         std::vector<std::thread> buildThreads; /* We need to keep track of the threads, else they destruct */
 
         // Camera information
+        // We actually use convertedCameraData because in RT we
+        // required inversed matrices which we otherwise don't provide.
         std::shared_ptr<krypton::rapi::CameraData> cameraData;
+        std::unique_ptr<krypton::rapi::CameraData> convertedCameraData;
         std::unique_ptr<carbon::Buffer> cameraBuffer;
 
         bool needsResize = false;
@@ -114,7 +119,7 @@ namespace krypton::rapi {
         auto submitFrame() -> VkResult;
         auto waitForFrame() -> VkResult;
 
-      public:
+    public:
         VulkanRT_RAPI();
         ~VulkanRT_RAPI();
 

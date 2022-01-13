@@ -30,7 +30,7 @@ namespace krypton::rapi {
 
         GLFWwindow* window = nullptr;
 
-      public:
+    public:
         Window(const std::string& title, uint32_t width, uint32_t height);
 
         void create(krypton::rapi::Backend backend);

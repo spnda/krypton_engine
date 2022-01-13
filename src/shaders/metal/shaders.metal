@@ -21,7 +21,7 @@ vertex Vertex basic_vertex(
     const device CameraData* cameraData [[ buffer(1) ]],
     unsigned int vid [[ vertex_id ]]) {
     Vertex vertexOut = vertices[vid];
-    vertexOut.position *= cameraData->projection;
+    vertexOut.position = cameraData->projection * cameraData->view * vertexOut.position;
     return vertexOut;
 }
 

@@ -37,8 +37,6 @@ void carbon::ShaderModule::createShaderModule(uint32_t* spv, size_t spvSize) {
 }
 
 void carbon::ShaderModule::destroy() {
-    delete shaderBinary;
-
     vkDestroyShaderModule(*device, handle, nullptr);
 }
 

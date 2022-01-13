@@ -55,19 +55,21 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::compileSing
         // We don't need compilation, just return the already existing data
         // As the std::string container might get destroyed and to stick to
         // behaviour, we'll reallocate the data.
-        size_t size = shaderInput.source.size() * sizeof(uint8_t);
-        uint8_t* newString = (uint8_t*)malloc(size);
-        std::memcpy(newString, reinterpret_cast<const uint8_t*>(shaderInput.source.data()), size);
-        return {krypton::shaders::ShaderCompileResult {
-            .result = newString,
-            .resultSize = size,
-        }};
+        ShaderCompileResult compileResult;
+        compileResult.resultSize = shaderInput.source.size() * sizeof(uint8_t) + 1; // +1 for the null terminator character.
+
+        auto* bytes = reinterpret_cast<const uint8_t*>(shaderInput.source.data());
+        std::vector<uint8_t> newData(compileResult.resultSize);
+        std::memcpy(newData.data(), bytes, compileResult.resultSize);
+
+        compileResult.resultBytes = std::move(newData);
+        return {compileResult};
     }
 
     if (shaderInput.sourceType == ShaderSourceType::SLANG) {
         // slang can only be compiled using the slang compiler under Windows or Linux
 #ifndef WITH_SLANG_SHADERS
-        throw std::runtime_error("Cannot compile slang shaders under Mac")
+        throw std::runtime_error("Cannot compile slang shaders under Mac");
 #else
         return slangCompileShader(shaderInput);
 #endif
@@ -117,6 +119,9 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
             throw std::runtime_error("[glslang] Cannot use slang to compile from SPIR-V");
             break;
         }
+        default: {
+            throw std::runtime_error("[glslang] Unrecognized shader source type");
+        }
     }
 
     if (shaderInput.shaderStages.empty()) {
@@ -133,6 +138,10 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
         case ShaderStage::AnyHit: stage = GLSLANG_STAGE_ANYHIT_NV; break;
         case ShaderStage::Intersect: stage = GLSLANG_STAGE_INTERSECT_NV; break;
         case ShaderStage::Callable: stage = GLSLANG_STAGE_CALLABLE_NV; break;
+        default: {
+            auto err = fmt::format("[glslang] Unrecognized shader stage type: {}", static_cast<uint32_t>(shaderInput.shaderStages[0]));
+            throw std::runtime_error(err);
+        }
     }
 
     // TODO: Make this a configurable setting.
@@ -183,12 +192,15 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     auto* spvptr = glslang_program_SPIRV_get_ptr(program);
     size_t size = glslang_program_SPIRV_get_size(program);
 
-    uint8_t* newData = (uint8_t*)malloc(size * sizeof(uint32_t));
-    std::memcpy(newData, spvptr, size * sizeof(uint32_t));
-    return {
-        .result = newData,
-        .resultType = CompileResultType::Spirv,
-        .resultSize = size * sizeof(uint32_t)};
+    ShaderCompileResult compileResult = {};
+    compileResult.resultType = CompileResultType::Spirv;
+    compileResult.resultSize = size * sizeof(uint32_t);
+
+    std::vector<uint8_t> newData(compileResult.resultSize);
+    std::memcpy(newData.data(), reinterpret_cast<uint8_t*>(spvptr), compileResult.resultSize);
+    compileResult.resultBytes = std::move(newData);
+
+    return compileResult;
 }
 #endif
 
@@ -235,11 +247,11 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
     const char* tempString;
     spvc_compiler_compile(compiler, &tempString);
 
-    size_t size = std::strlen(tempString) * sizeof(uint8_t);
-    void* newString = malloc(size);
-    std::memcpy(newString, tempString, size);
+    size_t size = std::strlen(tempString) * sizeof(uint8_t) + 1; // +1 for the null terminator char
+    std::vector<uint8_t> newData(compileResult.resultSize);
+    std::memcpy(newData.data(), tempString, compileResult.resultSize);
+    compileResult.resultBytes = std::move(newData);
 
-    compileResult.result = newString;
     compileResult.resultSize = size;
     compileResult.resultType = CompileResultType::String;
 
@@ -262,8 +274,12 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         case ShaderTargetType::HLSL: compileTarget = SLANG_HLSL; break;
         case ShaderTargetType::SPIRV: compileTarget = SLANG_SPIRV; break;
         case ShaderTargetType::METAL: {
-            throw std::runtime_error("Cannot use slang to compile to Metal");
+            throw std::runtime_error("[slang] Cannot use slang to compile to Metal");
             break;
+        }
+        default: {
+            auto err = fmt::format("[slang] Unrecognized shader target type: {}", (uint32_t)shaderInput.targetType);
+            throw std::runtime_error(err);
         }
     }
     spSetCodeGenTarget(request, compileTarget);
@@ -273,12 +289,16 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         case ShaderSourceType::HLSL: compileSource = SLANG_SOURCE_LANGUAGE_HLSL; break;
         case ShaderSourceType::SLANG: compileSource = SLANG_SOURCE_LANGUAGE_SLANG; break;
         case ShaderSourceType::GLSL: {
-            throw std::runtime_error("Cannot use slang to compile from GLSL!");
+            throw std::runtime_error("[slang] Cannot use slang to compile from GLSL!");
             break;
         }
         case ShaderSourceType::SPIRV: {
-            throw std::runtime_error("Cannot use slang to compile from SPIR-V!");
+            throw std::runtime_error("[slang] Cannot use slang to compile from SPIR-V!");
             break;
+        }
+        default: {
+            auto err = fmt::format("[slang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
+            throw std::runtime_error(err);
         }
     }
 
@@ -311,6 +331,11 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
             case ShaderStage::AnyHit: slangStage = SLANG_STAGE_ANY_HIT; break;
             case ShaderStage::Intersect: slangStage = SLANG_STAGE_INTERSECTION; break;
             case ShaderStage::Callable: slangStage = SLANG_STAGE_CALLABLE; break;
+            default: {
+                auto err = fmt::format("[slang] Unrecognized shader stage: {}",
+                                       static_cast<uint32_t>(shaderInput.shaderStages[i]));
+                throw std::runtime_error(err);
+            }
         }
 
         entryPointIndices.push_back(spAddEntryPoint(
@@ -324,7 +349,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     int anyErrors = spCompile(request);
     const char* diagnostics = spGetDiagnosticOutput(request);
 
-    if (std::strlen(diagnostics) > 0) {
+    if (anyErrors != 0) {
         fmt::print("{}\n", diagnostics);
         return {};
     }
@@ -336,12 +361,15 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
 
         // Get the shader output code for this entry point.
         auto* data = spGetEntryPointCode(request, entryPointIndex, &compileResult.resultSize);
+        if (shaderInput.targetType == ShaderTargetType::SPIRV) {
+            assert(compileResult.resultSize % 4 == 0);
+        }
 
         // We have to reallocate the data as slang automatically deletes
         // the given string.
-        void* newData = malloc(compileResult.resultSize);
-        std::memcpy(newData, data, compileResult.resultSize);
-        compileResult.result = newData;
+        std::vector<uint8_t> newData(compileResult.resultSize);
+        std::memcpy(newData.data(), data, compileResult.resultSize);
+        compileResult.resultBytes = std::move(newData);
 
         switch (shaderInput.targetType) {
             case ShaderTargetType::GLSL:
