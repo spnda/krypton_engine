@@ -15,6 +15,8 @@ namespace carbon {
      * A basic data buffer, managed using vma.
      */
     class Buffer {
+        friend class carbon::CommandBuffer;
+
         std::shared_ptr<carbon::Device> device;
         std::string name;
 
@@ -73,6 +75,7 @@ namespace carbon {
         void unmapMemory() const;
 
         void copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer* destination);
-        void copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout, VkBufferImageCopy* copy);
+        void copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout,
+                         VkBufferImageCopy* copy);
     };
 } // namespace carbon

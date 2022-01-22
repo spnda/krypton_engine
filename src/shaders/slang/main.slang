@@ -31,7 +31,7 @@ void raygen() {
     uint2 threadIdx = DispatchRaysIndex().xy;
     uint2 size = DispatchRaysDimensions().xy;
     // float3 direction = getRayDirection(threadIdx, 0.0);
-    float3 dimension = 2 * float3(threadIdx / float2(size), 0.5) - 1;
+    float3 dimension = 2 * float3(threadIdx / float2(size), 0.61) - 1;
 
     RayDesc ray;
     ray.Origin = dimension;

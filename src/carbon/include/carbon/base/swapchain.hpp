@@ -53,8 +53,10 @@ namespace carbon {
         bool create(VkSurfaceKHR surface, VkExtent2D windowExtent);
         void destroy();
 
-        [[nodiscard]] auto acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const -> VkResult;
-        [[nodiscard]] auto queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex, std::shared_ptr<carbon::Semaphore> waitSemaphore) const -> VkResult;
+        [[nodiscard]] auto acquireNextImage(std::shared_ptr<carbon::Semaphore> presentCompleteSemaphore, uint32_t* imageIndex) const
+            -> VkResult;
+        [[nodiscard]] auto queuePresent(std::shared_ptr<carbon::Queue> queue, uint32_t imageIndex,
+                                        std::shared_ptr<carbon::Semaphore> waitSemaphore) const -> VkResult;
         [[nodiscard]] auto getFormat() const -> VkFormat;
         [[nodiscard]] auto getExtent() const -> VkExtent2D;
     };

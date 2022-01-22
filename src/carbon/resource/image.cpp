@@ -6,12 +6,9 @@
 #include <carbon/utils.hpp>
 
 carbon::Image::Image(std::shared_ptr<carbon::Device> context, VmaAllocator allocator, const VkExtent2D extent, std::string name)
-    : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {
-}
+    : device(std::move(context)), allocator(allocator), imageExtent(extent), name(std::move(name)) {}
 
-carbon::Image::operator VkImage() const {
-    return this->handle;
-}
+carbon::Image::operator VkImage() const { return this->handle; }
 
 carbon::Image& carbon::Image::operator=(const carbon::Image& newImage) {
     if (this == &newImage)
@@ -33,7 +30,7 @@ void carbon::Image::create(const VkFormat newFormat, const VkImageUsageFlags usa
 
     imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
     imageCreateInfo.format = newFormat;
-    imageCreateInfo.extent = {imageExtent.width, imageExtent.height, 1};
+    imageCreateInfo.extent = { imageExtent.width, imageExtent.height, 1 };
     imageCreateInfo.mipLevels = 1;
     imageCreateInfo.arrayLayers = 1;
     imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -83,10 +80,10 @@ void carbon::Image::create(VkImageCreateInfo* imageCreateInfo, VkImageViewCreate
 
 void carbon::Image::copyImage(carbon::CommandBuffer* cmdBuffer, VkImage destination, VkImageLayout destinationLayout) {
     VkImageCopy copyRegion = {
-        .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-        .srcOffset = {0, 0, 0},
-        .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-        .dstOffset = {0, 0, 0},
+        .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .srcOffset = { 0, 0, 0 },
+        .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .dstOffset = { 0, 0, 0 },
         .extent = getImageSize3d(),
     };
     vkCmdCopyImage(*cmdBuffer, this->handle, this->getImageLayout(), destination, destinationLayout, 1, &copyRegion);
@@ -107,13 +104,11 @@ VkDescriptorImageInfo carbon::Image::getDescriptorImageInfo() {
     };
 }
 
-VkImageView carbon::Image::getImageView() const {
-    return imageView;
-}
+VkFormat carbon::Image::getImageFormat() const { return format; }
 
-VkExtent2D carbon::Image::getImageSize() const {
-    return imageExtent;
-}
+VkImageLayout carbon::Image::getImageLayout() { return currentLayouts[0]; }
+
+VkExtent2D carbon::Image::getImageSize() const { return imageExtent; }
 
 VkExtent3D carbon::Image::getImageSize3d() const {
     return {
@@ -123,47 +118,31 @@ VkExtent3D carbon::Image::getImageSize3d() const {
     };
 }
 
-VkImageLayout carbon::Image::getImageLayout() {
-    return currentLayouts[0];
-}
+VkImageView carbon::Image::getImageView() const { return imageView; }
 
-void carbon::Image::changeLayout(
-    carbon::CommandBuffer* cmdBuffer,
-    const VkImageLayout newLayout,
-    const VkImageSubresourceRange& subresourceRange,
-    const VkPipelineStageFlags srcStage, const VkPipelineStageFlags dstStage) {
-    carbon::Image::changeLayout(handle, cmdBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage, subresourceRange);
+void carbon::Image::changeLayout(carbon::CommandBuffer* cmdBuffer, const VkImageLayout newLayout,
+                                 const VkImageSubresourceRange& subresourceRange, const VkPipelineStageFlags srcStage,
+                                 const VkPipelineStageFlags dstStage) {
+    carbon::Image::changeLayout(handle, cmdBuffer, currentLayouts[subresourceRange.baseMipLevel], newLayout, srcStage, dstStage,
+                                subresourceRange);
     currentLayouts[subresourceRange.baseMipLevel] = newLayout;
 }
 
-void carbon::Image::changeLayout(VkImage image, carbon::CommandBuffer* cmdBuffer,
-                                 VkImageLayout oldLayout, VkImageLayout newLayout,
+void carbon::Image::changeLayout(VkImage image, carbon::CommandBuffer* cmdBuffer, VkImageLayout oldLayout, VkImageLayout newLayout,
                                  VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage,
                                  const VkImageSubresourceRange& subresourceRange) {
     uint32_t srcAccessMask, dstAccessMask;
     switch (srcStage) {
-        default:
-            srcAccessMask = 0;
-            break;
-        case VK_PIPELINE_STAGE_TRANSFER_BIT:
-            srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-            break;
+        default: srcAccessMask = 0; break;
+        case VK_PIPELINE_STAGE_TRANSFER_BIT: srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT; break;
         case VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR:
-        case VK_ACCESS_SHADER_WRITE_BIT:
-            srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            break;
+        case VK_ACCESS_SHADER_WRITE_BIT: srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; break;
     }
     switch (dstStage) {
-        default:
-            dstAccessMask = 0;
-            break;
-        case VK_PIPELINE_STAGE_TRANSFER_BIT:
-            dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-            break;
+        default: dstAccessMask = 0; break;
+        case VK_PIPELINE_STAGE_TRANSFER_BIT: dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT; break;
         case VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR:
-        case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT:
-            dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            break;
+        case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT: dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT; break;
     }
 
     VkImageMemoryBarrier imageBarrier = {
@@ -178,11 +157,5 @@ void carbon::Image::changeLayout(VkImage image, carbon::CommandBuffer* cmdBuffer
         .subresourceRange = subresourceRange,
     };
 
-    cmdBuffer->pipelineBarrier(
-        srcStage,
-        dstStage,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &imageBarrier);
+    cmdBuffer->pipelineBarrier(srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
 }

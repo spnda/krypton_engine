@@ -67,6 +67,12 @@ void carbon::PhysicalDevice::create(carbon::Instance* instance, VkSurfaceKHR sur
             .runtimeDescriptorArray = true,
         };
         physicalDeviceSelector.add_required_extension_features(descriptorIndexingFeatures);
+
+        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+            .dynamicRendering = true,
+        };
+        physicalDeviceSelector.add_required_extension_features(dynamicRenderingFeatures);
     }
 
     // Let vk-bootstrap select our physical device.
@@ -74,9 +80,7 @@ void carbon::PhysicalDevice::create(carbon::Instance* instance, VkSurfaceKHR sur
     handle = getFromVkbResult(res);
 }
 
-std::string carbon::PhysicalDevice::getDeviceName() const {
-    return std::string {handle.properties.deviceName};
-}
+std::string carbon::PhysicalDevice::getDeviceName() const { return std::string { handle.properties.deviceName }; }
 
 VkPhysicalDeviceProperties2 carbon::PhysicalDevice::getProperties(void* pNext) const {
     VkPhysicalDeviceProperties2 deviceProperties = {
@@ -87,6 +91,4 @@ VkPhysicalDeviceProperties2 carbon::PhysicalDevice::getProperties(void* pNext) c
     return deviceProperties;
 }
 
-carbon::PhysicalDevice::operator VkPhysicalDevice() const {
-    return handle.physical_device;
-}
+carbon::PhysicalDevice::operator VkPhysicalDevice() const { return handle.physical_device; }

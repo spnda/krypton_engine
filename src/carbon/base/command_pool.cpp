@@ -4,8 +4,7 @@
 #include <carbon/utils.hpp>
 
 carbon::CommandPool::CommandPool(std::shared_ptr<carbon::Device> device, std::string name)
-    : device(std::move(device)), name(std::move(name)) {
-}
+    : device(std::move(device)), name(std::move(name)) {}
 
 void carbon::CommandPool::create(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags) {
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
@@ -19,8 +18,8 @@ void carbon::CommandPool::create(const uint32_t queueFamilyIndex, const VkComman
     device->setDebugUtilsName(handle, name);
 }
 
-std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(
-    VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags) {
+std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(VkCommandBufferLevel level,
+                                                                           VkCommandBufferUsageFlags bufferUsageFlags) {
     VkCommandBufferAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = handle,
@@ -34,8 +33,8 @@ std::shared_ptr<carbon::CommandBuffer> carbon::CommandPool::allocateBuffer(
     return std::make_shared<carbon::CommandBuffer>(cmdBuffer, device.get(), bufferUsageFlags);
 }
 
-std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocateBuffers(
-    VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags, uint32_t count) {
+std::vector<std::shared_ptr<carbon::CommandBuffer>>
+carbon::CommandPool::allocateBuffers(VkCommandBufferLevel level, VkCommandBufferUsageFlags bufferUsageFlags, uint32_t count) {
     VkCommandBufferAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = handle,
@@ -51,8 +50,7 @@ std::vector<std::shared_ptr<carbon::CommandBuffer>> carbon::CommandPool::allocat
     commandBuffers.resize(cmdBuffers.size());
 
     for (size_t i = 0; i < cmdBuffers.size(); ++i) {
-        commandBuffers[i] =
-            std::make_shared<carbon::CommandBuffer>(cmdBuffers[i], device.get(), bufferUsageFlags);
+        commandBuffers[i] = std::make_shared<carbon::CommandBuffer>(cmdBuffers[i], device.get(), bufferUsageFlags);
     }
 
     return commandBuffers;

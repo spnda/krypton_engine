@@ -17,27 +17,29 @@
  * A map with stringified versions of every aftermath result value.
  * Does not include DirectX specific errors. */
 static inline const std::unordered_map<GFSDK_Aftermath_Result, std::string> aftermathResultStrings = {
-    {GFSDK_Aftermath_Result_Success, "GFSDK_Aftermath_Result_Success"},
-    {GFSDK_Aftermath_Result_NotAvailable, "GFSDK_Aftermath_Result_NotAvailable"},
-    {GFSDK_Aftermath_Result_Fail, "GFSDK_Aftermath_Result_Fail"},
-    {GFSDK_Aftermath_Result_FAIL_VersionMismatch, "GFSDK_Aftermath_Result_FAIL_VersionMismatch"},
-    {GFSDK_Aftermath_Result_FAIL_NotInitialized, "GFSDK_Aftermath_Result_FAIL_NotInitialized"},
-    {GFSDK_Aftermath_Result_FAIL_InvalidAdapter, "GFSDK_Aftermath_Result_FAIL_InvalidAdapter"},
-    {GFSDK_Aftermath_Result_FAIL_InvalidParameter, "GFSDK_Aftermath_Result_FAIL_InvalidParameter"},
-    {GFSDK_Aftermath_Result_FAIL_Unknown, "GFSDK_Aftermath_Result_FAIL_Unknown"},
-    {GFSDK_Aftermath_Result_FAIL_ApiError, "GFSDK_Aftermath_Result_FAIL_ApiError"},
-    {GFSDK_Aftermath_Result_FAIL_NvApiIncompatible, "GFSDK_Aftermath_Result_FAIL_NvApiIncompatible"},
-    {GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList, "GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList"},
-    {GFSDK_Aftermath_Result_FAIL_AlreadyInitialized, "GFSDK_Aftermath_Result_FAIL_AlreadyInitialized"},
-    {GFSDK_Aftermath_Result_FAIL_DriverInitFailed, "GFSDK_Aftermath_Result_FAIL_DriverInitFailed"},
-    {GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported, "GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported"},
-    {GFSDK_Aftermath_Result_FAIL_OutOfMemory, "GFSDK_Aftermath_Result_FAIL_OutOfMemory"},
-    {GFSDK_Aftermath_Result_FAIL_GetDataOnBundle, "GFSDK_Aftermath_Result_FAIL_GetDataOnBundle"},
-    {GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext, "GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext"},
-    {GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled, "GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled"},
-    {GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered, "GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered"},
-    {GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered, "GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered"},
-    {GFSDK_Aftermath_Result_FAIL_Disabled, "GFSDK_Aftermath_Result_FAIL_Disabled"}};
+    { GFSDK_Aftermath_Result_Success, "GFSDK_Aftermath_Result_Success" },
+    { GFSDK_Aftermath_Result_NotAvailable, "GFSDK_Aftermath_Result_NotAvailable" },
+    { GFSDK_Aftermath_Result_Fail, "GFSDK_Aftermath_Result_Fail" },
+    { GFSDK_Aftermath_Result_FAIL_VersionMismatch, "GFSDK_Aftermath_Result_FAIL_VersionMismatch" },
+    { GFSDK_Aftermath_Result_FAIL_NotInitialized, "GFSDK_Aftermath_Result_FAIL_NotInitialized" },
+    { GFSDK_Aftermath_Result_FAIL_InvalidAdapter, "GFSDK_Aftermath_Result_FAIL_InvalidAdapter" },
+    { GFSDK_Aftermath_Result_FAIL_InvalidParameter, "GFSDK_Aftermath_Result_FAIL_InvalidParameter" },
+    { GFSDK_Aftermath_Result_FAIL_Unknown, "GFSDK_Aftermath_Result_FAIL_Unknown" },
+    { GFSDK_Aftermath_Result_FAIL_ApiError, "GFSDK_Aftermath_Result_FAIL_ApiError" },
+    { GFSDK_Aftermath_Result_FAIL_NvApiIncompatible, "GFSDK_Aftermath_Result_FAIL_NvApiIncompatible" },
+    { GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList,
+      "GFSDK_Aftermath_Result_FAIL_GettingContextDataWithNewCommandList" },
+    { GFSDK_Aftermath_Result_FAIL_AlreadyInitialized, "GFSDK_Aftermath_Result_FAIL_AlreadyInitialized" },
+    { GFSDK_Aftermath_Result_FAIL_DriverInitFailed, "GFSDK_Aftermath_Result_FAIL_DriverInitFailed" },
+    { GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported, "GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported" },
+    { GFSDK_Aftermath_Result_FAIL_OutOfMemory, "GFSDK_Aftermath_Result_FAIL_OutOfMemory" },
+    { GFSDK_Aftermath_Result_FAIL_GetDataOnBundle, "GFSDK_Aftermath_Result_FAIL_GetDataOnBundle" },
+    { GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext, "GFSDK_Aftermath_Result_FAIL_GetDataOnDeferredContext" },
+    { GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled, "GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled" },
+    { GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered, "GFSDK_Aftermath_Result_FAIL_NoResourcesRegistered" },
+    { GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered, "GFSDK_Aftermath_Result_FAIL_ThisResourceNeverRegistered" },
+    { GFSDK_Aftermath_Result_FAIL_Disabled, "GFSDK_Aftermath_Result_FAIL_Disabled" }
+};
 
 namespace carbon {
     // Wrapper around NVIDIA Aftermath
@@ -56,7 +58,8 @@ namespace carbon {
         void onShaderDebugInfo(const void* pShaderDebugInfo, uint32_t shaderDebugInfoSize);
         void onShaderLookup(const GFSDK_Aftermath_ShaderHash* shaderHash, PFN_GFSDK_Aftermath_SetData setShaderBinary);
         /** Callback function invoked to find shader debug information data. */
-        void onShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* identifier, PFN_GFSDK_Aftermath_SetData setShaderDebugInfo);
+        void onShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* identifier,
+                                     PFN_GFSDK_Aftermath_SetData setShaderDebugInfo);
         /** Callback function invoked to find shader source debug data by shader debug name. */
         void onShaderSourceLookup(const GFSDK_Aftermath_ShaderDebugName* shaderDebugName, PFN_GFSDK_Aftermath_SetData setShaderBinary);
         void onDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription);

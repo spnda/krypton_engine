@@ -28,8 +28,10 @@ namespace carbon {
     class Buffer;
     class CommandBuffer;
     class CommandPool;
+    class DescriptorSet;
     class Device;
     class Fence;
+    class GraphicsPipeline;
     class Instance;
     class PhysicalDevice;
     class Queue;
@@ -39,6 +41,7 @@ namespace carbon {
     class StagingBuffer;
     class StorageImage;
     class Swapchain;
+    class Texture;
     struct TopLevelAccelerationStructure;
 } // namespace carbon
 
@@ -69,8 +72,18 @@ namespace krypton::rapi {
         std::shared_ptr<carbon::Queue> graphicsQueue;
         std::shared_ptr<carbon::Swapchain> swapchain;
 
+        // UI pipeline
+        std::shared_ptr<carbon::DescriptorSet> uiDescriptorSet = nullptr;
+        std::unique_ptr<carbon::GraphicsPipeline> uiPipeline = nullptr;
+        std::unique_ptr<carbon::Texture> uiFontTexture = nullptr;
+        std::unique_ptr<carbon::StagingBuffer> uiVertexStagingBuffer;
+        std::unique_ptr<carbon::StagingBuffer> uiIndexStagingBuffer;
+        std::unique_ptr<carbon::Buffer> uiVertexBuffer;
+        std::unique_ptr<carbon::Buffer> uiIndexBuffer;
+
         // RT pipeline
-        std::unique_ptr<carbon::RayTracingPipeline> pipeline = nullptr;
+        std::shared_ptr<carbon::DescriptorSet> rtDescriptorSet = nullptr;
+        std::unique_ptr<carbon::RayTracingPipeline> rtPipeline = nullptr;
         std::unique_ptr<carbon::Buffer> shaderBindingTable;
         std::unique_ptr<carbon::StorageImage> storageImage;
         std::unique_ptr<VkPhysicalDeviceRayTracingPipelinePropertiesKHR> rtProperties;
@@ -81,6 +94,8 @@ namespace krypton::rapi {
         RtShaderModule missShader = {};
         RtShaderModule closestHitShader = {};
         RtShaderModule anyHitShader = {};
+        std::unique_ptr<carbon::ShaderModule> uiFragment;
+        std::unique_ptr<carbon::ShaderModule> uiVertex;
 
         // TLAS
         std::unique_ptr<carbon::TopLevelAccelerationStructure> tlas;
@@ -110,12 +125,17 @@ namespace krypton::rapi {
         std::vector<krypton::rapi::RenderObjectHandle> handlesForFrame = {};
 
         void buildBLAS(krypton::rapi::vulkan::RenderObject& renderObject);
-        void buildPipeline();
+        void buildRTPipeline();
         void buildSBT();
+        void buildUIPipeline();
         /** If the TLAS already exists, this will only update it */
         void buildTLAS(carbon::CommandBuffer* cmdBuffer);
-        auto createShader(const std::string& name, carbon::ShaderStage stage, krypton::shaders::ShaderCompileResult& result) -> std::unique_ptr<carbon::ShaderModule>;
-        void oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool, const std::function<void(carbon::CommandBuffer*)>& callback) const;
+        void createUiFontTexture();
+        auto createShader(const std::string& name, carbon::ShaderStage stage, krypton::shaders::ShaderCompileResult& result)
+            -> std::unique_ptr<carbon::ShaderModule>;
+        void initUi();
+        void oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
+                           const std::function<void(carbon::CommandBuffer*)>& callback) const;
         auto submitFrame() -> VkResult;
         auto waitForFrame() -> VkResult;
 

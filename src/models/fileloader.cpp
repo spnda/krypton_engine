@@ -46,9 +46,7 @@ namespace krypton::models {
         const auto& accessor = model.accessors[accessorIndex];
         const auto& bufferView = model.bufferViews[accessor.bufferView];
         bv->data = reinterpret_cast<const float*>(&(model.buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-        bv->stride = accessor.ByteStride(bufferView)
-                         ? (accessor.ByteStride(bufferView) / sizeof(float))
-                         : getTinyGltfTypeSizeInBytes(type);
+        bv->stride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : getTinyGltfTypeSizeInBytes(type);
         bv->count = accessor.count;
     };
 
@@ -123,7 +121,7 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
                 /* As there are no indices, we'll generate them */
                 kPrimitive.indices.resize(positions.count);
                 for (size_t i = 0; i < positions.count; ++i) {
-                    kPrimitive.indices[i] = i;
+                    kPrimitive.indices[i] = static_cast<krypton::mesh::Index>(i);
                 }
             }
         }
@@ -182,7 +180,8 @@ bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
 
         {
             auto& pbrmr = mat.pbrMetallicRoughness;
-            kMaterial.baseColor = glm::fvec3(glm::make_vec3(pbrmr.baseColorFactor.data())); /* baseColorFactor is a vector of doubles, needs to be converted. */
+            kMaterial.baseColor = glm::fvec3(
+                glm::make_vec3(pbrmr.baseColorFactor.data())); /* baseColorFactor is a vector of doubles, needs to be converted. */
 
             if (pbrmr.baseColorTexture.index >= 0)
                 kMaterial.baseTextureIndex = pbrmr.baseColorTexture.index;

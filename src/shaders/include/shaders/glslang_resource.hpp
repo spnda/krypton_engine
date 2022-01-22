@@ -102,7 +102,8 @@ namespace krypton::shaders {
         /* .maxMeshViewCountNV = */ 4,
         /* .maxDualSourceDrawBuffersEXT = */ 1,
 
-        /* .limits = */ {
+        /* .limits = */
+        {
             /* .nonInductiveForLoops = */ 1,
             /* .whileLoops = */ 1,
             /* .doWhileLoops = */ 1,
@@ -112,7 +113,8 @@ namespace krypton::shaders {
             /* .generalSamplerIndexing = */ 1,
             /* .generalVariableIndexing = */ 1,
             /* .generalConstantMatrixVectorIndexing = */ 1,
-        }};
+        }
+    };
 } // namespace krypton::shaders
 
 #endif

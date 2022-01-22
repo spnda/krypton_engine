@@ -3,32 +3,28 @@
 #include <stdexcept>
 
 #include <fmt/core.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
 
 #include <rapi/rapi.hpp>
 #include <rapi/rapi_backends.hpp>
 #include <rapi/window.hpp>
 
 namespace krypton::rapi::window {
-    void errorCallback(int error, const char* desc) {
-        fmt::print(stderr, "{}\n", desc);
-    }
+    void errorCallback(int error, const char* desc) { fmt::print(stderr, "{}\n", desc); }
 
-    void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    }
+    void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {}
 
     void resizeCallback(GLFWwindow* window, int width, int height) {
         if (width > 0 && height > 0) {
-            krypton::rapi::RenderAPI* w =
-                reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
+            krypton::rapi::RenderAPI* w = reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
             if (w != nullptr)
                 w->resize(width, height);
         }
     }
 } // namespace krypton::rapi::window
 
-krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height)
-    : title(title), width(width), height(height) {
-}
+krypton::rapi::Window::Window(const std::string& title, uint32_t width, uint32_t height) : title(title), width(width), height(height) {}
 
 void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
     using namespace krypton::rapi;
@@ -42,16 +38,12 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
             if (!glfwVulkanSupported())
                 throw std::runtime_error("glfw doesn't support Vulkan.");
             break;
-        case Backend::Metal:
-            break;
+        case Backend::Metal: break;
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    window = glfwCreateWindow(
-        width, height,
-        title.c_str(),
-        nullptr, nullptr);
+    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 
     if (!window) {
         glfwTerminate();
@@ -67,29 +59,25 @@ void krypton::rapi::Window::destroy() {
     glfwTerminate();
 }
 
-float krypton::rapi::Window::getAspectRatio() const {
-    return (float)width / (float)height;
+float krypton::rapi::Window::getAspectRatio() const { return (float)width / (float)height; }
+
+GLFWwindow* krypton::rapi::Window::getWindowPointer() const { return window; }
+
+void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const { glfwGetFramebufferSize(window, tWidth, tHeight); }
+
+void krypton::rapi::Window::initImgui() const {
+#ifdef RAPI_WITH_VULKAN
+    ImGui_ImplGlfw_InitForVulkan(window, false);
+#elif RAPI_WITH_METAL
+    ImGui_ImplGlfw_InitForOther(window, false);
+#endif
 }
 
-GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
-    return window;
-}
+void krypton::rapi::Window::pollEvents() const { glfwPollEvents(); }
 
-void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
-    glfwGetFramebufferSize(window, tWidth, tHeight);
-}
+void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) { glfwSetWindowUserPointer(window, rapi); }
 
-void krypton::rapi::Window::pollEvents() const {
-    glfwPollEvents();
-}
-
-void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
-    glfwSetWindowUserPointer(window, rapi);
-}
-
-bool krypton::rapi::Window::shouldClose() const {
-    return glfwWindowShouldClose(window);
-}
+bool krypton::rapi::Window::shouldClose() const { return glfwWindowShouldClose(window); }
 
 #ifdef RAPI_WITH_VULKAN
 VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) const {

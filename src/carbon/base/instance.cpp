@@ -5,11 +5,9 @@
 #include <carbon/base/instance.hpp>
 #include <carbon/utils.hpp>
 
-carbon::Instance::Instance() {
-}
+carbon::Instance::Instance() {}
 
-carbon::Instance::~Instance() {
-}
+carbon::Instance::~Instance() {}
 
 void carbon::Instance::addExtensions(const std::vector<std::string>& extensions) {
     for (auto ext : extensions) {
@@ -48,6 +46,9 @@ void carbon::Instance::create() {
                            .enable_layer("VK_LAYER_LUNARG_monitor")
                            .request_validation_layers()
                            .use_default_debug_messenger()
+#else
+                           .enable_validation_layers(false)
+                           .request_validation_layers(false)
 #endif // #ifdef _DEBUG
                            .build();
 
@@ -67,14 +68,8 @@ void carbon::Instance::destroy() const {
     vkb::destroy_instance(handle);
 }
 
-uint32_t carbon::Instance::getApiVersion() const {
-    return appData.apiVersion;
-}
+uint32_t carbon::Instance::getApiVersion() const { return appData.apiVersion; }
 
-void carbon::Instance::setApplicationData(ApplicationData data) {
-    appData = std::move(data);
-}
+void carbon::Instance::setApplicationData(ApplicationData data) { appData = std::move(data); }
 
-carbon::Instance::operator VkInstance() const {
-    return handle.instance;
-}
+carbon::Instance::operator VkInstance() const { return handle.instance; }

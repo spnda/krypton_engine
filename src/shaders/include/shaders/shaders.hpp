@@ -34,12 +34,9 @@ namespace krypton::shaders {
 
     inline bool operator==(ShaderSourceType a, ShaderTargetType b) {
         switch (a) {
-            case ShaderSourceType::GLSL:
-                return b == ShaderTargetType::GLSL;
-            case ShaderSourceType::HLSL:
-                return b == ShaderTargetType::HLSL;
-            case ShaderSourceType::SPIRV:
-                return b == ShaderTargetType::SPIRV;
+            case ShaderSourceType::GLSL: return b == ShaderTargetType::GLSL;
+            case ShaderSourceType::HLSL: return b == ShaderTargetType::HLSL;
+            case ShaderSourceType::SPIRV: return b == ShaderTargetType::SPIRV;
             default:
                 /* Other inputs can only be slang, which we can't set
                  * as a target or the target is Metal, which we cannot
@@ -127,9 +124,8 @@ namespace krypton::shaders {
      * This also automatically reads the file contents depending
      * on [sourceType].
      */
-    [[nodiscard]] auto compileShaders(const fs::path& shaderFileName, ShaderStage stage, ShaderSourceType sourceType, ShaderTargetType targetType)
-        -> std::vector<ShaderCompileResult>;
+    [[nodiscard]] auto compileShaders(const fs::path& shaderFileName, ShaderStage stage, ShaderSourceType sourceType,
+                                      ShaderTargetType targetType) -> std::vector<ShaderCompileResult>;
 
-    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs)
-        -> std::vector<ShaderCompileResult>;
+    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs) -> std::vector<ShaderCompileResult>;
 } // namespace krypton::shaders

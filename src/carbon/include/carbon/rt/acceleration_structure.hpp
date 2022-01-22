@@ -44,8 +44,7 @@ namespace carbon {
         void createResultBuffer(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
         void createStructure(VkAccelerationStructureBuildSizesInfoKHR buildSizes);
         virtual void destroy();
-        auto getBuildSizes(const uint32_t* primitiveCount,
-                           VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
+        auto getBuildSizes(const uint32_t* primitiveCount, VkAccelerationStructureBuildGeometryInfoKHR* buildGeometryInfo,
                            VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties) -> VkAccelerationStructureBuildSizesInfoKHR;
         auto getDescriptorWrite() const -> VkWriteDescriptorSetAccelerationStructureKHR;
 

@@ -4,7 +4,7 @@
 
 namespace krypton::mesh {
     /* Index has to be signed as we use negative values
-	 * to represent missing/no texture. */
+     * to represent missing/no texture. */
     using Index = int32_t;
 
     struct Vertex final {

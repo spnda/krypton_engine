@@ -12,8 +12,7 @@
 #endif // #ifdef WITH_NV_AFTERMATH
 
 carbon::ShaderModule::ShaderModule(std::shared_ptr<carbon::Device> device, std::string name, const carbon::ShaderStage shaderStage)
-    : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {
-}
+    : device(std::move(device)), name(std::move(name)), shaderStage(shaderStage) {}
 
 void carbon::ShaderModule::createShaderModule(uint32_t* spv, size_t spvSize) {
     shaderBinary = spv;
@@ -31,14 +30,12 @@ void carbon::ShaderModule::createShaderModule(uint32_t* spv, size_t spvSize) {
 
     device->setDebugUtilsName(handle, name);
 #ifdef WITH_NV_AFTERMATH
-    carbon::ShaderDatabase::addShaderBinary({shaderBinary, shaderBinarySize});
+    carbon::ShaderDatabase::addShaderBinary({ shaderBinary, shaderBinarySize });
     // carbon::ShaderDatabase::addShaderWithDebugInfo(shaderCompileResult.debugBinary, shaderCompileResult.binary);
 #endif // #ifdef WITH_NV_AFTERMATH
 }
 
-void carbon::ShaderModule::destroy() {
-    vkDestroyShaderModule(*device, handle, nullptr);
-}
+void carbon::ShaderModule::destroy() { vkDestroyShaderModule(*device, handle, nullptr); }
 
 VkPipelineShaderStageCreateInfo carbon::ShaderModule::getShaderStageCreateInfo() const {
     return {
@@ -49,10 +46,6 @@ VkPipelineShaderStageCreateInfo carbon::ShaderModule::getShaderStageCreateInfo()
     };
 }
 
-carbon::ShaderStage carbon::ShaderModule::getShaderStage() const {
-    return shaderStage;
-}
+carbon::ShaderStage carbon::ShaderModule::getShaderStage() const { return shaderStage; }
 
-VkShaderModule carbon::ShaderModule::getHandle() const {
-    return handle;
-}
+VkShaderModule carbon::ShaderModule::getHandle() const { return handle; }

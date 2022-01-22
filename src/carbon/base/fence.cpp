@@ -6,17 +6,11 @@
 
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
-carbon::Fence::Fence(std::shared_ptr<carbon::Device> device, std::string name)
-    : device(std::move(device)), name(std::move(name)) {
-}
+carbon::Fence::Fence(std::shared_ptr<carbon::Device> device, std::string name) : device(std::move(device)), name(std::move(name)) {}
 
-carbon::Fence::Fence(const carbon::Fence& fence)
-    : device(std::move(fence.device)), handle(fence.handle), name(fence.name) {
-}
+carbon::Fence::Fence(const carbon::Fence& fence) : device(std::move(fence.device)), handle(fence.handle), name(fence.name) {}
 
-carbon::Fence::operator VkFence() const {
-    return handle;
-}
+carbon::Fence::operator VkFence() const { return handle; }
 
 void carbon::Fence::create(const VkFenceCreateFlags flags) {
     VkFenceCreateInfo info = {

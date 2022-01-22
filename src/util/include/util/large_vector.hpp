@@ -10,7 +10,7 @@ namespace krypton::util {
      * very high for large std::vector's as they use geometric
      * growth, it's usually more efficient to have a std::vector
      * of pointers to fixed size blocks.
-     * 
+     *
      * By default each block is 16384 big.
      */
     template <typename T, size_t blockSize = 16384>

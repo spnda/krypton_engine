@@ -3,9 +3,11 @@ add_library(krypton::rapi ALIAS krypton_rapi)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 target_link_libraries(krypton_rapi PRIVATE fmt::fmt)
 target_link_libraries(krypton_rapi PRIVATE glfw)
+target_link_libraries(krypton_rapi PRIVATE imgui::imgui)
 target_link_libraries(krypton_rapi PUBLIC krypton::mesh)
 target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
 target_link_libraries(krypton_rapi PUBLIC krypton::util)

@@ -46,9 +46,7 @@ namespace krypton::util {
     };
 
     template <typename Object>
-    krypton::util::FreeListObject<Object>::FreeListObject(Object object)
-        : object(std::move(object)) {
-    }
+    krypton::util::FreeListObject<Object>::FreeListObject(Object object) : object(std::move(object)) {}
 
     template <typename Object>
     krypton::util::LargeFreeList<Object>::LargeFreeList() {
@@ -81,7 +79,7 @@ namespace krypton::util {
     template <typename Object>
     krypton::util::FreeListHandle krypton::util::LargeFreeList<Object>::getNewHandle() {
         auto slot = createSlot();
-        return krypton::util::FreeListHandle {slot, (*this)[slot].generation};
+        return krypton::util::FreeListHandle { slot, (*this)[slot].generation };
     }
 
     template <typename Object>

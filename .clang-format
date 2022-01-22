@@ -2,12 +2,12 @@
 # We'll let every language be based on the LLVM formatting rules
 BasedOnStyle: LLVM
 AllowShortCaseLabelsOnASingleLine: true
-ColumnLimit: 0
+ColumnLimit: 140
 IndentCaseLabels: true
 IndentWidth: 4
 NamespaceIndentation: All
 PointerAlignment: Left
-SortIncludes: true
+SortIncludes: true  
 UseTab: Never
 
 ---
@@ -15,6 +15,8 @@ Language: Cpp
 AccessModifierOffset: -4
 AlignOperands: Align
 AllowAllArgumentsOnNextLine: true
+AlwaysBreakTemplateDeclarations: true
+Cpp11BracedListStyle: false
 SortUsingDeclarations: true
 SpaceBeforeCpp11BracedList: true
 SpaceBeforeCtorInitializerColon: true

@@ -4,6 +4,8 @@
 
 namespace carbon {
     enum class ShaderStage : uint64_t {
+        Fragment = VK_SHADER_STAGE_FRAGMENT_BIT,
+        Vertex = VK_SHADER_STAGE_VERTEX_BIT,
         RayGeneration = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         ClosestHit = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
         RayMiss = VK_SHADER_STAGE_MISS_BIT_KHR,

@@ -6,18 +6,14 @@
 #include <carbon/resource/image.hpp>
 #include <carbon/utils.hpp>
 
-carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator)
-    : device(std::move(device)), allocator(allocator) {
-}
+carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator) : device(std::move(device)), allocator(allocator) {}
 
 carbon::Buffer::Buffer(std::shared_ptr<carbon::Device> device, VmaAllocator allocator, std::string name)
-    : device(std::move(device)), allocator(allocator), name(std::move(name)) {
-}
+    : device(std::move(device)), allocator(allocator), name(std::move(name)) {}
 
 carbon::Buffer::Buffer(const carbon::Buffer& buffer)
-    : device(buffer.device), name(buffer.name), allocator(buffer.allocator),
-      allocation(buffer.allocation), handle(buffer.handle), address(buffer.address) {
-}
+    : device(buffer.device), name(buffer.name), allocator(buffer.allocator), allocation(buffer.allocation), handle(buffer.handle),
+      address(buffer.address) {}
 
 carbon::Buffer& carbon::Buffer::operator=(const carbon::Buffer& buffer) {
     this->handle = buffer.handle;
@@ -28,7 +24,8 @@ carbon::Buffer& carbon::Buffer::operator=(const carbon::Buffer& buffer) {
     return *this;
 }
 
-void carbon::Buffer::create(const VkDeviceSize newSize, const VkBufferUsageFlags bufferUsage, const VmaMemoryUsage usage, const VkMemoryPropertyFlags properties) {
+void carbon::Buffer::create(const VkDeviceSize newSize, const VkBufferUsageFlags bufferUsage, const VmaMemoryUsage usage,
+                            const VkMemoryPropertyFlags properties) {
     this->size = newSize;
     auto bufferCreateInfo = getCreateInfo(bufferUsage);
 
@@ -59,13 +56,9 @@ void carbon::Buffer::destroy() {
     handle = nullptr;
 }
 
-void carbon::Buffer::lock() const {
-    memoryMutex.lock();
-}
+void carbon::Buffer::lock() const { memoryMutex.lock(); }
 
-void carbon::Buffer::unlock() const {
-    memoryMutex.unlock();
-}
+void carbon::Buffer::unlock() const { memoryMutex.unlock(); }
 
 auto carbon::Buffer::getCreateInfo(VkBufferUsageFlags bufferUsage) const -> VkBufferCreateInfo {
     return {
@@ -86,9 +79,7 @@ auto carbon::Buffer::getBufferDeviceAddress(carbon::Device* device, VkBufferDevi
     return vkGetBufferDeviceAddress(*device, addressInfo);
 }
 
-auto carbon::Buffer::getDeviceAddress() const -> const VkDeviceAddress& {
-    return address;
-}
+auto carbon::Buffer::getDeviceAddress() const -> const VkDeviceAddress& { return address; }
 
 auto carbon::Buffer::getDescriptorInfo(const uint64_t bufferRange, const uint64_t offset) const -> VkDescriptorBufferInfo {
     return {
@@ -98,9 +89,7 @@ auto carbon::Buffer::getDescriptorInfo(const uint64_t bufferRange, const uint64_
     };
 }
 
-auto carbon::Buffer::getHandle() const -> const VkBuffer {
-    return this->handle;
-}
+auto carbon::Buffer::getHandle() const -> const VkBuffer { return this->handle; }
 
 auto carbon::Buffer::getDeviceOrHostConstAddress() const -> const VkDeviceOrHostAddressConstKHR {
     return {
@@ -108,25 +97,20 @@ auto carbon::Buffer::getDeviceOrHostConstAddress() const -> const VkDeviceOrHost
     };
 }
 
-auto carbon::Buffer::getDeviceOrHostAddress() const -> const VkDeviceOrHostAddressKHR {
-    return {.deviceAddress = address};
-}
+auto carbon::Buffer::getDeviceOrHostAddress() const -> const VkDeviceOrHostAddressKHR { return { .deviceAddress = address }; }
 
 auto carbon::Buffer::getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dstAccess) const -> VkBufferMemoryBarrier {
-    return VkBufferMemoryBarrier {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-        .srcAccessMask = srcAccess,
-        .dstAccessMask = dstAccess,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .buffer = getHandle(),
-        .offset = 0,
-        .size = getSize()};
+    return VkBufferMemoryBarrier { .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                                   .srcAccessMask = srcAccess,
+                                   .dstAccessMask = dstAccess,
+                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                   .buffer = getHandle(),
+                                   .offset = 0,
+                                   .size = getSize() };
 }
 
-auto carbon::Buffer::getSize() const -> VkDeviceSize {
-    return size;
-}
+auto carbon::Buffer::getSize() const -> VkDeviceSize { return size; }
 
 void carbon::Buffer::memoryCopy(const void* source, uint64_t copySize, uint64_t offset) const {
     std::lock_guard guard(memoryMutex);
@@ -141,9 +125,7 @@ void carbon::Buffer::mapMemory(void** destination) const {
     checkResult(result, "Failed to map memory");
 }
 
-void carbon::Buffer::unmapMemory() const {
-    vmaUnmapMemory(allocator, allocation);
-}
+void carbon::Buffer::unmapMemory() const { vmaUnmapMemory(allocator, allocation); }
 
 void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon::Buffer* destination) {
     if (handle == nullptr || size == 0)
@@ -156,6 +138,7 @@ void carbon::Buffer::copyToBuffer(carbon::CommandBuffer* cmdBuffer, const carbon
     vkCmdCopyBuffer(VkCommandBuffer(*cmdBuffer), handle, destination->handle, 1, &copy);
 }
 
-void carbon::Buffer::copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout, VkBufferImageCopy* copy) {
+void carbon::Buffer::copyToImage(carbon::CommandBuffer* cmdBuffer, const carbon::Image* destination, VkImageLayout imageLayout,
+                                 VkBufferImageCopy* copy) {
     vkCmdCopyBufferToImage(VkCommandBuffer(*cmdBuffer), handle, destination->handle, imageLayout, 1, copy);
 }

@@ -34,7 +34,8 @@ namespace carbon {
         /** Creates a new unique_lock, which will automatically lock the mutex. */
         [[nodiscard]] auto getLock() const -> std::unique_lock<std::mutex>;
         [[nodiscard]] auto submit(carbon::Fence* fence, const VkSubmitInfo* submitInfo) const -> VkResult;
-        [[nodiscard]] auto present(uint32_t imageIndex, const VkSwapchainKHR& swapchain, std::shared_ptr<carbon::Semaphore> waitSemaphore) const -> VkResult;
+        [[nodiscard]] auto present(uint32_t imageIndex, const VkSwapchainKHR& swapchain,
+                                   std::shared_ptr<carbon::Semaphore> waitSemaphore) const -> VkResult;
 
         operator VkQueue() const;
     };

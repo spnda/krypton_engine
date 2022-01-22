@@ -3,13 +3,9 @@
 #include <carbon/base/device.hpp>
 #include <carbon/base/semaphore.hpp>
 
-carbon::Semaphore::Semaphore(std::shared_ptr<carbon::Device> device, std::string name)
-    : device(std::move(device)), name(std::move(name)) {
-}
+carbon::Semaphore::Semaphore(std::shared_ptr<carbon::Device> device, std::string name) : device(std::move(device)), name(std::move(name)) {}
 
-carbon::Semaphore::operator VkSemaphore() const {
-    return handle;
-}
+carbon::Semaphore::operator VkSemaphore() const { return handle; }
 
 void carbon::Semaphore::create(VkSemaphoreCreateFlags flags) {
     VkSemaphoreCreateInfo semaphoreCreateInfo = {
@@ -24,6 +20,4 @@ void carbon::Semaphore::destroy() const {
         vkDestroySemaphore(*device, handle, nullptr);
 }
 
-auto carbon::Semaphore::getHandle() const -> const VkSemaphore& {
-    return handle;
-}
+auto carbon::Semaphore::getHandle() const -> const VkSemaphore& { return handle; }

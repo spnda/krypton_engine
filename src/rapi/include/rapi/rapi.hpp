@@ -8,6 +8,8 @@
 #include <rapi/render_object_handle.hpp>
 #include <rapi/window.hpp>
 
+struct ImDrawData;
+
 namespace krypton::rapi {
     class RenderAPI;
 
@@ -25,12 +27,16 @@ namespace krypton::rapi {
 
         /**
          * Creates a new handle to a new render object. This handle can from now
-         * on be used to modify 
+         * on be used to modify
          */
         [[nodiscard]] virtual auto createRenderObject() -> RenderObjectHandle = 0;
 
         [[nodiscard]] virtual auto destroyRenderObject(RenderObjectHandle& handle) -> bool = 0;
 
+        /**
+         * The UI has to be constructed through ImGui before calling this.
+         * This auto calls ImGui::Render() and renders the relevant draw data.
+         */
         virtual void drawFrame() = 0;
 
         virtual void endFrame() = 0;

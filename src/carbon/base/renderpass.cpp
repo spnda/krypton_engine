@@ -6,8 +6,7 @@
 #include <carbon/base/swapchain.hpp>
 
 carbon::RenderPass::RenderPass(std::shared_ptr<carbon::Device> device, std::shared_ptr<carbon::Swapchain> swapchain)
-    : device(std::move(device)), swapchain(std::move(swapchain)) {
-}
+    : device(std::move(device)), swapchain(std::move(swapchain)) {}
 
 void carbon::RenderPass::destroy() {
     if (handle != nullptr)
@@ -37,24 +36,22 @@ void carbon::RenderPass::create(const VkAttachmentLoadOp colorBufferLoadOp, cons
         .pColorAttachments = &colorAttachmentRef,
     };
 
-    VkSubpassDependency dependency = {
-        .srcSubpass = VK_SUBPASS_EXTERNAL,
-        .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
+    VkSubpassDependency dependency = { .srcSubpass = VK_SUBPASS_EXTERNAL,
+                                       .dstSubpass = 0,
+                                       .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                       .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                       .srcAccessMask = 0,
+                                       .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT };
 
-    std::array<VkAttachmentDescription, 1> attachments = {colorAttachment};
+    std::array<VkAttachmentDescription, 1> attachments = { colorAttachment };
 
-    VkRenderPassCreateInfo renderPassInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = static_cast<uint32_t>(attachments.size()),
-        .pAttachments = attachments.data(),
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = 1,
-        .pDependencies = &dependency};
+    VkRenderPassCreateInfo renderPassInfo = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                                              .attachmentCount = static_cast<uint32_t>(attachments.size()),
+                                              .pAttachments = attachments.data(),
+                                              .subpassCount = 1,
+                                              .pSubpasses = &subpass,
+                                              .dependencyCount = 1,
+                                              .pDependencies = &dependency };
 
     vkCreateRenderPass(*device, &renderPassInfo, nullptr, &handle);
 
@@ -78,10 +75,6 @@ void carbon::RenderPass::begin(const VkCommandBuffer cmdBuffer, const VkFramebuf
     vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void carbon::RenderPass::end(const VkCommandBuffer cmdBuffer) {
-    vkCmdEndRenderPass(cmdBuffer);
-}
+void carbon::RenderPass::end(const VkCommandBuffer cmdBuffer) { vkCmdEndRenderPass(cmdBuffer); }
 
-carbon::RenderPass::operator VkRenderPass() const {
-    return handle;
-}
+carbon::RenderPass::operator VkRenderPass() const { return handle; }
