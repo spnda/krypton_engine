@@ -19,7 +19,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
 if (MSVC) # cl.exe or clang-cl.exe
   # Microsoft not properly setting __cplusplus by default.
   # AVX should be supported by any AMD/Intel CPU newer than 2011/2012.
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc /W4 /sdl /O2 /Ob2 /arch:AVX /analyze")
+  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc /W4 /sdl /O2 /Ob2 /MP /arch:AVX /analyze")
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # Clang, AppleClang, or GCC
   string(APPEND CMAKE_CXX_FLAGS " -Wall -O2")

@@ -147,7 +147,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     }
 
     // TODO: Make this a configurable setting.
-    glslang_target_language_version_t spvVersion = GLSLANG_TARGET_SPV_1_5;
+    glslang_target_language_version_t spvVersion = GLSLANG_TARGET_SPV_1_6;
 
     const glslang_input_t input = {
         .language = language,

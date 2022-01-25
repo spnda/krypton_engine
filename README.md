@@ -1,6 +1,6 @@
 # krypton
 
-A modular rendering engine written in C++20 with a Vulkan and Metal backend.
+A modular rendering engine written in C++20 with a Vulkan 1.3 and Metal backend.
 
 ## Building
 

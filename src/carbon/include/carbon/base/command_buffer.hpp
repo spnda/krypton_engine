@@ -25,7 +25,7 @@ namespace carbon {
         void end(carbon::Queue* queue);
 
         /* Vulkan commands */
-        void beginRendering(const VkRenderingInfoKHR* renderingInfo) const;
+        void beginRendering(const VkRenderingInfo* renderingInfo) const;
         void bindDescriptorSets(carbon::Pipeline* pipeline) const;
         void bindIndexBuffer(carbon::Buffer* buffer, VkDeviceSize offset, VkIndexType indexType = VK_INDEX_TYPE_UINT32) const;
         void bindPipeline(carbon::Pipeline* pipeline) const;

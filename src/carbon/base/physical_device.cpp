@@ -23,6 +23,12 @@ void carbon::PhysicalDevice::create(carbon::Instance* instance, VkSurfaceKHR sur
         };
         physicalDeviceSelector.set_required_features(deviceFeatures);
 
+        VkPhysicalDeviceVulkan13Features vulkan13Features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+            .dynamicRendering = true,
+        };
+        physicalDeviceSelector.add_required_extension_features(vulkan13Features);
+
         VkPhysicalDeviceBufferDeviceAddressFeatures deviceAddressFeatures = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
             .bufferDeviceAddress = true,
@@ -67,12 +73,6 @@ void carbon::PhysicalDevice::create(carbon::Instance* instance, VkSurfaceKHR sur
             .runtimeDescriptorArray = true,
         };
         physicalDeviceSelector.add_required_extension_features(descriptorIndexingFeatures);
-
-        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
-            .dynamicRendering = true,
-        };
-        physicalDeviceSelector.add_required_extension_features(dynamicRenderingFeatures);
     }
 
     // Let vk-bootstrap select our physical device.

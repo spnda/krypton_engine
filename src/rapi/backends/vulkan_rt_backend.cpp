@@ -10,6 +10,9 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
+#define VMA_IMPLEMENTATION
+#define VMA_ASSERT() // We don't want VMA to do any assertions.
+
 #include <carbon/base/command_buffer.hpp>
 #include <carbon/base/command_pool.hpp>
 #include <carbon/base/device.hpp>
@@ -54,7 +57,7 @@ struct ImGuiPushConstants {
 
 krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
     instance = std::make_unique<carbon::Instance>();
-    instance->setApplicationData({ .apiVersion = VK_MAKE_API_VERSION(0, 1, 2, 0),
+    instance->setApplicationData({ .apiVersion = VK_API_VERSION_1_3,
                                    .applicationVersion = 1,
                                    .engineVersion = 1,
 
@@ -696,7 +699,7 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
     // We can now begin rendering
     // As per the spec, one is actually not allowed to
     // call vkCmdCopyBuffer while a renderpass is running
-    VkRenderingAttachmentInfoKHR colorAttachmentInfo = {
+    VkRenderingAttachmentInfo colorAttachmentInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = image->getImageView(),
         .imageLayout = image->getImageLayout(),
@@ -704,7 +707,7 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
     };
-    VkRenderingInfoKHR uiRenderingInfo = {
+    VkRenderingInfo uiRenderingInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
         .flags = 0,
         .renderArea =

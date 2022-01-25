@@ -29,8 +29,8 @@ void carbon::CommandBuffer::end(carbon::Queue* queue) {
     checkResult(std::move(queue), res, "Failed to end command buffer");
 }
 
-void carbon::CommandBuffer::beginRendering(const VkRenderingInfoKHR* renderingInfo) const {
-    device->vkCmdBeginRenderingKHR(handle, renderingInfo);
+void carbon::CommandBuffer::beginRendering(const VkRenderingInfo* renderingInfo) const {
+    device->vkCmdBeginRendering(handle, renderingInfo);
 }
 
 void carbon::CommandBuffer::bindDescriptorSets(carbon::Pipeline* pipeline) const {
@@ -64,7 +64,9 @@ void carbon::CommandBuffer::drawIndexed(uint32_t indexCount, int32_t vertexOffse
     vkCmdDrawIndexed(handle, indexCount, instanceCount, firstIndex, vertexOffset, 0);
 }
 
-void carbon::CommandBuffer::endRendering() const { device->vkCmdEndRenderingKHR(handle); }
+void carbon::CommandBuffer::endRendering() const {
+    device->vkCmdEndRendering(handle);
+}
 
 void carbon::CommandBuffer::pipelineBarrier(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
                                             VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount,

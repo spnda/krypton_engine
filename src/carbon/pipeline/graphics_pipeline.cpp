@@ -121,8 +121,8 @@ void carbon::GraphicsPipeline::create() {
     };
 
     // Dynamic rendering pipeline
-    VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+    VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
         .pColorAttachmentFormats = colorAttachments.data(),
     };
