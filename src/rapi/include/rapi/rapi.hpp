@@ -58,7 +58,7 @@ namespace krypton::rapi {
         /**
          * Adds given mesh to the render queue for this frame.
          */
-        virtual void render(RenderObjectHandle& handle) = 0;
+        virtual void render(RenderObjectHandle handle) = 0;
 
         virtual void resize(int width, int height) = 0;
 

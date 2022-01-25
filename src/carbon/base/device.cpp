@@ -2,7 +2,7 @@
 #include <carbon/base/physical_device.hpp>
 #include <carbon/utils.hpp>
 
-#define DEVICE_FUNCTION_POINTER(name, device) name = device.getFunctionAddress<PFN_##name>(#name);
+#define DEVICE_FUNCTION_POINTER(name) name = this->getFunctionAddress<PFN_##name>(#name);
 
 void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> newPhysicalDevice) {
     physicalDevice = std::move(newPhysicalDevice);
@@ -18,23 +18,23 @@ void carbon::Device::create(std::shared_ptr<carbon::PhysicalDevice> newPhysicalD
 #endif // #ifdef WITH_NV_AFTERMATH
     handle = getFromVkbResult(deviceBuilder.build());
 
-    DEVICE_FUNCTION_POINTER(vkAcquireNextImageKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkCreateAccelerationStructureKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkCreateRayTracingPipelinesKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkCreateSwapchainKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkCmdBeginRendering, (*this))
-    DEVICE_FUNCTION_POINTER(vkCmdBuildAccelerationStructuresKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkCmdEndRendering, (*this))
-    DEVICE_FUNCTION_POINTER(vkCmdSetCheckpointNV, (*this))
-    DEVICE_FUNCTION_POINTER(vkCmdTraceRaysKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkDestroyAccelerationStructureKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureBuildSizesKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureDeviceAddressKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkGetQueueCheckpointDataNV, (*this))
-    DEVICE_FUNCTION_POINTER(vkGetRayTracingShaderGroupHandlesKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkGetSwapchainImagesKHR, (*this))
-    DEVICE_FUNCTION_POINTER(vkSetDebugUtilsObjectNameEXT, (*this))
-    DEVICE_FUNCTION_POINTER(vkQueuePresentKHR, (*this))
+    DEVICE_FUNCTION_POINTER(vkAcquireNextImageKHR)
+    DEVICE_FUNCTION_POINTER(vkCreateAccelerationStructureKHR)
+    DEVICE_FUNCTION_POINTER(vkCreateRayTracingPipelinesKHR)
+    DEVICE_FUNCTION_POINTER(vkCreateSwapchainKHR)
+    DEVICE_FUNCTION_POINTER(vkCmdBeginRendering)
+    DEVICE_FUNCTION_POINTER(vkCmdBuildAccelerationStructuresKHR)
+    DEVICE_FUNCTION_POINTER(vkCmdEndRendering)
+    DEVICE_FUNCTION_POINTER(vkCmdSetCheckpointNV)
+    DEVICE_FUNCTION_POINTER(vkCmdTraceRaysKHR)
+    DEVICE_FUNCTION_POINTER(vkDestroyAccelerationStructureKHR)
+    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureBuildSizesKHR)
+    DEVICE_FUNCTION_POINTER(vkGetAccelerationStructureDeviceAddressKHR)
+    DEVICE_FUNCTION_POINTER(vkGetQueueCheckpointDataNV)
+    DEVICE_FUNCTION_POINTER(vkGetRayTracingShaderGroupHandlesKHR)
+    DEVICE_FUNCTION_POINTER(vkGetSwapchainImagesKHR)
+    DEVICE_FUNCTION_POINTER(vkSetDebugUtilsObjectNameEXT)
+    DEVICE_FUNCTION_POINTER(vkQueuePresentKHR)
 }
 
 void carbon::Device::destroy() const { vkb::destroy_device(handle); }

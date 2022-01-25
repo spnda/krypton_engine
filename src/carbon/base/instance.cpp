@@ -5,6 +5,8 @@
 #include <carbon/base/instance.hpp>
 #include <carbon/utils.hpp>
 
+#define INSTANCE_FUNCTION_POINTER(name) name = this->getFunctionAddress<PFN_##name>(#name);
+
 carbon::Instance::Instance() {}
 
 carbon::Instance::~Instance() {}
@@ -45,7 +47,7 @@ void carbon::Instance::create() {
 #ifdef _DEBUG
                            .enable_layer("VK_LAYER_LUNARG_monitor")
                            .request_validation_layers()
-                           .use_default_debug_messenger()
+                           .set_debug_callback(debugCallback)
 #else
                            .enable_validation_layers(false)
                            .request_validation_layers(false)
@@ -54,10 +56,10 @@ void carbon::Instance::create() {
 
     handle = getFromVkbResult(buildResult);
 
-    INSTANCE_FUNCTION_POINTER(vkDestroySurfaceKHR, (*this))
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, (*this))
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceFormatsKHR, (*this))
-    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfacePresentModesKHR, (*this))
+    INSTANCE_FUNCTION_POINTER(vkDestroySurfaceKHR)
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceCapabilitiesKHR)
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfaceFormatsKHR)
+    INSTANCE_FUNCTION_POINTER(vkGetPhysicalDeviceSurfacePresentModesKHR)
 }
 
 void carbon::Instance::destroy() const {
@@ -71,5 +73,7 @@ void carbon::Instance::destroy() const {
 uint32_t carbon::Instance::getApiVersion() const { return appData.apiVersion; }
 
 void carbon::Instance::setApplicationData(ApplicationData data) { appData = std::move(data); }
+
+void carbon::Instance::setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback) { debugCallback = callback; }
 
 carbon::Instance::operator VkInstance() const { return handle.instance; }

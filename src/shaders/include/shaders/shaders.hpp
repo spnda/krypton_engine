@@ -125,7 +125,12 @@ namespace krypton::shaders {
      * on [sourceType].
      */
     [[nodiscard]] auto compileShaders(const fs::path& shaderFileName, ShaderStage stage, ShaderSourceType sourceType,
-                                      ShaderTargetType targetType) -> std::vector<ShaderCompileResult>;
+                                      ShaderTargetType targetType) noexcept(false) -> std::vector<ShaderCompileResult>;
 
-    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs) -> std::vector<ShaderCompileResult>;
+    /**
+     * Compiles all inputs and if all compilation steps should succeed,
+     * a vector of the same size with the results is returned. Errors and
+     * warnings are automatically printed into the console.
+     */
+    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs) noexcept(false) -> std::vector<ShaderCompileResult>;
 } // namespace krypton::shaders

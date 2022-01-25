@@ -1,7 +1,8 @@
 add_library(krypton_util INTERFACE)
 add_library(krypton::util ALIAS krypton_util)
 
-# target_compile_features(krypton_util PRIVATE cxx_std_20)
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(krypton_rapi PUBLIC fmt::fmt-header-only)
 
 target_include_directories(krypton_util INTERFACE "./include")
 

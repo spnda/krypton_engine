@@ -25,7 +25,9 @@ namespace carbon {
 
         std::set<std::string> requiredExtensions = {};
         vkb::Instance handle = {};
+
         ApplicationData appData;
+        PFN_vkDebugUtilsMessengerCallbackEXT debugCallback;
 
 #ifdef WITH_NV_AFTERMATH
         std::unique_ptr<carbon::GpuCrashTracker> crashTracker;
@@ -47,6 +49,7 @@ namespace carbon {
         void destroy() const;
         auto getApiVersion() const -> uint32_t;
         void setApplicationData(ApplicationData data);
+        void setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback);
 
         template <class T>
         T getFunctionAddress(const std::string& functionName) const {

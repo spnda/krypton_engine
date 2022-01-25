@@ -7,8 +7,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross"
 # Disable the SPIRV-Cross executable from being built.
 set_target_properties(spirv-cross PROPERTIES EXCLUDE_FROM_ALL 1)
 
-find_package(fmt CONFIG REQUIRED)
-
 if (TARGET slang::core)
     add_compile_definitions(WITH_SLANG_SHADERS)
     target_link_libraries(krypton_shaders PUBLIC slang::core slang::gfx)
@@ -29,8 +27,8 @@ set_target_properties(spirv-remap PROPERTIES EXCLUDE_FROM_ALL 1)
 
 target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
 
-target_link_libraries(krypton_shaders PUBLIC fmt::fmt)
 target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
+target_link_libraries(krypton_shaders PRIVATE krypton::util)
 
 target_compile_features(krypton_shaders PRIVATE cxx_std_20)
 

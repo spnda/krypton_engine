@@ -1,12 +1,13 @@
-#include <fmt/core.h>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/quaternion.hpp>
-
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
+// #include <tiny_gltf.h> // Include it again so the above defines do their job.
+
 #include <models/fileloader.hpp>
+#include <util/logging.hpp>
 
 namespace krypton::models {
     struct PrimitiveBufferValue {
@@ -15,11 +16,11 @@ namespace krypton::models {
         uint64_t count = 0;
     };
 
-    glm::mat4 getTransformMatrix(const tinygltf::Node& node) {
+    glm::mat4 getTransformMatrix(const tinygltf::Node& node, glm::mat4x4& base) {
         /** Both a matrix and TRS values are not allowed
          * to exist at the same time according to the spec */
         if (node.matrix.size() == 16) {
-            return glm::make_mat4x4(node.matrix.data());
+            return base * glm::mat4x4(glm::make_mat4x4(node.matrix.data()));
         } else {
             auto translation = glm::vec3(0.0f);
             auto rotation = glm::quat();
@@ -34,7 +35,7 @@ namespace krypton::models {
             if (node.scale.size() == 3)
                 scale = glm::make_vec3(node.scale.data());
 
-            return glm::translate(glm::mat4(1.0f), translation) * glm::toMat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
+            return base * glm::translate(glm::mat4(1.0f), translation) * glm::toMat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
     }
 
@@ -58,12 +59,13 @@ namespace krypton::models {
     }
 } // namespace krypton::models
 
-void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node) {
-    auto transform = krypton::models::getTransformMatrix(node);
-    auto& kMesh = meshes.emplace_back();
+void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node,
+                                               glm::mat4 parentMatrix) {
+    auto& kMesh = meshes.emplace_back(std::make_shared<krypton::mesh::Mesh>());
+    kMesh->transform = parentMatrix;
 
     for (const auto& primitive : mesh.primitives) {
-        auto& kPrimitive = kMesh.primitives.emplace_back();
+        auto& kPrimitive = kMesh->primitives.emplace_back();
 
         {
             // We require a position attribute.
@@ -109,12 +111,14 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
                 switch (accessor.componentType) {
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
                         writeToVector(static_cast<const krypton::mesh::Index*>(dataPtr), indexCount, kPrimitive.indices);
+                        break;
                     }
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
                         writeToVector(static_cast<const uint16_t*>(dataPtr), indexCount, kPrimitive.indices);
+                        break;
                     }
                     default: {
-                        fmt::print(stderr, "Index component type {} is unsupported.", accessor.componentType);
+                        krypton::log::err("Index component type {} is unsupported.", accessor.componentType);
                     }
                 }
             } else {
@@ -128,14 +132,16 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
     }
 }
 
-void krypton::models::FileLoader::loadGltfNode(tinygltf::Model& model, const tinygltf::Node& node) {
-    // TODO: Add support for node matrices.
+void krypton::models::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t nodeIndex, glm::mat4 matrix) {
+    matrix = getTransformMatrix(model.nodes[nodeIndex], matrix);
+
+    auto& node = model.nodes[nodeIndex];
     if (node.mesh >= 0) {
-        loadGltfMesh(model, model.meshes[node.mesh], node);
+        loadGltfMesh(model, model.meshes[node.mesh], node, matrix);
     }
 
     for (auto& i : node.children) {
-        loadGltfNode(model, model.nodes[i]);
+        loadGltfNode(model, i, matrix);
     }
 }
 
@@ -153,15 +159,15 @@ bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
     }
 
     if (!warn.empty())
-        fmt::print("tinygltf warning: {}\n", warn);
+        krypton::log::warn("tinygltf warning: {}", warn);
     if (!err.empty())
-        fmt::print("tinygltf error: {}\n", err);
+        krypton::log::err("tinygltf error: {}", err);
     if (!success)
         return false;
 
     const tinygltf::Scene& scene = model.scenes[model.defaultScene];
     for (auto& node : scene.nodes) {
-        loadGltfNode(model, model.nodes[node]);
+        loadGltfNode(model, static_cast<uint32_t>(node), glm::mat4(1.0f));
     }
 
     /* Load textures */
@@ -209,19 +215,19 @@ bool krypton::models::FileLoader::loadFile(const fs::path& path) {
     materials.clear();
     textures.clear();
 
-    if (!path.has_extension()) {
-        fmt::print("Given path does not point to a file: {}\n", path.string());
+    if (!path.has_filename()) {
+        krypton::log::err("Given path does not point to a file: {}\n", path.string());
         return false;
     }
     fs::path ext = path.extension();
     if (ext.compare(".glb") == 0 || ext.compare(".gltf") == 0) {
         bool ret = loadGltfFile(path);
         if (ret) {
-            fmt::print("Finished loading file!");
+            krypton::log::log("Finished loading model file {}", path.string());
             return true;
         }
     }
 
-    fmt::print("Failed to load file: {}\n", path.string());
+    krypton::log::err("Failed to load file: {}\n", path.string());
     return false;
 }

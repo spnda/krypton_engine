@@ -4,6 +4,10 @@
 
 #include <glm/glm.hpp>
 
+// Fuck windows.h
+#undef near
+#undef far
+
 namespace krypton::rapi {
     /**
      * This represents all the camera information the rendering

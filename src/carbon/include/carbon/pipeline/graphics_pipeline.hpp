@@ -39,5 +39,6 @@ namespace carbon {
         // value in the image.
         void setBlendingForColorAttachment(uint32_t attachment, VkPipelineColorBlendAttachmentState state);
         void setMsaaSamples(VkSampleCountFlagBits samples) noexcept;
+        void setName(const std::string&) noexcept override;
     };
 } // namespace carbon

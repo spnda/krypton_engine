@@ -4,8 +4,6 @@
 #include <sstream>
 #include <string>
 
-#include <fmt/core.h>
-
 #ifdef WITH_SLANG_SHADERS
 #include <slang.h>
 #endif
@@ -16,6 +14,7 @@
 #endif
 
 #include <shaders/shaders.hpp>
+#include <util/logging.hpp>
 
 namespace krypton::shaders {
     std::vector<krypton::shaders::ShaderCompileResult> compileSingleShader(const ShaderCompileInput& shaderInput);
@@ -45,8 +44,7 @@ krypton::shaders::ShaderFile krypton::shaders::readShaderFile(const fs::path& pa
         shaderCode = ss.str();
         return { path, ss.str() };
     } else {
-        auto err = fmt::format("Failed to open shader file: {}", path.string());
-        throw std::runtime_error(err);
+        krypton::log::throwError("Failed to open shader file: {}", path.string());
     }
 }
 
@@ -68,9 +66,10 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
     }
 
     if (shaderInput.sourceType == ShaderSourceType::SLANG) {
-        // slang can only be compiled using the slang compiler under Windows or Linux
+        // slang can only be compiled using the slang compiler under Windows or Linux,
+        // however, it might still not be present on those platforms either.
 #ifndef WITH_SLANG_SHADERS
-        throw std::runtime_error("Cannot compile slang shaders under Mac");
+        krypton::log::throwError("Cannot compile slang shaders when slang is not installed.");
 #else
         return slangCompileShader(shaderInput);
 #endif
@@ -99,12 +98,11 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
     } else {
         // Use SPIRV-Cross to compile GLSL -> SPIR-V -> HLSL or HLSL -> SPIR-V -> GLSL.
         // TODO.
-        throw std::runtime_error("Cross compilation with SPIRV-Cross is not yet implemented");
+        krypton::log::throwError("Cross compilation with SPIRV-Cross is not yet implemented");
     }
 #endif
 
-    auto err = fmt::format("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
-    throw std::runtime_error(err);
+    krypton::log::throwError("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
 }
 
 #ifdef WITH_GLSLANG_SHADERS
@@ -114,20 +112,20 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
         case ShaderSourceType::GLSL: language = GLSLANG_SOURCE_GLSL; break;
         case ShaderSourceType::HLSL: language = GLSLANG_SOURCE_HLSL; break;
         case ShaderSourceType::SLANG: {
-            throw std::runtime_error("[glslang] Cannot use slang to compile from slang");
+            krypton::log::throwError("[glslang] Cannot use slang to compile from slang");
             break;
         }
         case ShaderSourceType::SPIRV: {
-            throw std::runtime_error("[glslang] Cannot use slang to compile from SPIR-V");
+            krypton::log::throwError("[glslang] Cannot use slang to compile from SPIR-V");
             break;
         }
         default: {
-            throw std::runtime_error("[glslang] Unrecognized shader source type");
+            krypton::log::throwError("[glslang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
         }
     }
 
     if (shaderInput.shaderStages.empty()) {
-        throw std::runtime_error("[glslang] No shader stage was provided.");
+        krypton::log::throwError("[glslang] No shader stage was provided.");
     }
 
     glslang_stage_t stage;
@@ -141,8 +139,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
         case ShaderStage::Intersect: stage = GLSLANG_STAGE_INTERSECT_NV; break;
         case ShaderStage::Callable: stage = GLSLANG_STAGE_CALLABLE_NV; break;
         default: {
-            auto err = fmt::format("[glslang] Unrecognized shader stage type: {}", static_cast<uint32_t>(shaderInput.shaderStages[0]));
-            throw std::runtime_error(err);
+            krypton::log::throwError("[glslang] Unrecognized shader stage type: {}", static_cast<uint32_t>(shaderInput.shaderStages[0]));
         }
     }
 
@@ -165,29 +162,36 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
 
     glslang_initialize_process();
 
+    // This automatically splits the string into lines, so that everything
+    // is not printed in one print().
+    auto glslangPrintError = [shaderInput](std::string string) {
+        std::istringstream ss(string);
+        std::string line;
+        while (std::getline(ss, line)) {
+            krypton::log::err("{}: {}", shaderInput.filePath.string(), line);
+        }
+    };
+
     glslang_shader_t* shader = glslang_shader_create(&input);
     if (!glslang_shader_preprocess(shader, &input)) {
-        auto log = glslang_shader_get_info_log(shader);
-        fmt::print(stderr, "[glslang] Encountered error during shader preprocessing: {}\n", log);
+        glslangPrintError(glslang_shader_get_info_log(shader));
         return {};
     }
     if (!glslang_shader_parse(shader, &input)) {
-        auto log = glslang_shader_get_info_log(shader);
-        fmt::print(stderr, "[glslang] Encountered error during shader parsing: {}\n", log);
+        glslangPrintError(glslang_shader_get_info_log(shader));
         return {};
     }
     glslang_program_t* program = glslang_program_create();
     glslang_program_add_shader(program, shader);
 
     if (!glslang_program_link(program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT)) {
-        auto log = glslang_shader_get_info_log(shader);
-        fmt::print(stderr, "[glslang] Encountered error during shader linking: {}\n", log);
+        glslangPrintError(glslang_shader_get_info_log(shader));
         return {};
     }
 
     glslang_program_SPIRV_generate(program, input.stage);
     if (glslang_program_SPIRV_get_messages(program)) {
-        fmt::print(stderr, "{}\n", glslang_program_SPIRV_get_messages(program));
+        krypton::log::err("[glslang] {}", glslang_program_SPIRV_get_messages(program));
     }
     glslang_shader_delete(shader);
 
@@ -214,12 +218,13 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
         case ShaderTargetType::GLSL: backendTarget = SPVC_BACKEND_GLSL; break;
         case ShaderTargetType::HLSL: backendTarget = SPVC_BACKEND_HLSL; break;
         case ShaderTargetType::METAL: {
-            throw std::runtime_error("Cannot use SPIRV-Cross to generate Metal.");
-            break;
+            krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate Metal.");
         }
         case ShaderTargetType::SPIRV: {
-            throw std::runtime_error("Cannot use SPIRV-Cross to generate SPIR-V.");
-            break;
+            krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate SPIR-V.");
+        }
+        default: {
+            krypton::log::throwError("[spirv-cross] Unrecognized shader target type: {}", (uint32_t)target);
         }
     }
 
@@ -276,12 +281,11 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         case ShaderTargetType::HLSL: compileTarget = SLANG_HLSL; break;
         case ShaderTargetType::SPIRV: compileTarget = SLANG_SPIRV; break;
         case ShaderTargetType::METAL: {
-            throw std::runtime_error("[slang] Cannot use slang to compile to Metal");
+            krypton::log::throwError("[slang] Cannot use slang to compile to Metal");
             break;
         }
         default: {
-            auto err = fmt::format("[slang] Unrecognized shader target type: {}", (uint32_t)shaderInput.targetType);
-            throw std::runtime_error(err);
+            krypton::log::throwError("[slang] Unrecognized shader target type: {}", (uint32_t)shaderInput.targetType);
         }
     }
     spSetCodeGenTarget(request, compileTarget);
@@ -291,21 +295,23 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         case ShaderSourceType::HLSL: compileSource = SLANG_SOURCE_LANGUAGE_HLSL; break;
         case ShaderSourceType::SLANG: compileSource = SLANG_SOURCE_LANGUAGE_SLANG; break;
         case ShaderSourceType::GLSL: {
-            throw std::runtime_error("[slang] Cannot use slang to compile from GLSL!");
+            krypton::log::throwError("[slang] Cannot use slang to compile from GLSL!");
             break;
         }
         case ShaderSourceType::SPIRV: {
-            throw std::runtime_error("[slang] Cannot use slang to compile from SPIR-V!");
+            krypton::log::throwError("[slang] Cannot use slang to compile from SPIR-V!");
             break;
         }
         default: {
-            auto err = fmt::format("[slang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
-            throw std::runtime_error(err);
+            krypton::log::throwError("[slang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
         }
     }
 
     // This is our shaders directory relative to the executable.
     spAddSearchPath(request, "shaders/");
+
+    // We, by default, use column major.
+    spSetMatrixLayoutMode(request, SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
 
     // Could add macros using spAddPreprocessorDefine
 
@@ -314,7 +320,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     spAddTranslationUnitSourceString(request, tuIndex, shaderInput.filePath.string().c_str(), shaderInput.source.c_str());
 
     if (shaderInput.shaderStages.size() < shaderInput.entryPoints.size()) {
-        throw std::runtime_error("Missing shader stages for entry points.");
+        krypton::log::throwError("[slang] Missing shader stages for entry points.");
     }
 
     std::vector<int> entryPointIndices;
@@ -330,8 +336,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
             case ShaderStage::Intersect: slangStage = SLANG_STAGE_INTERSECTION; break;
             case ShaderStage::Callable: slangStage = SLANG_STAGE_CALLABLE; break;
             default: {
-                auto err = fmt::format("[slang] Unrecognized shader stage: {}", static_cast<uint32_t>(shaderInput.shaderStages[i]));
-                throw std::runtime_error(err);
+                krypton::log::throwError("[slang] Unrecognized shader stage: {}", static_cast<uint32_t>(shaderInput.shaderStages[i]));
             }
         }
 
@@ -343,7 +348,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     const char* diagnostics = spGetDiagnosticOutput(request);
 
     if (anyErrors != 0) {
-        fmt::print("{}\n", diagnostics);
+        krypton::log::err("{}", diagnostics);
         return {};
     }
 
@@ -391,8 +396,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::compileShad
                                                                                     ShaderSourceType sourceType,
                                                                                     ShaderTargetType targetType) {
     if (!shaderFileName.has_filename()) {
-        auto err = fmt::format("Given shader file path does not point to a file: {}", shaderFileName.string());
-        throw std::runtime_error(err);
+        krypton::log::throwError("Given shader file path does not point to a file: {}", shaderFileName.string());
     }
 
     auto shader = krypton::shaders::readShaderFile(shaderFileName);

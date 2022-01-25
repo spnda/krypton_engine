@@ -92,11 +92,14 @@ void carbon::RayTracingPipeline::create() {
         .layout = layout,
     };
     device->vkCreateRayTracingPipelinesKHR(*device, nullptr, nullptr, 1, &pipelineCreateInfo, nullptr, &handle);
-    device->setDebugUtilsName(handle, "rt_pipeline");
 }
 
 VkPipelineBindPoint carbon::RayTracingPipeline::getBindPoint() const { return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR; }
 
 VkResult carbon::RayTracingPipeline::getShaderGroupHandles(uint32_t handleCount, std::vector<uint8_t>& data) {
     return device->vkGetRayTracingShaderGroupHandlesKHR(*device, handle, 0, handleCount, data.size(), data.data());
+}
+
+void carbon::RayTracingPipeline::setName(const std::string& name) noexcept {
+    device->setDebugUtilsName(handle, name);
 }

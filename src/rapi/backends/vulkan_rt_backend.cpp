@@ -6,7 +6,6 @@
 #include <iostream>
 #include <locale>
 
-#include <fmt/core.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
@@ -35,11 +34,10 @@
 #include <carbon/shaders/shader.hpp>
 #include <carbon/utils.hpp>
 #include <carbon/vulkan.hpp>
-
 #include <rapi/backends/vulkan_rt_backend.hpp>
 #include <rapi/render_object_handle.hpp>
-
 #include <shaders/shaders.hpp>
+#include <util/logging.hpp>
 
 static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShaderKinds = {
     { carbon::ShaderStage::RayGeneration, krypton::shaders::ShaderStage::RayGen },
@@ -55,8 +53,43 @@ struct ImGuiPushConstants {
     glm::fvec2 translate;
 };
 
+namespace krypton::rapi::vulkan {
+    VkTransformMatrixKHR glmToVulkanMatrix(glm::mat4x3 glmMatrix) {
+        VkTransformMatrixKHR vkMatrix;
+        vkMatrix.matrix[0][0] = glmMatrix[0][0];
+        vkMatrix.matrix[0][1] = glmMatrix[1][0];
+        vkMatrix.matrix[0][2] = glmMatrix[2][0];
+        vkMatrix.matrix[0][3] = glmMatrix[3][0];
+
+        vkMatrix.matrix[1][0] = glmMatrix[0][1];
+        vkMatrix.matrix[1][1] = glmMatrix[1][1];
+        vkMatrix.matrix[1][2] = glmMatrix[2][1];
+        vkMatrix.matrix[1][3] = glmMatrix[3][1];
+
+        vkMatrix.matrix[2][0] = glmMatrix[0][2];
+        vkMatrix.matrix[2][1] = glmMatrix[1][2];
+        vkMatrix.matrix[2][2] = glmMatrix[2][2];
+        vkMatrix.matrix[2][3] = glmMatrix[3][2];
+
+        return vkMatrix;
+    }
+
+    inline VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                              VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) {
+        switch (messageSeverity) {
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: krypton::log::err(pCallbackData->pMessage); break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: krypton::log::warn(pCallbackData->pMessage); break;
+            default: krypton::log::log(pCallbackData->pMessage); break;
+        }
+
+        return VK_FALSE;
+    }
+} // namespace krypton::rapi::vulkan
+
 krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
     instance = std::make_unique<carbon::Instance>();
+    instance->setDebugCallback(krypton::rapi::vulkan::vulkanDebugCallback);
     instance->setApplicationData({ .apiVersion = VK_API_VERSION_1_3,
                                    .applicationVersion = 1,
                                    .engineVersion = 1,
@@ -126,7 +159,8 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
         primitiveData.push_back(std::make_pair(vertex, index));
     }
 
-    renderObject.blas->createMeshBuffers(primitiveData, *reinterpret_cast<VkTransformMatrixKHR*>(&renderObject.mesh->transform));
+    VkTransformMatrixKHR blasTransform = vulkan::glmToVulkanMatrix(renderObject.mesh->transform);
+    renderObject.blas->createMeshBuffers(primitiveData, blasTransform);
 
     /** Generate the geometry data with the buffer info just generated */
     for (const auto& prim : renderObject.mesh->primitives) {
@@ -216,6 +250,11 @@ void krypton::rapi::VulkanRT_RAPI::buildRTPipeline() {
     rtProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
     physicalDevice->getProperties(rtProperties.get());
 
+    if (!rayGenShader.shader || !missShader.shader || !closestHitShader.shader || !anyHitShader.shader) {
+        // No shaders, can't build pipeline.
+        return;
+    }
+
     if (rtPipeline != nullptr)
         rtPipeline->destroy();
 
@@ -237,6 +276,7 @@ void krypton::rapi::VulkanRT_RAPI::buildRTPipeline() {
     rtPipeline->addShaderGroup(carbon::RtShaderGroup::General, { missShader.shader.get() });
     rtPipeline->addShaderGroup(carbon::RtShaderGroup::TriangleHit, { closestHitShader.shader.get(), anyHitShader.shader.get() });
     rtPipeline->create();
+    rtPipeline->setName("rt_pipeline");
 
     auto cameraBufferInfo = cameraBuffer->getDescriptorInfo(VK_WHOLE_SIZE);
     auto storageImageDescriptor = storageImage->getDescriptorImageInfo();
@@ -293,6 +333,11 @@ void krypton::rapi::VulkanRT_RAPI::buildSBT() {
 }
 
 void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
+    if (!uiFragment || !uiVertex) {
+        // No shaders, can't build pipeline.
+        return;
+    }
+
     uiDescriptorSet = std::make_shared<carbon::DescriptorSet>(device.get());
 
     // Add font texture for first descriptor binding.
@@ -351,6 +396,7 @@ void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
     });
 
     uiPipeline->create();
+    uiPipeline->setName("ui_pipeline");
 
     auto fontTextureInfo = uiFontTexture->getDescriptorImageInfo();
     uiDescriptorSet->updateImage(0, &fontTextureInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -375,6 +421,8 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
             0.0, 0.0, 1.0, 0.0,
         };
         // clang-format on
+        // VkTransformMatrixKHR instanceTransform = *reinterpret_cast<VkTransformMatrixKHR*>(&object.mesh->transform);
+        // instances[index].transform = instanceTransform; // This should copy the values.
         instances[index].instanceCustomIndex = static_cast<uint32_t>(index);
         instances[index].mask = 0xFF;
         instances[index].flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
@@ -534,6 +582,9 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanRT_RAPI::createShader
                                                                                  krypton::shaders::ShaderCompileResult& result) {
     if (result.resultType == krypton::shaders::CompileResultType::String)
         return nullptr;
+    
+    if (result.resultSize <= 0)
+        return nullptr;
 
     auto shader = std::make_unique<carbon::ShaderModule>(device, name, stage);
     shader->createShaderModule((uint32_t*)result.resultBytes.data(), result.resultSize);
@@ -565,12 +616,8 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
         return;
     }
 
-    // We'll update the camera data buffer first
-    // We transpose the matrices because slang uses HLSL
-    // matrix multiplication which is row-major, unlike
-    // glm's column-major.
-    convertedCameraData->projection = glm::transpose(glm::inverse(cameraData->projection));
-    convertedCameraData->view = glm::transpose(glm::inverse(cameraData->view));
+    convertedCameraData->projection = glm::inverse(cameraData->projection);
+    convertedCameraData->view = glm::inverse(cameraData->view);
     cameraBuffer->memoryCopy(convertedCameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 
     auto& image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
@@ -581,174 +628,196 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
     this->buildTLAS(drawCommandBuffer.get());
 
     // ↓ ------------------- RT ------------------- ↓
-    if (handlesForFrame.empty()) {
-        // We won't render anything this frame anyway. Just transition the
-        // swapchain image and end the command buffer.
-        image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
-                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-    } else {
-        drawCommandBuffer->bindPipeline(rtPipeline.get());
-        drawCommandBuffer->bindDescriptorSets(rtPipeline.get());
+    if (rtPipeline) {
+        if (handlesForFrame.empty()) {
+            // We won't render anything this frame anyway. Just transition the
+            // swapchain image and end the command buffer.
+            image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+                                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+        } else {
+            drawCommandBuffer->bindPipeline(rtPipeline.get());
+            drawCommandBuffer->bindDescriptorSets(rtPipeline.get());
 
-        VkStridedDeviceAddressRegionKHR callableRegion = {};
-        drawCommandBuffer->setCheckpoint("Tracing rays.");
-        drawCommandBuffer->traceRays(&rayGenShader.region, &missShader.region, &closestHitShader.region, &callableRegion,
-                                     storageImage->getImageSize3d());
+            // We'll sync the cameraBuffer copy with our ray tracing command.
+            // Otherwise our shaders get garbage camera data
+            VkBufferMemoryBarrier bufferMemory = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .buffer = cameraBuffer->getHandle(),
+                .size = cameraBuffer->getSize(),
+            };
+            drawCommandBuffer->pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr,
+                                               1, &bufferMemory, 0, nullptr);
 
-        drawCommandBuffer->setCheckpoint("Changing image layout.");
-        storageImage->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                   VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            VkStridedDeviceAddressRegionKHR callableRegion = {};
+            drawCommandBuffer->setCheckpoint("Tracing rays.");
+            drawCommandBuffer->traceRays(&rayGenShader.region, &missShader.region, &closestHitShader.region, &callableRegion,
+                                         storageImage->getImageSize3d());
 
-        image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
-                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            drawCommandBuffer->setCheckpoint("Changing image layout.");
+            storageImage->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                       VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-        drawCommandBuffer->setCheckpoint("Copying storage image.");
-        storageImage->copyImage(drawCommandBuffer.get(), *image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+                                VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-        storageImage->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+            drawCommandBuffer->setCheckpoint("Copying storage image.");
+            storageImage->copyImage(drawCommandBuffer.get(), *image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-        image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
-                            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+            storageImage->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+            image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        }
     }
     // ↑ ------------------- RT ------------------- ↑
 
     // ↓ ------------------- UI ------------------- ↓
-    drawCommandBuffer->setCheckpoint("Drawing UI");
-    drawCommandBuffer->bindPipeline(uiPipeline.get());
-    drawCommandBuffer->bindDescriptorSets(uiPipeline.get());
+    if (uiPipeline) {
+        drawCommandBuffer->setCheckpoint("Drawing UI");
+        drawCommandBuffer->bindPipeline(uiPipeline.get());
+        drawCommandBuffer->bindDescriptorSets(uiPipeline.get());
 
-    // We call ImGui::Render ourselves, so that *any* call to imgui
-    // before drawFrame gets accepted and we have the control over it.
-    ImGui::Render();
-    auto* imguiDrawData = ImGui::GetDrawData();
-    auto& displaySize = imguiDrawData->DisplaySize;
-    auto& displayPos = imguiDrawData->DisplayPos;
-    auto& clipScale = imguiDrawData->FramebufferScale;
+        // We call ImGui::Render ourselves, so that *any* call to imgui
+        // before drawFrame gets accepted and we have the control over it.
+        ImGui::Render();
+        auto* imguiDrawData = ImGui::GetDrawData();
+        auto& displaySize = imguiDrawData->DisplaySize;
+        auto& displayPos = imguiDrawData->DisplayPos;
+        auto& clipScale = imguiDrawData->FramebufferScale;
 
-    // Push constants for imgui
-    ImGuiPushConstants constants = {};
-    constants.scale = glm::fvec2(2.0f / displaySize.x, 2.0f / displaySize.y);
-    constants.translate = glm::fvec2(-1.0f - displayPos.x * constants.scale.x, -1.0f - displayPos.y * constants.scale.y);
-    drawCommandBuffer->pushConstants(uiPipeline.get(), carbon::ShaderStage::Vertex, sizeof(ImGuiPushConstants), &constants);
+        // Push constants for imgui
+        ImGuiPushConstants constants = {};
+        constants.scale = glm::fvec2(2.0f / displaySize.x, 2.0f / displaySize.y);
+        constants.translate = glm::fvec2(-1.0f - displayPos.x * constants.scale.x, -1.0f - displayPos.y * constants.scale.y);
+        drawCommandBuffer->pushConstants(uiPipeline.get(), carbon::ShaderStage::Vertex, sizeof(ImGuiPushConstants), &constants);
 
-    // Setup viewport
-    drawCommandBuffer->setViewport(static_cast<float>(frameBufferWidth), static_cast<float>(frameBufferHeight), 1.0f);
+        // Setup viewport
+        drawCommandBuffer->setViewport(static_cast<float>(frameBufferWidth), static_cast<float>(frameBufferHeight), 1.0f);
 
-    // Update vertex and index buffers
-    if (imguiDrawData->TotalVtxCount > 0) {
-        size_t vertexBufferSize = imguiDrawData->TotalVtxCount * sizeof(ImDrawVert);
-        size_t indexBufferSize = imguiDrawData->TotalIdxCount * sizeof(ImDrawIdx);
+        // Update vertex and index buffers
+        if (imguiDrawData->TotalVtxCount > 0) {
+            size_t vertexBufferSize = imguiDrawData->TotalVtxCount * sizeof(ImDrawVert);
+            size_t indexBufferSize = imguiDrawData->TotalIdxCount * sizeof(ImDrawIdx);
 
-        if (vertexBufferSize > uiVertexStagingBuffer->getSize()) {
-            // We have to allocate a new, bigger vertex buffer for the new data.
-            uiVertexBuffer->destroy();
-            uiVertexStagingBuffer->destroy();
+            if (vertexBufferSize > uiVertexStagingBuffer->getSize()) {
+                // We have to allocate a new, bigger vertex buffer for the new data.
+                uiVertexBuffer->destroy();
+                uiVertexStagingBuffer->destroy();
 
-            uiVertexStagingBuffer->create(vertexBufferSize);
-            uiVertexBuffer->create(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                   VMA_MEMORY_USAGE_GPU_ONLY);
+                uiVertexStagingBuffer->create(vertexBufferSize);
+                uiVertexBuffer->create(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                       VMA_MEMORY_USAGE_GPU_ONLY);
+            }
+
+            if (indexBufferSize > uiIndexStagingBuffer->getSize()) {
+                uiIndexBuffer->destroy();
+                uiIndexStagingBuffer->destroy();
+
+                uiIndexStagingBuffer->create(indexBufferSize);
+                uiIndexBuffer->create(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                      VMA_MEMORY_USAGE_GPU_ONLY);
+            }
+
+            uint64_t currentVertexOffset = 0, currentIndexOffset = 0;
+            for (int i = 0; i < imguiDrawData->CmdListsCount; ++i) {
+                auto& list = imguiDrawData->CmdLists[i];
+                uiVertexStagingBuffer->memoryCopy(list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert), currentVertexOffset);
+                uiIndexStagingBuffer->memoryCopy(list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx), currentIndexOffset);
+
+                currentVertexOffset += list->VtxBuffer.Size * sizeof(ImDrawVert);
+                currentIndexOffset += list->IdxBuffer.Size * sizeof(ImDrawIdx);
+            }
+
+            // We will now dispatch the copy commands into our draw command buffer
+            uiVertexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiVertexBuffer.get());
+            uiIndexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiIndexBuffer.get());
+
+            // Place a buffer barrier in here, so that the draw calls are synced
+            // to run after the copy has completed.
+            std::array<VkMemoryBarrier, 2> memoryBarriers = {
+                VkMemoryBarrier {
+                    .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                    .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                },
+                VkMemoryBarrier {
+                    .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                    .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .dstAccessMask = VK_ACCESS_INDEX_READ_BIT,
+                },
+            };
+            drawCommandBuffer->pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 2,
+                                               memoryBarriers.data(), 0, nullptr, 0, nullptr);
+
+            // Also bind the buffers so that our draw calls have data to use
+            VkDeviceSize vertexBufferOffset = 0;
+            drawCommandBuffer->bindVertexBuffer(uiVertexBuffer.get(), &vertexBufferOffset);
+            drawCommandBuffer->bindIndexBuffer(uiIndexBuffer.get(), 0,
+                                               sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
         }
 
-        if (indexBufferSize > uiIndexStagingBuffer->getSize()) {
-            uiIndexBuffer->destroy();
-            uiIndexStagingBuffer->destroy();
-
-            uiIndexStagingBuffer->create(indexBufferSize);
-            uiIndexBuffer->create(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                  VMA_MEMORY_USAGE_GPU_ONLY);
-        }
-
-        uint64_t currentVertexOffset = 0, currentIndexOffset = 0;
-        for (int i = 0; i < imguiDrawData->CmdListsCount; ++i) {
-            auto& list = imguiDrawData->CmdLists[i];
-            uiVertexStagingBuffer->memoryCopy(list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert), currentVertexOffset);
-            uiIndexStagingBuffer->memoryCopy(list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx), currentIndexOffset);
-
-            currentVertexOffset += list->VtxBuffer.Size * sizeof(ImDrawVert);
-            currentIndexOffset += list->IdxBuffer.Size * sizeof(ImDrawIdx);
-        }
-
-        // We will now dispatch the copy commands into our draw command buffer
-        uiVertexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiVertexBuffer.get());
-        uiIndexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiIndexBuffer.get());
-
-        // Place a buffer barrier in here, so that the draw calls are synced
-        // to run after the copy has completed.
-        std::array<VkMemoryBarrier, 2> memoryBarriers = {
-            VkMemoryBarrier {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-            },
-            VkMemoryBarrier {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_INDEX_READ_BIT,
-            },
+        // We can now begin rendering
+        // As per the spec, one is actually not allowed to
+        // call vkCmdCopyBuffer while a renderpass is running
+        VkRenderingAttachmentInfo colorAttachmentInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+            .imageView = image->getImageView(),
+            .imageLayout = image->getImageLayout(),
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         };
-        drawCommandBuffer->pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 2, memoryBarriers.data(),
-                                           0, nullptr, 0, nullptr);
+        VkRenderingInfo uiRenderingInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+            .flags = 0,
+            .renderArea =
+                VkRect2D {
+                    .offset = { 0, 0 },
+                    .extent = storageImage->getImageSize(),
+                },
+            .layerCount = 1,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentInfo,
+        };
 
-        // Also bind the buffers so that our draw calls have data to use
-        VkDeviceSize vertexBufferOffset = 0;
-        drawCommandBuffer->bindVertexBuffer(uiVertexBuffer.get(), &vertexBufferOffset);
-        drawCommandBuffer->bindIndexBuffer(uiIndexBuffer.get(), 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-    }
+        drawCommandBuffer->beginRendering(&uiRenderingInfo);
 
-    // We can now begin rendering
-    // As per the spec, one is actually not allowed to
-    // call vkCmdCopyBuffer while a renderpass is running
-    VkRenderingAttachmentInfo colorAttachmentInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = image->getImageView(),
-        .imageLayout = image->getImageLayout(),
-        .resolveMode = VK_RESOLVE_MODE_NONE,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    };
-    VkRenderingInfo uiRenderingInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
-        .flags = 0,
-        .renderArea =
-            VkRect2D {
-                .offset = { 0, 0 },
-                .extent = storageImage->getImageSize(),
-            },
-        .layerCount = 1,
-        .viewMask = 0,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentInfo,
-    };
+        uint32_t vertexOffset = 0, indexOffset = 0;
+        for (size_t i = 0; i < imguiDrawData->CmdListsCount; ++i) {
 
-    drawCommandBuffer->beginRendering(&uiRenderingInfo);
+            const ImDrawList* cmdList = imguiDrawData->CmdLists[i];
+            for (int32_t j = 0; j < cmdList->CmdBuffer.Size; ++j) {
+                auto& cmd = cmdList->CmdBuffer[j];
 
-    uint32_t vertexOffset = 0, indexOffset = 0;
-    for (size_t i = 0; i < imguiDrawData->CmdListsCount; ++i) {
+                glm::fvec2 clipMin((cmd.ClipRect.x - displayPos.x) * clipScale.x, (cmd.ClipRect.y - displayPos.y) * clipScale.y);
+                glm::fvec2 clipMax((cmd.ClipRect.z - displayPos.x) * clipScale.x, (cmd.ClipRect.w - displayPos.y) * clipScale.y);
 
-        const ImDrawList* cmdList = imguiDrawData->CmdLists[i];
-        for (int32_t j = 0; j < cmdList->CmdBuffer.Size; ++j) {
-            auto& cmd = cmdList->CmdBuffer[j];
+                VkRect2D scissor = { .offset = { .x = static_cast<int32_t>(clipMin.x), .y = static_cast<int32_t>(clipMin.y) },
+                                     .extent = {
+                                         .width = static_cast<uint32_t>(clipMax.x - clipMin.x),
+                                         .height = static_cast<uint32_t>(clipMax.y - clipMin.y),
+                                     } };
+                drawCommandBuffer->setScissor(&scissor);
 
-            glm::fvec2 clipMin((cmd.ClipRect.x - displayPos.x) * clipScale.x, (cmd.ClipRect.y - displayPos.y) * clipScale.y);
-            glm::fvec2 clipMax((cmd.ClipRect.z - displayPos.x) * clipScale.x, (cmd.ClipRect.w - displayPos.y) * clipScale.y);
+                drawCommandBuffer->drawIndexed(cmd.ElemCount, cmd.VtxOffset + vertexOffset, 1, cmd.IdxOffset + indexOffset);
+            }
 
-            VkRect2D scissor = { .offset = { .x = static_cast<int32_t>(clipMin.x), .y = static_cast<int32_t>(clipMin.y) },
-                                 .extent = {
-                                     .width = static_cast<uint32_t>(clipMax.x - clipMin.x),
-                                     .height = static_cast<uint32_t>(clipMax.y - clipMin.y),
-                                 } };
-            drawCommandBuffer->setScissor(&scissor);
-
-            drawCommandBuffer->drawIndexed(cmd.ElemCount, cmd.VtxOffset + vertexOffset, 1, cmd.IdxOffset + indexOffset);
+            indexOffset += cmdList->IdxBuffer.Size;
+            vertexOffset += cmdList->VtxBuffer.Size;
         }
 
-        indexOffset += cmdList->IdxBuffer.Size;
-        vertexOffset += cmdList->VtxBuffer.Size;
+        drawCommandBuffer->endRendering();
     }
-
-    drawCommandBuffer->endRendering();
     // ↑ ------------------- UI ------------------- ↑
+
+    // Finally, move the image into a present optimal layout
+    image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+                        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     drawCommandBuffer->end(graphicsQueue.get());
 }
@@ -780,7 +849,7 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     for (auto& e : exts) {
         std::string ext = std::string { e };
         instanceExtensions.push_back(ext);
-        fmt::print("Requesting window extension: {}\n", ext);
+        krypton::log::log("Requesting window extension: {}", ext.c_str());
     }
     instance->addExtensions(instanceExtensions);
     instance->create();
@@ -790,7 +859,7 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     physicalDevice->create(instance.get(), surface);
     device->create(physicalDevice);
 
-    fmt::print("Setting up Vulkan on: {}\n", physicalDevice->getDeviceName());
+    krypton::log::log("Setting up Vulkan on: {}", physicalDevice->getDeviceName());
 
     // Create our VMA Allocator
     VmaAllocatorCreateInfo allocatorInfo = { .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
@@ -856,18 +925,21 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     auto mainShader = compileShaders(input);
     auto rahitShader = compileShaders("shaders/anyhit.rahit", ShaderStage::AnyHit, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
 
-    assert(mainShader.size() == input.front().entryPoints.size());
-    rayGenShader.shader = createShader("raygen", carbon::ShaderStage::RayGeneration, mainShader[0]);
-    missShader.shader = createShader("miss", carbon::ShaderStage::RayMiss, mainShader[1]);
-    closestHitShader.shader = createShader("closesthit", carbon::ShaderStage::ClosestHit, mainShader[2]);
-    anyHitShader.shader = createShader("anyhit", carbon::ShaderStage::AnyHit, rahitShader.front());
+    if (mainShader.size() == input.front().entryPoints.size() && !rahitShader.empty()) {
+        rayGenShader.shader = createShader("raygen", carbon::ShaderStage::RayGeneration, mainShader[0]);
+        missShader.shader = createShader("miss", carbon::ShaderStage::RayMiss, mainShader[1]);
+        closestHitShader.shader = createShader("closesthit", carbon::ShaderStage::ClosestHit, mainShader[2]);
+        anyHitShader.shader = createShader("anyhit", carbon::ShaderStage::AnyHit, rahitShader.front());
+    }
 
     // Create UI shaders
     auto uiFragShader = compileShaders("shaders/ui.frag", ShaderStage::Fragment, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
     auto uiVertShader = compileShaders("shaders/ui.vert", ShaderStage::Vertex, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
 
-    uiFragment = createShader("uiFragment", carbon::ShaderStage::Fragment, uiFragShader.front());
-    uiVertex = createShader("uiVertex", carbon::ShaderStage::Vertex, uiVertShader.front());
+    if (!uiFragShader.empty() && !uiVertShader.empty()) {
+        uiFragment = createShader("uiFragment", carbon::ShaderStage::Fragment, uiFragShader.front());
+        uiVertex = createShader("uiVertex", carbon::ShaderStage::Vertex, uiVertShader.front());
+    }
 
     window->setRapiPointer(this);
 
@@ -947,7 +1019,7 @@ void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::C
     queueGuard.unlock();
 }
 
-void krypton::rapi::VulkanRT_RAPI::render(RenderObjectHandle& handle) {
+void krypton::rapi::VulkanRT_RAPI::render(RenderObjectHandle handle) {
     if (objects.isHandleValid(handle)) {
         handlesForFrame.emplace_back(handle);
     }

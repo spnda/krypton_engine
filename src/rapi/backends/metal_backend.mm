@@ -205,7 +205,7 @@ void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObj
     }
 }
 
-void krypton::rapi::Metal_RAPI::render(RenderObjectHandle& handle) {
+void krypton::rapi::Metal_RAPI::render(RenderObjectHandle handle) {
     if (objects.isHandleValid(handle))
         handlesForFrame.push_back(handle);
 }

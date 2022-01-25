@@ -9,9 +9,10 @@
 #include <rapi/rapi.hpp>
 #include <rapi/rapi_backends.hpp>
 #include <rapi/window.hpp>
+#include <util/logging.hpp>
 
 namespace krypton::rapi::window {
-    void errorCallback(int error, const char* desc) { fmt::print(stderr, "{}\n", desc); }
+    void errorCallback(int error, const char* desc) { krypton::log::err("{}", desc); }
 
     void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {}
 

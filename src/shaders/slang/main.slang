@@ -18,9 +18,8 @@ uniform CameraData camera;
 uniform RaytracingAccelerationStructure sceneBVH;
 uniform RWTexture2D storageImage;
 
-float3 getRayDirection(uint2 id, in float offset) {
-    float2 pixel = id.xy + offset;
-    float2 inUV = pixel / id.xy;
+float3 getRayDirection(uint2 id, uint2 size, in float offset) {
+    float2 inUV = (id.xy + offset) / size.xy;
     float2 d = inUV * 2.0 - 1.0;
     float4 target = mul(camera.projectionInverse, float4(d.x, d.y, 1.0, 1.0));
     return mul(camera.viewInverse, float4(normalize(target.xyz), 0.0)).xyz;
@@ -30,12 +29,12 @@ float3 getRayDirection(uint2 id, in float offset) {
 void raygen() {
     uint2 threadIdx = DispatchRaysIndex().xy;
     uint2 size = DispatchRaysDimensions().xy;
-    // float3 direction = getRayDirection(threadIdx, 0.0);
-    float3 dimension = 2 * float3(threadIdx / float2(size), 0.61) - 1;
+
+    float3 direction = getRayDirection(threadIdx, size, 0.0);
 
     RayDesc ray;
-    ray.Origin = dimension;
-    ray.Direction = float3(0, 0, -1);
+    ray.Origin = mul(camera.viewInverse, float4(0, 0, 0, 1)).xyz;
+    ray.Direction = direction;
     ray.TMin = camera.near;
     ray.TMax = camera.far;
 

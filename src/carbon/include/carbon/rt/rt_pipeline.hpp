@@ -30,5 +30,6 @@ namespace carbon {
         void create() override;
         [[nodiscard]] auto getBindPoint() const -> VkPipelineBindPoint override;
         [[nodiscard]] auto getShaderGroupHandles(uint32_t handleCount, std::vector<uint8_t>& data) -> VkResult;
+        void setName(const std::string&) noexcept override;
     };
 } // namespace carbon

@@ -33,6 +33,7 @@ namespace carbon {
         virtual void create() = 0;
         virtual void destroy();
         [[nodiscard]] virtual auto getBindPoint() const -> VkPipelineBindPoint = 0;
+        virtual void setName(const std::string&) = 0;
 
         operator VkPipeline() const;
     };

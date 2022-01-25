@@ -32,7 +32,7 @@ namespace krypton::util {
      * so that we know which objects are unused.
      */
     template <typename Object>
-    class LargeFreeList : public LargeVector<FreeListObject<Object>> {
+    class LargeFreeList : LargeVector<FreeListObject<Object>> {
         [[nodiscard]] auto createSlot() -> uint32_t;
 
     public:
