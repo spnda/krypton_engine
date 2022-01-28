@@ -132,5 +132,6 @@ namespace krypton::shaders {
      * a vector of the same size with the results is returned. Errors and
      * warnings are automatically printed into the console.
      */
-    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs) noexcept(false) -> std::vector<ShaderCompileResult>;
+    [[nodiscard]] auto compileShaders(const std::vector<ShaderCompileInput>& shaderInputs) noexcept(false)
+        -> std::vector<ShaderCompileResult>;
 } // namespace krypton::shaders

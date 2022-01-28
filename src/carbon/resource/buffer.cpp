@@ -113,7 +113,7 @@ auto carbon::Buffer::getMemoryBarrier(VkAccessFlags srcAccess, VkAccessFlags dst
 auto carbon::Buffer::getSize() const -> VkDeviceSize { return size; }
 
 void carbon::Buffer::memoryCopy(const void* source, uint64_t copySize, uint64_t offset) const {
-    std::lock_guard guard(memoryMutex);
+    auto guard = std::scoped_lock(memoryMutex);
     void* dst;
     this->mapMemory(&dst);
     memcpy(reinterpret_cast<uint8_t*>(dst) + offset, source, copySize); // uint8_t as we want bytes.

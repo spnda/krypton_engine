@@ -4,7 +4,10 @@
 #include <iostream>
 #include <string>
 
+#ifndef FMT_HEADER_ONLY
 #define FMT_HEADER_ONLY
+#endif
+
 #include <fmt/chrono.h>
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -60,7 +63,7 @@ namespace krypton::log {
         fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), c);
     }
 
-    template<typename... T>
+    template <typename... T>
     inline void throwError(std::string input, T&&... args) {
         auto f = fmt::format(fmt::runtime(input), args...);
         auto c = fmt::format(fmt::fg(fmt::color::red), f);

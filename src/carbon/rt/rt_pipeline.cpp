@@ -100,6 +100,4 @@ VkResult carbon::RayTracingPipeline::getShaderGroupHandles(uint32_t handleCount,
     return device->vkGetRayTracingShaderGroupHandlesKHR(*device, handle, 0, handleCount, data.size(), data.data());
 }
 
-void carbon::RayTracingPipeline::setName(const std::string& name) noexcept {
-    device->setDebugUtilsName(handle, name);
-}
+void carbon::RayTracingPipeline::setName(const std::string& name) noexcept { device->setDebugUtilsName(handle, name); }

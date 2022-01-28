@@ -64,9 +64,7 @@ void carbon::CommandBuffer::drawIndexed(uint32_t indexCount, int32_t vertexOffse
     vkCmdDrawIndexed(handle, indexCount, instanceCount, firstIndex, vertexOffset, 0);
 }
 
-void carbon::CommandBuffer::endRendering() const {
-    device->vkCmdEndRendering(handle);
-}
+void carbon::CommandBuffer::endRendering() const { device->vkCmdEndRendering(handle); }
 
 void carbon::CommandBuffer::pipelineBarrier(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
                                             VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount,

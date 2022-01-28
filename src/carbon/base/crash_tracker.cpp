@@ -57,7 +57,7 @@ void carbon::GpuCrashTracker::enable() {
 void carbon::GpuCrashTracker::disable() const { GFSDK_Aftermath_DisableGpuCrashDumps(); }
 
 void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize) {
-    std::lock_guard<std::mutex> lock(crashMutex);
+    std::scoped_lock<std::mutex> lock(crashMutex);
 
     GFSDK_Aftermath_GpuCrashDump_Decoder decoder = {};
     auto result = GFSDK_Aftermath_GpuCrashDump_CreateDecoder(GFSDK_Aftermath_Version_API, pGpuCrashDump, gpuCrashDumpSize, &decoder);
@@ -121,7 +121,7 @@ void carbon::GpuCrashTracker::onCrashDump(const void* pGpuCrashDump, const uint3
 }
 
 void carbon::GpuCrashTracker::onShaderDebugInfo(const void* shaderDebugInfo, const uint32_t shaderDebugInfoSize) {
-    std::lock_guard<std::mutex> lock(crashMutex);
+    std::scoped_lock<std::mutex> lock(crashMutex);
 
     GFSDK_Aftermath_ShaderDebugInfoIdentifier identifier = {};
     auto result =

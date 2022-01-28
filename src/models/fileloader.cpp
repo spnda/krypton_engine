@@ -62,6 +62,7 @@ namespace krypton::models {
 void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node,
                                                glm::mat4 parentMatrix) {
     auto& kMesh = meshes.emplace_back(std::make_shared<krypton::mesh::Mesh>());
+    kMesh->name = mesh.name;
     kMesh->transform = parentMatrix;
 
     for (const auto& primitive : mesh.primitives) {

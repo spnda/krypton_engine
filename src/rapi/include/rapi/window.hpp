@@ -39,6 +39,7 @@ namespace krypton::rapi {
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
         void getWindowSize(int* width, int* height) const;
         void initImgui() const;
+        void newFrame() const;
         void pollEvents() const;
 
         /**

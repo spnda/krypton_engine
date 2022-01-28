@@ -80,8 +80,7 @@ VkWriteDescriptorSetAccelerationStructureKHR carbon::AccelerationStructure::getD
 }
 
 carbon::AccelerationStructure::operator bool() const noexcept {
-    auto guard = std::unique_lock(mutex);
-    guard.lock();
+    auto guard = std::scoped_lock(mutex);
     return handle != nullptr;
 }
 

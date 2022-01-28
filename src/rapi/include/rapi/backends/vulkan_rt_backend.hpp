@@ -8,6 +8,7 @@
 #pragma warning(default : 4005)
 
 #include <functional>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -107,7 +108,6 @@ namespace krypton::rapi {
         // BLAS Async Compute
         std::shared_ptr<carbon::CommandPool> computeCommandPool;
         std::unique_ptr<carbon::Queue> blasComputeQueue;
-        std::vector<std::thread> buildThreads; /* We need to keep track of the threads, else they destruct */
 
         // Camera information
         // We actually use convertedCameraData because in RT we
@@ -123,6 +123,8 @@ namespace krypton::rapi {
         // Render Objects
         krypton::util::LargeFreeList<krypton::rapi::vulkan::RenderObject> objects = {};
         std::vector<krypton::rapi::RenderObjectHandle> handlesForFrame = {};
+        std::mutex renderObjectMutex;
+        std::mutex frameHandleMutex;
 
         void buildBLAS(krypton::rapi::vulkan::RenderObject& renderObject);
         void buildRTPipeline();

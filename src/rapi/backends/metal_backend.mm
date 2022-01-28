@@ -43,12 +43,9 @@ id<MTLBuffer> cameraBuffer;
 
 krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject> objects = {};
 
-krypton::rapi::Metal_RAPI::Metal_RAPI() {
-    window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
-}
+krypton::rapi::Metal_RAPI::Metal_RAPI() { window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080); }
 
-krypton::rapi::Metal_RAPI::~Metal_RAPI() {
-}
+krypton::rapi::Metal_RAPI::~Metal_RAPI() {}
 
 void krypton::rapi::Metal_RAPI::beginFrame() {
     /** Update camera data */
@@ -114,9 +111,7 @@ void krypton::rapi::Metal_RAPI::endFrame() {
     handlesForFrame.clear();
 }
 
-std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() {
-    return window;
-}
+std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() { return window; }
 
 void krypton::rapi::Metal_RAPI::init() {
     __autoreleasing NSError* error = nil;
@@ -155,20 +150,19 @@ void krypton::rapi::Metal_RAPI::init() {
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
 
     pipelineState = [device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
-    
+
     if (cameraData == nullptr)
         cameraData = std::make_shared<krypton::rapi::CameraData>();
 
-    cameraBuffer = [device newBufferWithLength:krypton::rapi::CAMERA_DATA_SIZE
-                                       options:0];
+    cameraBuffer = [device newBufferWithLength:krypton::rapi::CAMERA_DATA_SIZE options:0];
 }
 
-void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) {
+void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle,
+                                                        std::shared_ptr<krypton::mesh::Mesh> mesh) {
     if (objects.isHandleValid(handle)) {
         krypton::rapi::metal::RenderObject& renderObject = objects.getFromHandle(handle);
 
-        size_t accumulatedVertexBufferSize = 0,
-               accumulatedIndexBufferSize = 0;
+        size_t accumulatedVertexBufferSize = 0, accumulatedIndexBufferSize = 0;
 
         for (const auto& prim : mesh->primitives) {
             renderObject.totalVertexCount += prim.vertices.size();
@@ -219,7 +213,6 @@ void krypton::rapi::Metal_RAPI::setCameraData(std::shared_ptr<krypton::rapi::Cam
     this->cameraData = std::move(cameraData);
 }
 
-void krypton::rapi::Metal_RAPI::shutdown() {
-}
+void krypton::rapi::Metal_RAPI::shutdown() {}
 
 #endif // #ifdef RAPI_WITH_METAL

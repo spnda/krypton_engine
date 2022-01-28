@@ -153,6 +153,4 @@ void carbon::GraphicsPipeline::setBlendingForColorAttachment(uint32_t attachment
 
 void carbon::GraphicsPipeline::setMsaaSamples(VkSampleCountFlagBits samples) noexcept { msaaSamples = samples; }
 
-void carbon::GraphicsPipeline::setName(const std::string& name) noexcept {
-    device->setDebugUtilsName(handle, name);
-}
+void carbon::GraphicsPipeline::setName(const std::string& name) noexcept { device->setDebugUtilsName(handle, name); }

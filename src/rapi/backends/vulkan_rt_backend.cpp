@@ -7,7 +7,6 @@
 #include <locale>
 
 #include <imgui.h>
-#include <imgui_impl_glfw.h>
 
 #define VMA_IMPLEMENTATION
 #define VMA_ASSERT() // We don't want VMA to do any assertions.
@@ -37,6 +36,7 @@
 #include <rapi/backends/vulkan_rt_backend.hpp>
 #include <rapi/render_object_handle.hpp>
 #include <shaders/shaders.hpp>
+#include <threading/scheduler.hpp>
 #include <util/logging.hpp>
 
 static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShaderKinds = {
@@ -130,7 +130,7 @@ void krypton::rapi::VulkanRT_RAPI::beginFrame() {
     // We'll also update ImGui here. This allows
     // the caller to draw any UI between beginFrame
     // and drawFrame.
-    ImGui_ImplGlfw_NewFrame();
+    window->newFrame();
     ImGui::NewFrame();
 }
 
@@ -407,8 +407,13 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     // allowed inside of a single TLAS.
     const uint32_t primitiveCount = static_cast<uint32_t>(handlesForFrame.size());
 
+    frameHandleMutex.lock();
+    renderObjectMutex.lock();
     std::vector<VkAccelerationStructureInstanceKHR> instances(primitiveCount, VkAccelerationStructureInstanceKHR {});
     for (auto& handle : handlesForFrame) {
+        if (!objects.isHandleValid(handle))
+            continue; // The handle is invalid; the object was probably destroyed
+
         auto& object = objects.getFromHandle(handle);
         if (!object.blas)
             continue; /* The BLAS is invalid, currently being rebuilt, or not yet built */
@@ -421,14 +426,14 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
             0.0, 0.0, 1.0, 0.0,
         };
         // clang-format on
-        // VkTransformMatrixKHR instanceTransform = *reinterpret_cast<VkTransformMatrixKHR*>(&object.mesh->transform);
-        // instances[index].transform = instanceTransform; // This should copy the values.
         instances[index].instanceCustomIndex = static_cast<uint32_t>(index);
         instances[index].mask = 0xFF;
         instances[index].flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         instances[index].instanceShaderBindingTableRecordOffset = 0;
         instances[index].accelerationStructureReference = object.blas->address;
     }
+    renderObjectMutex.unlock();
+    frameHandleMutex.unlock();
 
     VkDeviceAddress instanceDataDeviceAddress = {};
 
@@ -522,6 +527,7 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 }
 
 krypton::rapi::RenderObjectHandle krypton::rapi::VulkanRT_RAPI::createRenderObject() {
+    auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
     return static_cast<krypton::rapi::RenderObjectHandle>(objects.getNewHandle());
 }
 
@@ -582,7 +588,7 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanRT_RAPI::createShader
                                                                                  krypton::shaders::ShaderCompileResult& result) {
     if (result.resultType == krypton::shaders::CompileResultType::String)
         return nullptr;
-    
+
     if (result.resultSize <= 0)
         return nullptr;
 
@@ -592,6 +598,7 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanRT_RAPI::createShader
 }
 
 bool krypton::rapi::VulkanRT_RAPI::destroyRenderObject(krypton::rapi::RenderObjectHandle& handle) {
+    auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
     if (valid) {
         /** Also delete the buffers */
@@ -615,6 +622,18 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
         drawCommandBuffer->end(graphicsQueue.get());
         return;
     }
+
+    // We'll also draw our settings UI now.
+    // It is a completely separate window, so it shouldn't interfere
+    // with any other imgui calls.
+    ImGui::Begin("Renderer Settings");
+    ImGui::Text(fmt::format("Rendering on {}", device->getPhysicalDevice()->getDeviceName()).c_str());
+    ImGui::Separator();
+    for (auto& handle : handlesForFrame) {
+        auto& object = objects.getFromHandle(handle);
+        ImGui::BulletText(object.mesh->name.c_str());
+    }
+    ImGui::End();
 
     convertedCameraData->projection = glm::inverse(cameraData->projection);
     convertedCameraData->view = glm::inverse(cameraData->view);
@@ -832,6 +851,7 @@ void krypton::rapi::VulkanRT_RAPI::endFrame() {
         checkResult(graphicsQueue.get(), result, "Failed to submit queue!");
     }
 
+    auto guard = std::scoped_lock(frameHandleMutex);
     handlesForFrame.clear();
 }
 
@@ -976,6 +996,7 @@ void krypton::rapi::VulkanRT_RAPI::initUi() {
 
 void krypton::rapi::VulkanRT_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle,
                                                            std::shared_ptr<krypton::mesh::Mesh> mesh) {
+    auto lock = std::scoped_lock(renderObjectMutex);
     if (objects.isHandleValid(handle)) {
         auto& renderObject = objects.getFromHandle(handle);
 
@@ -987,9 +1008,11 @@ void krypton::rapi::VulkanRT_RAPI::loadMeshForRenderObject(krypton::rapi::Render
         renderObject.blas = std::make_unique<carbon::BottomLevelAccelerationStructure>(device, allocator, renderObject.mesh->name);
 
         /** We'll also dispatch the BLAS build here too */
-        auto build = [this, handle]() -> void { buildBLAS(objects.getFromHandle(handle)); };
-        std::thread buildThread(build);
-        buildThreads.push_back(std::move(buildThread));
+        kt::Scheduler::getInstance().run([this, handle]() {
+            // We read and write from the object here, so it's best to lock here as well.
+            auto lock = std::scoped_lock(renderObjectMutex);
+            buildBLAS(objects.getFromHandle(handle));
+        });
     }
 }
 
@@ -1020,7 +1043,9 @@ void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::C
 }
 
 void krypton::rapi::VulkanRT_RAPI::render(RenderObjectHandle handle) {
+    auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
     if (objects.isHandleValid(handle)) {
+        auto mutex = std::scoped_lock<std::mutex>(frameHandleMutex);
         handlesForFrame.emplace_back(handle);
     }
 }
@@ -1051,10 +1076,6 @@ void krypton::rapi::VulkanRT_RAPI::resize(int width, int height) {
 
 void krypton::rapi::VulkanRT_RAPI::shutdown() {
     checkResult(graphicsQueue.get(), device->waitIdle(), "Failed waiting on device idle");
-
-    for (auto& thread : buildThreads) {
-        thread.detach();
-    }
 
     rayGenShader.shader->destroy();
     closestHitShader.shader->destroy();

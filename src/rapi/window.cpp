@@ -68,11 +68,13 @@ void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const { glf
 
 void krypton::rapi::Window::initImgui() const {
 #ifdef RAPI_WITH_VULKAN
-    ImGui_ImplGlfw_InitForVulkan(window, false);
+    ImGui_ImplGlfw_InitForVulkan(window, true);
 #elif RAPI_WITH_METAL
-    ImGui_ImplGlfw_InitForOther(window, false);
+    ImGui_ImplGlfw_InitForOther(window, true);
 #endif
 }
+
+void krypton::rapi::Window::newFrame() const { ImGui_ImplGlfw_NewFrame(); }
 
 void krypton::rapi::Window::pollEvents() const { glfwPollEvents(); }
 
