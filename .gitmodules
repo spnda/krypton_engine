@@ -10,3 +10,6 @@
 [submodule "submodules/glslang"]
 	path = submodules/glslang
 	url = https://github.com/KhronosGroup/glslang
+[submodule "submodules/carbon"]
+	path = submodules/carbon
+	url = https://github.com/spnda/carbon

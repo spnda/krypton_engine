@@ -41,7 +41,7 @@ include(add_source_directory)
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/external")
 
 if (WIN32 OR UNIX AND NOT APPLE)
-  add_subdirectory("${CMAKE_SOURCE_DIR}/src/carbon")
+  add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/carbon")
 endif()
 
 if (APPLE)

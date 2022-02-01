@@ -1,21 +1,3 @@
-# NVIDIA Aftermath as a CMake target
-if (EXISTS "${CMAKE_SOURCE_DIR}/external/nv-aftermath" AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND WIN32)
-    set(NV_AFTERMATH_DIRECTORY "${CMAKE_SOURCE_DIR}/external/nv-aftermath")
-    message(STATUS "Found NVIDIA Aftermath")
-    
-    add_library(nv-aftermath UNKNOWN IMPORTED GLOBAL)
-    add_library(nv::aftermath ALIAS nv-aftermath)
-    set_target_properties(nv-aftermath PROPERTIES IMPORTED_LOCATION "${NV_AFTERMATH_DIRECTORY}/lib/x64/GFSDK_Aftermath_Lib.x64.lib")
-    set_property(TARGET nv-aftermath PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${NV_AFTERMATH_DIRECTORY}/include")
-    option(WITH_NV_AFTERMATH "Use NVIDIA Aftermath" ON)
-
-    # Move the Aftermath DLL into the binary folder.
-    add_custom_target(nv-aftermath-copy ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${NV_AFTERMATH_DIRECTORY}/lib/x64/GFSDK_Aftermath_Lib.x64.dll"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/")
-endif()
-
 # slang doesn't provide builds for MacOS.
 if (EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
     message(STATUS "Found slang")
