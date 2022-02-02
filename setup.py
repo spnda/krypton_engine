@@ -42,18 +42,19 @@ def main():
     if not os.path.isdir("external/slang"):
         Path("external/slang").mkdir(parents=True, exist_ok=True)
 
-    # Determine slang build URL
+    # Determine slang build URL. We update the version here
+    slang_version = "0.21.1"
     slang_zip_url = ""
     match platform.system():
         case "Darwin": # MacOS
             print(f"{colors.yellow}slang does not provide MacOS builds.")
         case "Windows": # Windows
-            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.25-win64.zip"
+            slang_zip_url = f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/slang-{slang_version}-win64.zip"
         case "Linux": # Linux
-            slang_zip_url = "https://github.com/shader-slang/slang/releases/download/v0.19.25/slang-0.19.25-linux-x86_64.zip"
+            slang_zip_url = f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/slang-{slang_version}-linux-x86_64.zip"
 
     # Download slang build from GitHub
-    if len(slang_zip_url) > 0 and not os.path.exists("external/slang/slang.zip"):
+    if len(slang_zip_url) > 0:
         urllib.request.urlretrieve(slang_zip_url, "external/slang/slang.zip")
 
         # Extract slang build zip file
