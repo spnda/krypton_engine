@@ -986,6 +986,7 @@ void krypton::rapi::VulkanRT_RAPI::initUi() {
 
     ImGui::GetIO().WantCaptureMouse = true;
     ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+    ImGui::GetIO().BackendRendererName = "Krypton";
 
     window->initImgui();
 

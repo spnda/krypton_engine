@@ -10,6 +10,9 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <imgui.h>
+#include <imgui_impl_metal.h>
+
 #include <rapi/backends/metal_backend.hpp>
 #include <rapi/render_object_handle.hpp>
 #include <shaders/shaders.hpp>
@@ -48,6 +51,9 @@ krypton::rapi::Metal_RAPI::Metal_RAPI() { window = std::make_shared<krypton::rap
 krypton::rapi::Metal_RAPI::~Metal_RAPI() {}
 
 void krypton::rapi::Metal_RAPI::beginFrame() {
+    window->newFrame();
+    ImGui::NewFrame();
+
     /** Update camera data */
     void* cameraBufferData = [cameraBuffer contents];
     memcpy(cameraBufferData, cameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
@@ -68,18 +74,26 @@ bool krypton::rapi::Metal_RAPI::destroyRenderObject(krypton::rapi::RenderObjectH
 }
 
 void krypton::rapi::Metal_RAPI::drawFrame() {
+    int width, height;
+    window->getWindowSize(&width, &height);
+    ImGui::GetIO().DisplaySize.x = width;
+    ImGui::GetIO().DisplaySize.y = height;
+
+    CGFloat framebufferScale = nswindow.screen.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor;
+    ImGui::GetIO().DisplayFramebufferScale = ImVec2(framebufferScale, framebufferScale);
+
     @autoreleasepool {
         id<CAMetalDrawable> surface = [swapchain nextDrawable];
 
         // Create render pass
-        MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
-        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.25);
-        pass.colorAttachments[0].loadAction = MTLLoadActionClear;
-        pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-        pass.colorAttachments[0].texture = surface.texture;
+        MTLRenderPassDescriptor* mainPass = [MTLRenderPassDescriptor renderPassDescriptor];
+        mainPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.25);
+        mainPass.colorAttachments[0].loadAction = MTLLoadActionClear;
+        mainPass.colorAttachments[0].storeAction = MTLStoreActionStore;
+        mainPass.colorAttachments[0].texture = surface.texture;
 
         id<MTLCommandBuffer> buffer = [queue commandBuffer];
-        id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:pass];
+        id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:mainPass];
 
         // Submit each render object for rendering
         for (krypton::rapi::RenderObjectHandle& handle : handlesForFrame) {
@@ -99,15 +113,32 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
             // to instance rendering
         }
 
-        // Present
         [encoder endEncoding];
+
+        // Draw ImGui
+        MTLRenderPassDescriptor* imguiPass = [MTLRenderPassDescriptor renderPassDescriptor];
+        imguiPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
+        imguiPass.colorAttachments[0].storeAction = MTLStoreActionStore;
+        imguiPass.colorAttachments[0].texture = surface.texture;
+        ImGui_ImplMetal_NewFrame(imguiPass); // It's safe to call now
+
+        ImGui::Render();
+        ImDrawData* drawData = ImGui::GetDrawData();
+        id<MTLRenderCommandEncoder> imguiEncoder = [buffer renderCommandEncoderWithDescriptor:imguiPass];
+        [imguiEncoder pushDebugGroup:@"Dear ImGui rendering"];
+        ImGui_ImplMetal_RenderDrawData(drawData, buffer, imguiEncoder);
+        [imguiEncoder popDebugGroup];
+
+        // Present
+        [imguiEncoder endEncoding];
         [buffer presentDrawable:surface];
         [buffer commit];
     }
 }
 
 void krypton::rapi::Metal_RAPI::endFrame() {
-    // Nothing to do.
+    ImGui::EndFrame();
+
     handlesForFrame.clear();
 }
 
@@ -125,6 +156,15 @@ void krypton::rapi::Metal_RAPI::init() {
     swapchain.device = device;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGui::StyleColorsDark();
+
+    window->initImgui();
+
+    ImGui_ImplMetal_Init(device);
 
     // Get the NSWindow*
     GLFWwindow* pWindow = window->getWindowPointer();
@@ -213,6 +253,8 @@ void krypton::rapi::Metal_RAPI::setCameraData(std::shared_ptr<krypton::rapi::Cam
     this->cameraData = std::move(cameraData);
 }
 
-void krypton::rapi::Metal_RAPI::shutdown() {}
+void krypton::rapi::Metal_RAPI::shutdown() {
+    ImGui_ImplMetal_DestroyDeviceObjects();
+}
 
 #endif // #ifdef RAPI_WITH_METAL
