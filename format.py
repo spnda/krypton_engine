@@ -9,7 +9,7 @@ import sys
 # Just C/C++/Obj-C/Obj-C++ extensions
 extensions = [".hpp", ".cpp", ".mm", ".m" ".c", ".h", ".cc", ".hh"]
 
-def findClangFmt():
+def findClangFormat():
     # We first search if there's a clang-format with no version number
     if shutil.which("clang-format") is not None:
         return "clang-format"
@@ -19,13 +19,17 @@ def findClangFmt():
         if shutil.which(f"clang-format-{version}") is not None:
             return f"clang-format-{version}"
 
+def findCmakeFormat():
+    return shutil.which("cmake-format")
+
 def main():
     # Check if the first argument passed is a valid directory
     if len(sys.argv) < 2 or not os.path.isdir(sys.argv[1]):
         print("Missing or invalid directory argument")
         return
 
-    clangfmt = findClangFmt()
+    clangfmt = findClangFormat()
+    cmakefmt = findCmakeFormat()
     if clangfmt is None:
         print("Could not find clang-format")
         return
@@ -40,6 +44,10 @@ def main():
             if file.endswith(ext):
                 print(f"Formatting {file}")
                 subprocess.call([clangfmt, "-i", "--style=file", file])
+        
+        if cmakefmt is not None and file.endswith("CMakeLists.txt"):
+                print(f"Formatting {file}")
+                subprocess.call([cmakefmt, "-o", file, file])
 
     print("Finished formatting all files")
 

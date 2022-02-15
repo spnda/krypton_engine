@@ -11,9 +11,4 @@ target_compile_features(krypton_models PRIVATE cxx_std_20)
 
 target_include_directories(krypton_models PUBLIC "include")
 
-add_files(
-    TARGET krypton_models
-    "include/models/fileloader.hpp"
-
-    "fileloader.cpp"
-)
+add_files(TARGET krypton_models "include/models/fileloader.hpp" "fileloader.cpp")
