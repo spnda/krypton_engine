@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import os
 from pathlib import Path
@@ -20,7 +20,7 @@ def call(args, cwd=".", shell=False):
         # It's probably not the best idea to also surpress stderr, but it
         # keeps our logs clean and this doesn't do much anyway
         subprocess.check_call(args, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=shell)
-        return True   
+        return True
     except subprocess.CalledProcessError:
         return False
 
@@ -33,6 +33,12 @@ def main():
     if not os.path.isdir("build"):
         Path("build/debug").mkdir(parents=True, exist_ok=True)
         Path("build/release").mkdir(parents=True, exist_ok=True)
+
+    # Run pre-commit install to install all necessary git hooks
+    if shutil.which("pre-commit"):
+        call(["pre-commit", "install"])
+    else:
+        print(f"{colors.yellow}pre-commit not found. Git hooks will not be installed.{colors.end}")
 
     # Clone submodules if the user hasn't already
     print(f"{colors.green}Cloning submodules...{colors.end}")
