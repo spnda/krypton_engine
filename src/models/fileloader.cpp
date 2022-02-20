@@ -49,7 +49,7 @@ namespace krypton::models {
         bv->data = reinterpret_cast<const float*>(&(model.buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
         bv->stride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : getTinyGltfTypeSizeInBytes(type);
         bv->count = accessor.count;
-    };
+    }
 
     template <typename T, typename S>
     void writeToVector(const T* src, const size_t count, std::vector<S>& out) {
@@ -217,9 +217,14 @@ bool krypton::models::FileLoader::loadFile(const fs::path& path) {
     textures.clear();
 
     if (!path.has_filename()) {
-        krypton::log::err("Given path does not point to a file: {}\n", path.string());
+        krypton::log::err("Given path does not point to a file: {}", path.string());
         return false;
     }
+    if (!fs::exists(path) || !fs::is_regular_file(path)) {
+        krypton::log::err("Given path does not exist: {}", path.string());
+        return false;
+    }
+
     fs::path ext = path.extension();
     if (ext.compare(".glb") == 0 || ext.compare(".gltf") == 0) {
         bool ret = loadGltfFile(path);
@@ -229,6 +234,6 @@ bool krypton::models::FileLoader::loadFile(const fs::path& path) {
         }
     }
 
-    krypton::log::err("Failed to load file: {}\n", path.string());
+    krypton::log::err("Failed to load file: {}", path.string());
     return false;
 }

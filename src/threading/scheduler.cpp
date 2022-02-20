@@ -1,7 +1,10 @@
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+// We disable clang-format as the order of these headers matters!
+// clang-format off
+#include <Windows.h>
 #include <processthreadsapi.h>
+// clang-format on
 #endif
 
 #include <threading/scheduler.hpp>
@@ -27,9 +30,9 @@ kt::Scheduler& kt::Scheduler::getInstance() {
     return instance;
 }
 
-uint32_t kt::Scheduler::getMaxThreadCount() { return maxThreadCount; }
+[[maybe_unused]] uint32_t kt::Scheduler::getMaxThreadCount() const { return maxThreadCount; }
 
-void kt::Scheduler::run(kt::Scheduler::taskFunction function) {
+void kt::Scheduler::run(const kt::Scheduler::taskFunction& function) {
     if (!running) {
         return;
     }
@@ -70,7 +73,7 @@ void kt::Scheduler::start() {
     }
 
     for (uint32_t i = 0; i < maxThreadCount; ++i) {
-        threadPool.push_back(std::thread(&Scheduler::workerThreadLoop, this));
+        threadPool.emplace_back(&Scheduler::workerThreadLoop, this);
 #ifdef WIN32
         auto threadName = fmt::format("Worker thread {}", i);
         std::wstring wthreadName = std::wstring(threadName.begin(), threadName.end());

@@ -45,8 +45,8 @@ namespace krypton::threading {
         ~Scheduler();
 
         static auto getInstance() -> Scheduler&;
-        auto getMaxThreadCount() -> uint32_t;
-        void run(Scheduler::taskFunction function);
+        [[maybe_unused]] auto getMaxThreadCount() const -> uint32_t;
+        void run(const Scheduler::taskFunction& function);
         void shutdown();
         void start();
     };

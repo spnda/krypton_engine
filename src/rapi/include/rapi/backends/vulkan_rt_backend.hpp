@@ -18,11 +18,11 @@
 #include <mesh/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
 #include <rapi/backends/vulkan/render_object.hpp>
+#include <rapi/object_handles.hpp>
 #include <rapi/rapi.hpp>
-#include <rapi/render_object_handle.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
-#include <util/free_list.hpp>
+#include <util/large_free_list.hpp>
 #include <util/large_vector.hpp>
 
 namespace carbon {
@@ -143,7 +143,7 @@ namespace krypton::rapi {
 
     public:
         VulkanRT_RAPI();
-        ~VulkanRT_RAPI();
+        ~VulkanRT_RAPI() override;
 
         void beginFrame() override;
         auto createRenderObject() -> RenderObjectHandle override;

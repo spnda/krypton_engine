@@ -21,8 +21,8 @@ namespace krypton::util {
         class Iterator {
             friend class LargeVector;
 
-            size_t pos;
-            LargeVector* vector;
+            size_t pos = 0;
+            LargeVector* vector = nullptr;
 
             /* Private so that only our friend, LargeVector, can create a instance */
             explicit Iterator(LargeVector* vector, size_t pos);
@@ -57,11 +57,12 @@ namespace krypton::util {
         ~LargeVector() = default;
 
         constexpr Iterator begin() noexcept;
+        [[nodiscard]] size_t capacity() const noexcept;
         constexpr Iterator end() noexcept;
         T& emplace_back(T&& value) noexcept;
         constexpr void push_back(T&& value) noexcept;
         void resize(size_t size);
-        size_t size();
+        [[nodiscard]] size_t size() const noexcept;
 
         [[nodiscard]] const T& operator[](size_t index) const;
         [[nodiscard]] T& operator[](size_t index);
@@ -112,6 +113,11 @@ namespace krypton::util {
     }
 
     template <typename T, size_t blockSize>
+    size_t LargeVector<T, blockSize>::capacity() const noexcept {
+        return data.size() * blockSize;
+    }
+
+    template <typename T, size_t blockSize>
     constexpr auto LargeVector<T, blockSize>::end() noexcept -> Iterator {
         LargeVector<T, blockSize>::Iterator it(this, this->size());
         return it;
@@ -143,7 +149,7 @@ namespace krypton::util {
     }
 
     template <typename T, size_t blockSize>
-    size_t LargeVector<T, blockSize>::size() {
+    size_t LargeVector<T, blockSize>::size() const noexcept {
         return (data.size() - 1) * blockSize + data.back()->size();
     }
 

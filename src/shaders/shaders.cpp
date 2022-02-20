@@ -30,7 +30,7 @@ namespace krypton::shaders {
     ShaderCompileResult spirvCrossCompile(const std::vector<uint32_t>& spirv, krypton::shaders::ShaderTargetType target);
 
 #ifdef WITH_SLANG_SHADERS
-    std::vector<ShaderCompileResult> slangCompileShader(const krypton::shaders::ShaderCompileInput& inputs);
+    std::vector<ShaderCompileResult> slangCompileShader(const krypton::shaders::ShaderCompileInput& shaderInput);
 #endif
 } // namespace krypton::shaders
 
@@ -38,14 +38,13 @@ krypton::shaders::ShaderFile krypton::shaders::readShaderFile(const fs::path& pa
     std::ifstream is(path, std::ios::binary);
 
     if (is.is_open()) {
-        std::string shaderCode;
         std::stringstream ss;
         ss << is.rdbuf();
-        shaderCode = ss.str();
         return { path, ss.str() };
     } else {
         krypton::log::throwError("Failed to open shader file: {}", path.string());
     }
+    return { path, "" };
 }
 
 std::vector<krypton::shaders::ShaderCompileResult>
@@ -107,7 +106,7 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
 
 #ifdef WITH_GLSLANG_SHADERS
 krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(const krypton::shaders::ShaderCompileInput& shaderInput) {
-    glslang_source_t language;
+    glslang_source_t language = GLSLANG_SOURCE_NONE;
     switch (shaderInput.sourceType) {
         case ShaderSourceType::GLSL: language = GLSLANG_SOURCE_GLSL; break;
         case ShaderSourceType::HLSL: language = GLSLANG_SOURCE_HLSL; break;
@@ -164,7 +163,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
 
     // This automatically splits the string into lines, so that everything
     // is not printed in one print().
-    auto glslangPrintError = [shaderInput](std::string string) {
+    auto glslangPrintError = [shaderInput](const std::string& string) {
         std::istringstream ss(string);
         std::string line;
         while (std::getline(ss, line)) {
@@ -212,19 +211,22 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
 
 krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const std::vector<uint32_t>& spirv,
                                                                           krypton::shaders::ShaderTargetType target) {
-    spvc_backend backendTarget;
+    spvc_backend backendTarget = SPVC_BACKEND_NONE;
     switch (target) {
         using namespace krypton::shaders;
         case ShaderTargetType::GLSL: backendTarget = SPVC_BACKEND_GLSL; break;
         case ShaderTargetType::HLSL: backendTarget = SPVC_BACKEND_HLSL; break;
         case ShaderTargetType::METAL: {
             krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate Metal.");
+            break;
         }
         case ShaderTargetType::SPIRV: {
             krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate SPIR-V.");
+            break;
         }
         default: {
             krypton::log::throwError("[spirv-cross] Unrecognized shader target type: {}", (uint32_t)target);
+            break;
         }
     }
 
@@ -235,7 +237,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
 
     spvc_context_create(&context);
     spvc_context_parse_spirv(context, spirv.data(), spirv.size(), &ir);
-    spvc_context_create_compiler(context, static_cast<spvc_backend>(target), ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler);
+    spvc_context_create_compiler(context, backendTarget, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler);
 
     // Modify compiler options
     spvc_compiler_create_compiler_options(compiler, &options);
@@ -247,6 +249,9 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
         case ShaderTargetType::METAL:
             spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_MSL_VERSION, (2 << 16) + 4); /* MSL 2.4 */
             break;
+        default: {
+            break;
+        }
     }
     spvc_compiler_install_compiler_options(compiler, options);
 
@@ -274,7 +279,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
 
     SlangCompileRequest* request = spCreateCompileRequest(session);
 
-    SlangCompileTarget compileTarget;
+    SlangCompileTarget compileTarget = SLANG_TARGET_UNKNOWN;
     switch (shaderInput.targetType) {
         using namespace krypton::shaders;
         case ShaderTargetType::GLSL: compileTarget = SLANG_GLSL; break;
@@ -286,14 +291,15 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         }
         default: {
             krypton::log::throwError("[slang] Unrecognized shader target type: {}", (uint32_t)shaderInput.targetType);
+            break;
         }
     }
-    spSetCodeGenTarget(request, compileTarget);
+    auto target = spAddCodeGenTarget(request, compileTarget);
 
-    SlangSourceLanguage compileSource;
+    SlangSourceLanguage compileSource = SLANG_SOURCE_LANGUAGE_UNKNOWN;
     switch (shaderInput.sourceType) {
-        case ShaderSourceType::HLSL: compileSource = SLANG_SOURCE_LANGUAGE_HLSL; break;
         case ShaderSourceType::SLANG: compileSource = SLANG_SOURCE_LANGUAGE_SLANG; break;
+        case ShaderSourceType::HLSL: compileSource = SLANG_SOURCE_LANGUAGE_HLSL; break;
         case ShaderSourceType::GLSL: {
             krypton::log::throwError("[slang] Cannot use slang to compile from GLSL!");
             break;
@@ -304,6 +310,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         }
         default: {
             krypton::log::throwError("[slang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
+            break;
         }
     }
 
@@ -348,7 +355,6 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     const char* diagnostics = spGetDiagnosticOutput(request);
 
     if (anyErrors != 0) {
-        krypton::log::err("{}", diagnostics);
         return {};
     }
 

@@ -22,14 +22,16 @@
 #undef far
 
 std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
+
 std::vector<krypton::rapi::RenderObjectHandle> renderObjectHandles = {};
 std::mutex renderObjectHandleMutex;
+
 std::string modelPathString;
 
 float cameraPos[3] = { 10, 0, -1 };
 float focus[3] = { 0, 0, 0 };
 
-void loadModel(krypton::rapi::RenderAPI* rapi, fs::path path) {
+void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
     kt::Scheduler::getInstance().run([rapi, path]() {
         auto fileLoader = std::make_unique<krypton::models::FileLoader>();
         auto loaded = fileLoader->loadFile(path);

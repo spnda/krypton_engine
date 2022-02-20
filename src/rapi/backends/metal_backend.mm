@@ -16,8 +16,7 @@
 #include <rapi/backends/metal_backend.hpp>
 #include <rapi/render_object_handle.hpp>
 #include <shaders/shaders.hpp>
-#include <util/free_list.hpp>
-#include <util/large_vector.hpp>
+#include <util/large_free_list.hpp>
 
 namespace krypton::rapi::metal {
     struct RenderObject final {
@@ -253,8 +252,6 @@ void krypton::rapi::Metal_RAPI::setCameraData(std::shared_ptr<krypton::rapi::Cam
     this->cameraData = std::move(cameraData);
 }
 
-void krypton::rapi::Metal_RAPI::shutdown() {
-    ImGui_ImplMetal_DestroyDeviceObjects();
-}
+void krypton::rapi::Metal_RAPI::shutdown() { ImGui_ImplMetal_DestroyDeviceObjects(); }
 
 #endif // #ifdef RAPI_WITH_METAL

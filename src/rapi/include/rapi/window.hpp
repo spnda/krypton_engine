@@ -39,19 +39,20 @@ namespace krypton::rapi {
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
         void getWindowSize(int* width, int* height) const;
         void initImgui() const;
-        void newFrame() const;
-        void pollEvents() const;
 
         /**
          * Set a pointer to the RendeRAPI instance for callbacks
          * to use.
          */
+        static void newFrame();
+        static void pollEvents();
         void setRapiPointer(krypton::rapi::RenderAPI* rapi);
         [[nodiscard]] bool shouldClose() const;
+        static void waitEvents();
 
 #ifdef RAPI_WITH_VULKAN
         [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;
-        [[nodiscard]] std::vector<const char*> getVulkanExtensions() const;
+        [[nodiscard]] static std::vector<const char*> getVulkanExtensions();
 #endif // #ifdef RAPI_WITH_VULKAN
     };
 } // namespace krypton::rapi

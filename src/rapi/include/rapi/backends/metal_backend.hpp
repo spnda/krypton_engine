@@ -6,8 +6,8 @@
 
 #include <mesh/mesh.hpp>
 
+#include <rapi/object_handles.hpp>
 #include <rapi/rapi.hpp>
-#include <rapi/render_object_handle.hpp>
 #include <rapi/window.hpp>
 
 namespace krypton::rapi {

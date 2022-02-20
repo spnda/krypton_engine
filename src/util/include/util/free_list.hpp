@@ -2,12 +2,7 @@
 
 #include <vector>
 
-#include <util/large_vector.hpp>
-
 namespace krypton::util {
-    /**
-     * A handle to some entry inside of a free list.
-     */
     struct FreeListHandle {
         uint32_t index = 0;
         uint32_t generation = 0;
@@ -15,91 +10,110 @@ namespace krypton::util {
         explicit FreeListHandle(uint32_t index, uint32_t generation) : index(index), generation(generation) {}
     };
 
-    template <typename Object>
     struct FreeListObject {
         uint32_t next = 0;
         uint32_t generation = 0;
-        Object object;
 
         explicit FreeListObject() = default;
-        explicit FreeListObject(Object object);
     };
 
     /**
-     * A free list is a bulk data storage which can have
-     * holes in it, to avoid expensive re-allocation. In
-     * these holes we store indices to the next known object,
-     * so that we know which objects are unused.
+     *  A free list is a bulk data storage which can have holes
+     * in it, to avoid expensive moving and copying when adding
+     * or removing elements. In these holes we store indices to the
+     * next known object, so that we can keep track of unused objects.
+     *
+     * @tparam Object The object this free list stores.
+     * @tparam Container The type of container backing this list.
+     *         Typically a std::vector or similar. It has to implement
+     *         at least size(), capacity(), resize(), data(),
+     *         push_back(T&&), and operator[int].
      */
-    template <typename Object>
-    class LargeFreeList : LargeVector<FreeListObject<Object>> {
+    template <typename Object, template <typename T = Object> typename Container = std::vector>
+    class FreeList {
+        Container<Object> container;
+        std::vector<FreeListObject> mappings;
+
         [[nodiscard]] auto createSlot() -> uint32_t;
 
     public:
-        /** We create the first 'hole' right away */
-        LargeFreeList();
+        FreeList();
 
+        [[nodiscard]] auto capacity() const noexcept -> uint32_t;
+        [[nodiscard]] constexpr auto data() const noexcept -> const Object*;
         [[nodiscard]] auto getFromHandle(const FreeListHandle& handle) -> Object&;
         [[nodiscard]] auto getNewHandle() -> FreeListHandle;
         [[nodiscard]] bool isHandleValid(const FreeListHandle& handle);
         void removeHandle(FreeListHandle& handle);
+        [[nodiscard]] auto size() const noexcept -> uint32_t;
     };
 
-    template <typename Object>
-    krypton::util::FreeListObject<Object>::FreeListObject(Object object) : object(std::move(object)) {}
-
-    template <typename Object>
-    krypton::util::LargeFreeList<Object>::LargeFreeList() {
-        this->push_back(FreeListObject<Object> {});
+    template <typename Object, template <typename> typename Container>
+    FreeList<Object, Container>::FreeList() {
+        container.push_back(Object {});
+        mappings.emplace_back();
     }
 
-    template <typename Object>
-    uint32_t krypton::util::LargeFreeList<Object>::createSlot() {
-        auto& lfl = *this;
+    template <typename Object, template <typename> typename Container>
+    uint32_t FreeList<Object, Container>::capacity() const noexcept {
+        return static_cast<uint32_t>(container.capacity());
+    }
 
-        /** We check for the first free hole and use it. */
-        const uint32_t slot = lfl[0].next;
-        lfl[0].next = lfl[slot].next;
+    template <typename Object, template <typename> typename Container>
+    uint32_t FreeList<Object, Container>::createSlot() {
+        // We check for the first free hole and use it.
+        const uint32_t slot = mappings[0].next;
+        mappings[0].next = mappings[slot].next;
         if (slot)
             return slot;
 
-        /** There are no holes yet, we extend the array. */
-        this->resize(this->size() + 1);
-        return static_cast<uint32_t>(this->size() - 1);
+        // There are no available holes, we extend the array.
+        auto size = container.size() + 1;
+        container.resize(size);
+        mappings.resize(size);
+        return static_cast<uint32_t>(size - 1);
     }
 
-    template <typename Object>
-    Object& krypton::util::LargeFreeList<Object>::getFromHandle(const FreeListHandle& handle) {
-        /* Verify first that the handle is valid */
+    template <typename Object, template <typename> typename Container>
+    constexpr const Object* FreeList<Object, Container>::data() const noexcept {
+        return container.data();
+    }
+
+    template <typename Object, template <typename> typename Container>
+    Object& FreeList<Object, Container>::getFromHandle(const FreeListHandle& handle) {
+        // Verify first that the handle is valid
         assert(isHandleValid(handle));
 
-        return (*this)[handle.index].object;
+        return container[handle.index];
     }
 
-    template <typename Object>
-    krypton::util::FreeListHandle krypton::util::LargeFreeList<Object>::getNewHandle() {
+    template <typename Object, template <typename> typename Container>
+    FreeListHandle FreeList<Object, Container>::getNewHandle() {
         auto slot = createSlot();
-        return krypton::util::FreeListHandle { slot, (*this)[slot].generation };
+        return FreeListHandle { slot, mappings[slot].generation };
     }
 
-    template <typename Object>
-    bool krypton::util::LargeFreeList<Object>::isHandleValid(const FreeListHandle& handle) {
-        return (*this)[handle.index].generation == handle.generation;
+    template <typename Object, template <typename> typename Container>
+    bool FreeList<Object, Container>::isHandleValid(const FreeListHandle& handle) {
+        if (size() < handle.index)
+            return false;
+        return mappings[handle.index].generation == handle.generation;
     }
 
-    template <typename Object>
-    void krypton::util::LargeFreeList<Object>::removeHandle(krypton::util::FreeListHandle& handle) {
+    template <typename Object, template <typename> typename Container>
+    void FreeList<Object, Container>::removeHandle(FreeListHandle& handle) {
         assert(isHandleValid(handle));
 
-        auto& lfl = *this;
+        mappings[handle.index].next = mappings[0].next;
+        mappings[0].next = handle.index;
 
-        lfl[handle.index].next = lfl[0].next;
-        lfl[0].next = handle.index;
+        // We also want to up the generation index for each remove, so that handles
+        // can be checked for validity.
+        mappings[handle.index].generation++;
+    }
 
-        /**
-         * We also want to up the generation index for each remove, so that handles
-         * can be checked for validity.
-         */
-        lfl[handle.index].generation++;
+    template <typename Object, template <typename> typename Container>
+    uint32_t FreeList<Object, Container>::size() const noexcept {
+        return static_cast<uint32_t>(container.size());
     }
 } // namespace krypton::util
