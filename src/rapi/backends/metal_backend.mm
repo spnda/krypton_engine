@@ -62,6 +62,8 @@ krypton::rapi::RenderObjectHandle krypton::rapi::Metal_RAPI::createRenderObject(
     return static_cast<krypton::rapi::RenderObjectHandle>(objects.getNewHandle());
 }
 
+krypton::rapi::MaterialHandle krypton::rapi::Metal_RAPI::createMaterial(krypton::mesh::Material material) {}
+
 bool krypton::rapi::Metal_RAPI::destroyRenderObject(krypton::rapi::RenderObjectHandle& handle) {
     auto valid = objects.isHandleValid(handle);
     if (valid) {
@@ -140,6 +142,8 @@ void krypton::rapi::Metal_RAPI::endFrame() {
 
     handlesForFrame.clear();
 }
+
+std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::Metal_RAPI::getCameraData() { return cameraData; }
 
 std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() { return window; }
 
@@ -245,11 +249,6 @@ void krypton::rapi::Metal_RAPI::render(RenderObjectHandle handle) {
 
 void krypton::rapi::Metal_RAPI::resize(int width, int height) {
     // Metal auto-resizes for us.
-}
-
-void krypton::rapi::Metal_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) {
-    this->cameraData.reset();
-    this->cameraData = std::move(cameraData);
 }
 
 void krypton::rapi::Metal_RAPI::shutdown() { ImGui_ImplMetal_DestroyDeviceObjects(); }

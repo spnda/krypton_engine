@@ -9,7 +9,7 @@
 #include <imgui.h>
 
 #define VMA_IMPLEMENTATION
-#define VMA_ASSERT() // We don't want VMA to do any assertions.
+#define VMA_ASSERT(expr) // We don't want VMA to do any assertions.
 
 #include <carbon/base/command_buffer.hpp>
 #include <carbon/base/command_pool.hpp>
@@ -34,7 +34,6 @@
 #include <carbon/utils.hpp>
 #include <carbon/vulkan.hpp>
 #include <rapi/backends/vulkan_rt_backend.hpp>
-#include <rapi/render_object_handle.hpp>
 #include <shaders/shaders.hpp>
 #include <threading/scheduler.hpp>
 #include <util/logging.hpp>
@@ -54,23 +53,11 @@ struct ImGuiPushConstants {
 };
 
 namespace krypton::rapi::vulkan {
-    VkTransformMatrixKHR glmToVulkanMatrix(glm::mat4x3 glmMatrix) {
+    VkTransformMatrixKHR glmToVulkanMatrix(const glm::mat4x3& glmMatrix) {
         VkTransformMatrixKHR vkMatrix;
-        vkMatrix.matrix[0][0] = glmMatrix[0][0];
-        vkMatrix.matrix[0][1] = glmMatrix[1][0];
-        vkMatrix.matrix[0][2] = glmMatrix[2][0];
-        vkMatrix.matrix[0][3] = glmMatrix[3][0];
-
-        vkMatrix.matrix[1][0] = glmMatrix[0][1];
-        vkMatrix.matrix[1][1] = glmMatrix[1][1];
-        vkMatrix.matrix[1][2] = glmMatrix[2][1];
-        vkMatrix.matrix[1][3] = glmMatrix[3][1];
-
-        vkMatrix.matrix[2][0] = glmMatrix[0][2];
-        vkMatrix.matrix[2][1] = glmMatrix[1][2];
-        vkMatrix.matrix[2][2] = glmMatrix[2][2];
-        vkMatrix.matrix[2][3] = glmMatrix[3][2];
-
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 4; ++j)
+                vkMatrix.matrix[i][j] = glmMatrix[j][i];
         return vkMatrix;
     }
 
@@ -111,20 +98,33 @@ krypton::rapi::VulkanRT_RAPI::VulkanRT_RAPI() {
 
     blasComputeQueue = std::make_unique<carbon::Queue>(device, "blasComputeQueue");
     computeCommandPool = std::make_shared<carbon::CommandPool>(device, "computeCommandPool");
+
+    // Create camera buffer
+    cameraData = std::make_shared<krypton::rapi::CameraData>();
+    convertedCameraData = std::make_unique<krypton::rapi::CameraData>();
 }
 
-krypton::rapi::VulkanRT_RAPI::~VulkanRT_RAPI() {
-    // Do nothing.
+krypton::rapi::VulkanRT_RAPI::~VulkanRT_RAPI() = default;
+
+void krypton::rapi::VulkanRT_RAPI::addPrimitive(RenderObjectHandle& handle, krypton::mesh::Primitive& primitive,
+                                                krypton::rapi::MaterialHandle& material) {
+    auto lock = std::scoped_lock(renderObjectMutex);
+    auto& object = objects.getFromHandle(handle);
+    object.primitives.push_back({ primitive, material });
 }
 
 void krypton::rapi::VulkanRT_RAPI::beginFrame() {
     if (!needsResize) {
+        window->pollEvents();
+
         auto result = waitForFrame();
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             needsResize = true;
         } else {
             checkResult(graphicsQueue.get(), result, "Failed to present queue!");
         }
+    } else {
+        window->waitEvents(); // We'd usually return but we want imgui to still run
     }
 
     // We'll also update ImGui here. This allows
@@ -134,21 +134,30 @@ void krypton::rapi::VulkanRT_RAPI::beginFrame() {
     ImGui::NewFrame();
 }
 
-void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject& renderObject) {
-    auto primitiveSize = renderObject.mesh->primitives.size();
+void krypton::rapi::VulkanRT_RAPI::buildRenderObject(RenderObjectHandle& handle) {
+    auto lock = std::unique_lock(renderObjectMutex);
+    auto& renderObject = objects.getFromHandle(handle);
+
+    auto primitiveSize = renderObject.primitives.size();
     std::vector<uint32_t> primitiveCounts(primitiveSize);
     std::vector<VkAccelerationStructureGeometryKHR> geometries(primitiveSize);
     std::vector<VkAccelerationStructureBuildRangeInfoKHR> rangeInfos(primitiveSize);
 
+    renderObject.geometryDescriptions.reserve(primitiveSize);
+    renderObject.blas = std::make_unique<carbon::BottomLevelAccelerationStructure>(device, allocator, "");
+
     /** Calculate the total buffer sizes and offsets */
     std::vector<carbon::BottomLevelAccelerationStructure::PrimitiveData> primitiveData(primitiveSize);
     uint64_t totalVertexSize = 0, totalIndexSize = 0;
-    for (auto& prim : renderObject.mesh->primitives) {
+    for (auto& primitive : renderObject.primitives) {
         auto& description = renderObject.geometryDescriptions.emplace_back();
-        description.materialIndex = prim.materialIndex;
-        description.meshBufferVertexOffset = totalVertexSize;
-        description.meshBufferIndexOffset = totalIndexSize;
+        description.materialIndex = static_cast<uint32_t>(primitive.material.index);
 
+        // We use the address beforehand to store an offset into the actual address.
+        description.vertexBufferAddress = totalVertexSize;
+        description.indexBufferAddress = totalIndexSize;
+
+        auto& prim = primitive.primitive;
         std::span<std::byte> vertex = { reinterpret_cast<std::byte*>(prim.vertices.data()),
                                         prim.vertices.size() * krypton::mesh::VERTEX_STRIDE };
         std::span<std::byte> index = { reinterpret_cast<std::byte*>(prim.indices.data()), prim.indices.size() * sizeof(uint32_t) };
@@ -156,17 +165,29 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
         totalVertexSize += vertex.size();
         totalIndexSize += index.size();
 
-        primitiveData.push_back(std::make_pair(vertex, index));
+        primitiveData.emplace_back(vertex, index);
     }
 
-    VkTransformMatrixKHR blasTransform = vulkan::glmToVulkanMatrix(renderObject.mesh->transform);
+    lock.unlock();
+
+    VkTransformMatrixKHR blasTransform = vulkan::glmToVulkanMatrix(renderObject.transform);
     renderObject.blas->createMeshBuffers(primitiveData, blasTransform);
 
+    auto vertexDeviceAddress = renderObject.blas->vertexBuffer->getDeviceAddress();
+    auto indexDeviceAddress = renderObject.blas->indexBuffer->getDeviceAddress();
+
     /** Generate the geometry data with the buffer info just generated */
-    for (const auto& prim : renderObject.mesh->primitives) {
-        uint64_t primitiveIndex = &prim - &renderObject.mesh->primitives.front();
+    for (const auto& prim : renderObject.primitives) {
+        uint64_t primitiveIndex = &prim - &renderObject.primitives.front();
         // maxPrimitiveCount may not be larger than UINT32_MAX
-        primitiveCounts[primitiveIndex] = std::min((uint32_t)prim.indices.size() / 3, (uint32_t)asProperties->maxPrimitiveCount);
+        primitiveCounts[primitiveIndex] = std::min((uint32_t)prim.primitive.indices.size() / 3, (uint32_t)asProperties->maxPrimitiveCount);
+
+        // We use the address beforehand to store an offset into the actual address.
+        auto vertexAddress = vertexDeviceAddress + renderObject.geometryDescriptions[primitiveIndex].vertexBufferAddress;
+        auto indexAddress = indexDeviceAddress + renderObject.geometryDescriptions[primitiveIndex].indexBufferAddress;
+
+        renderObject.geometryDescriptions[primitiveIndex].vertexBufferAddress = vertexAddress;
+        renderObject.geometryDescriptions[primitiveIndex].indexBufferAddress = indexAddress;
 
         geometries[primitiveIndex] = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -176,13 +197,13 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
                     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
                     .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT, // TODO: Replace with variable
                     .vertexData {
-                        .deviceAddress = renderObject.blas->vertexBuffer->getDeviceAddress() + renderObject.geometryDescriptions[primitiveIndex].meshBufferVertexOffset,
+                        .deviceAddress = vertexAddress,
                     },
                     .vertexStride = krypton::mesh::VERTEX_STRIDE,
-                    .maxVertex = static_cast<uint32_t>(prim.vertices.size() - 1),
+                    .maxVertex = static_cast<uint32_t>(prim.primitive.vertices.size() - 1),
                     .indexType = VK_INDEX_TYPE_UINT32,
                     .indexData = {
-                        .deviceAddress = renderObject.blas->indexBuffer->getDeviceAddress() + renderObject.geometryDescriptions[primitiveIndex].meshBufferIndexOffset,
+                        .deviceAddress = indexAddress,
                     },
                     .transformData = {
                         .deviceAddress = renderObject.blas->transformBuffer->getDeviceAddress(),
@@ -212,7 +233,7 @@ void krypton::rapi::VulkanRT_RAPI::buildBLAS(krypton::rapi::vulkan::RenderObject
     renderObject.blas->createScratchBuffer(sizes);
     renderObject.blas->createResultBuffer(sizes);
     renderObject.blas->createStructure(sizes);
-    device->setDebugUtilsName(renderObject.blas->handle, renderObject.mesh->name);
+    device->setDebugUtilsName(renderObject.blas->handle, "");
 
     buildGeometryInfo.dstAccelerationStructure = renderObject.blas->handle;
     buildGeometryInfo.scratchData.deviceAddress = renderObject.blas->scratchBuffer->getDeviceAddress();
@@ -263,10 +284,15 @@ void krypton::rapi::VulkanRT_RAPI::buildRTPipeline() {
     /* Add descriptors */
     rtDescriptorSet->addBuffer(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, carbon::ShaderStage::RayGeneration);
 
-    rtDescriptorSet->addAccelerationStructure(TLAS_DESCRIPTOR_BINDING,
-                                              carbon::ShaderStage::RayGeneration | carbon::ShaderStage::ClosestHit);
+    rtDescriptorSet->addBuffer(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                               carbon::ShaderStage::ClosestHit |
+                                   carbon::ShaderStage::AnyHit); // VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 
-    rtDescriptorSet->addImage(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, carbon::ShaderStage::RayGeneration);
+    rtDescriptorSet->addBuffer(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, carbon::ShaderStage::ClosestHit);
+
+    rtDescriptorSet->addAccelerationStructure(3, carbon::ShaderStage::RayGeneration | carbon::ShaderStage::ClosestHit);
+
+    rtDescriptorSet->addImage(4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, carbon::ShaderStage::RayGeneration);
 
     rtDescriptorSet->create();
 
@@ -278,13 +304,17 @@ void krypton::rapi::VulkanRT_RAPI::buildRTPipeline() {
     rtPipeline->create();
     rtPipeline->setName("rt_pipeline");
 
-    auto cameraBufferInfo = cameraBuffer->getDescriptorInfo(VK_WHOLE_SIZE);
+    auto cameraBufferInfo = cameraBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
     auto storageImageDescriptor = storageImage->getDescriptorImageInfo();
     rtDescriptorSet->updateBuffer(0, &cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    rtDescriptorSet->updateImage(2, &storageImageDescriptor, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    rtDescriptorSet->updateImage(4, &storageImageDescriptor, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 }
 
 void krypton::rapi::VulkanRT_RAPI::buildSBT() {
+    // The pipeline wasn't built or is invalid.
+    if (!rtPipeline)
+        return;
+
     uint32_t missCount = 1; // 1 miss groups
     uint32_t chitCount = 1; // 1 hit group (with closest and any)
     uint32_t callCount = 0;
@@ -376,7 +406,7 @@ void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
         .location = 0,
         .binding = vBinding,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(ImDrawVert, pos),
+        .offset = static_cast<uint32_t>(offsetof(ImDrawVert, pos)),
     });
 
     // UV
@@ -384,7 +414,7 @@ void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
         .location = 1,
         .binding = vBinding,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(ImDrawVert, uv),
+        .offset = static_cast<uint32_t>(offsetof(ImDrawVert, uv)),
     });
 
     // Color
@@ -392,7 +422,7 @@ void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
         .location = 2,
         .binding = vBinding,
         .format = VK_FORMAT_R8G8B8A8_UNORM,
-        .offset = offsetof(ImDrawVert, col),
+        .offset = static_cast<uint32_t>(offsetof(ImDrawVert, col)),
     });
 
     uiPipeline->create();
@@ -403,13 +433,19 @@ void krypton::rapi::VulkanRT_RAPI::buildUIPipeline() {
 }
 
 void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
-    // As per the Vulkan spec, no more than UINT32_MAX primitives/instances are
-    // allowed inside of a single TLAS.
-    const uint32_t primitiveCount = static_cast<uint32_t>(handlesForFrame.size());
-
     frameHandleMutex.lock();
     renderObjectMutex.lock();
-    std::vector<VkAccelerationStructureInstanceKHR> instances(primitiveCount, VkAccelerationStructureInstanceKHR {});
+
+    // As per the Vulkan spec, no more than UINT32_MAX primitives/instances are
+    // allowed inside of a single TLAS. This represents the maximum amount of instances
+    // this TLAS can have, including possibly invalid handles.
+    const auto maxPrimitiveCount = static_cast<uint32_t>(handlesForFrame.size());
+
+    // We keep track of the actual instance count as some handles might be invalid
+    // or not ready to be used yet.
+    uint32_t primitiveCount = 0;
+    std::vector<VkAccelerationStructureInstanceKHR> instances(maxPrimitiveCount, VkAccelerationStructureInstanceKHR {});
+    std::vector<krypton::rapi::vulkan::GeometryDescription> descriptions = {};
     for (auto& handle : handlesForFrame) {
         if (!objects.isHandleValid(handle))
             continue; // The handle is invalid; the object was probably destroyed
@@ -426,12 +462,18 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
             0.0, 0.0, 1.0, 0.0,
         };
         // clang-format on
-        instances[index].instanceCustomIndex = static_cast<uint32_t>(index);
+        instances[index].instanceCustomIndex = static_cast<uint32_t>(descriptions.size());
         instances[index].mask = 0xFF;
         instances[index].flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         instances[index].instanceShaderBindingTableRecordOffset = 0;
         instances[index].accelerationStructureReference = object.blas->address;
+
+        // We increase the size of the descriptions vector and insert
+        descriptions.insert(descriptions.end(), object.geometryDescriptions.begin(), object.geometryDescriptions.end());
+
+        ++primitiveCount;
     }
+
     renderObjectMutex.unlock();
     frameHandleMutex.unlock();
 
@@ -439,23 +481,36 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 
     if (primitiveCount > 0) {
         size_t instanceBufferSize = sizeof(VkAccelerationStructureInstanceKHR) * primitiveCount;
-        if (instanceBufferSize <= tlasInstanceStagingBuffer->getSize() && tlasInstanceStagingBuffer->getSize() != 0) {
-            /* We can re-use the old instance buffers */
-            tlasInstanceStagingBuffer->memoryCopy(instances.data(), instanceBufferSize);
+        size_t descriptionBufferSize = sizeof(krypton::rapi::vulkan::GeometryDescription) * descriptions.size();
+
+        if (instanceBufferSize <= tlasInstanceBuffer->getSize() && tlasInstanceBuffer->getSize() != 0) {
+            // We can re-use the old instance buffers
+            tlasInstanceBuffer->memoryCopy(instances.data(), instanceBufferSize);
             instanceDataDeviceAddress = tlasInstanceBuffer->getDeviceAddress(); /* Same address as before */
+
+            geometryDescriptionBuffer->memoryCopy(descriptions.data(), descriptionBufferSize);
         } else {
-            /* As we cannot use the old buffers, we'll destroy those now */
-            tlasInstanceStagingBuffer->destroy();
+            // As we cannot use the old buffers, we'll destroy those now
             tlasInstanceBuffer->destroy();
+            geometryDescriptionBuffer->destroy();
 
-            tlasInstanceStagingBuffer->create(instanceBufferSize);
-            tlasInstanceStagingBuffer->memoryCopy(instances.data(), instanceBufferSize);
+            tlasInstanceBuffer->create(instanceBufferSize);
+            tlasInstanceBuffer->memoryCopy(instances.data(), instanceBufferSize);
 
-            tlasInstanceBuffer->create(instanceBufferSize,
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                           VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
-                                       VMA_MEMORY_USAGE_GPU_ONLY);
+            tlasInstanceBuffer->createDestinationBuffer(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
             instanceDataDeviceAddress = tlasInstanceBuffer->getDeviceAddress();
+
+            // We can safely assume that if the instance buffer size has increased that the descriptions
+            // also have to be reallocated.
+            geometryDescriptionBuffer->create(descriptionBufferSize);
+            geometryDescriptionBuffer->memoryCopy(descriptions.data(), descriptionBufferSize);
+
+            geometryDescriptionBuffer->createDestinationBuffer(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+            auto descriptionBufferInfo = geometryDescriptionBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
+            rtDescriptorSet->updateBuffer(1, &descriptionBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         }
     }
 
@@ -493,11 +548,12 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
         if (tlas->resultBuffer != nullptr)
             tlas->resultBuffer->destroy();
         tlas->createResultBuffer(sizes);
+        tlas->destroyStructure();
         tlas->createStructure(sizes);
 
         /* We created a new TLAS handle, we have to re-bind its descriptor as well. */
         auto tlasDescriptorWrite = tlas->getDescriptorWrite();
-        rtDescriptorSet->updateAccelerationStructure(TLAS_DESCRIPTOR_BINDING, &tlasDescriptorWrite);
+        rtDescriptorSet->updateAccelerationStructure(3, &tlasDescriptorWrite);
     }
 
     device->setDebugUtilsName(tlas->handle, "TLAS");
@@ -514,7 +570,8 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     std::vector<VkAccelerationStructureBuildRangeInfoKHR*> buildRangeInfos = { &buildRangeInfo };
     std::vector<VkAccelerationStructureBuildGeometryInfoKHR> buildGeometryInfos = { buildGeometryInfo };
 
-    tlasInstanceStagingBuffer->copyToBuffer(cmdBuffer, tlasInstanceBuffer.get());
+    tlasInstanceBuffer->copyIntoVram(cmdBuffer);
+    geometryDescriptionBuffer->copyIntoVram(cmdBuffer);
     VkMemoryBarrier memBarrier = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -529,6 +586,13 @@ void krypton::rapi::VulkanRT_RAPI::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 krypton::rapi::RenderObjectHandle krypton::rapi::VulkanRT_RAPI::createRenderObject() {
     auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
     return static_cast<krypton::rapi::RenderObjectHandle>(objects.getNewHandle());
+}
+
+krypton::rapi::MaterialHandle krypton::rapi::VulkanRT_RAPI::createMaterial(krypton::mesh::Material material) {
+    auto mutex = std::scoped_lock(materialMutex);
+    auto handle = static_cast<krypton::rapi::MaterialHandle>(materials.getNewHandle());
+    materials.getFromHandle(handle) = material;
+    return handle;
 }
 
 void krypton::rapi::VulkanRT_RAPI::createUiFontTexture() {
@@ -553,7 +617,7 @@ void krypton::rapi::VulkanRT_RAPI::createUiFontTexture() {
 
     // Create the staging buffer for the texture data
     auto textureStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiFontTextureStagingBuffer");
-    textureStagingBuffer->create(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    textureStagingBuffer->create(textureSize);
     textureStagingBuffer->memoryCopy(pixels, textureSize);
 
     oneTimeSubmit(graphicsQueue.get(), commandPool.get(), [&](carbon::CommandBuffer* cmdBuffer) {
@@ -611,6 +675,15 @@ bool krypton::rapi::VulkanRT_RAPI::destroyRenderObject(krypton::rapi::RenderObje
     return valid;
 }
 
+bool krypton::rapi::VulkanRT_RAPI::destroyMaterial(krypton::rapi::MaterialHandle& handle) {
+    auto lock = std::scoped_lock(materialMutex);
+    auto valid = materials.isHandleValid(handle);
+    if (valid) {
+        materials.removeHandle(handle);
+    }
+    return valid;
+}
+
 void krypton::rapi::VulkanRT_RAPI::drawFrame() {
     if (needsResize)
         return;
@@ -627,47 +700,58 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
     // It is a completely separate window, so it shouldn't interfere
     // with any other imgui calls.
     ImGui::Begin("Renderer Settings");
-    ImGui::Text(fmt::format("Rendering on {}", device->getPhysicalDevice()->getDeviceName()).c_str());
+    ImGui::Text("%s", fmt::format("Rendering on {}", device->getPhysicalDevice()->getDeviceName()).c_str());
     ImGui::Separator();
     for (auto& handle : handlesForFrame) {
         auto& object = objects.getFromHandle(handle);
-        ImGui::BulletText(object.mesh->name.c_str());
+        ImGui::BulletText("%s", object.name.c_str());
     }
     ImGui::End();
 
     convertedCameraData->projection = glm::inverse(cameraData->projection);
+    convertedCameraData->far = cameraData->far;
     convertedCameraData->view = glm::inverse(cameraData->view);
+
+    // Have to flip the projection matrix because when raytracing, the image is written to the "wrong" way round.
+    convertedCameraData->projection[1][1] *= -1.0;
     cameraBuffer->memoryCopy(convertedCameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
+
+    // Resize the material buffer and update the descriptor.
+    materialBuffer->resize(materials.capacity() * sizeof(krypton::mesh::Material));
+    auto materialBufferInfo = materialBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
+    rtDescriptorSet->updateBuffer(2, &materialBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
     auto& image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
     drawCommandBuffer->begin();
 
+    materialBuffer->memoryCopy(materials.data(), materials.size() * sizeof(krypton::mesh::Material));
+    materialBuffer->copyIntoVram(drawCommandBuffer.get());
+
     // We update/rebuild the TLAS every frame so that new BLAS instances
     // are added instantly.
-    this->buildTLAS(drawCommandBuffer.get());
+    buildTLAS(drawCommandBuffer.get());
 
     // ↓ ------------------- RT ------------------- ↓
     if (rtPipeline) {
         if (handlesForFrame.empty()) {
             // We won't render anything this frame anyway. Just transition the
-            // swapchain image and end the command buffer.
-            image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
-                                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+            // swapchain image.
+            image->changeLayout(drawCommandBuffer.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         } else {
             drawCommandBuffer->bindPipeline(rtPipeline.get());
             drawCommandBuffer->bindDescriptorSets(rtPipeline.get());
 
             // We'll sync the cameraBuffer copy with our ray tracing command.
             // Otherwise our shaders get garbage camera data
-            VkBufferMemoryBarrier bufferMemory = {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                .buffer = cameraBuffer->getHandle(),
-                .size = cameraBuffer->getSize(),
-            };
+            VkBufferMemoryBarrier cameraMemory = cameraBuffer->getMemoryBarrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+            VkBufferMemoryBarrier materialMemory =
+                materialBuffer->getMemoryBarrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+
+            std::array<VkBufferMemoryBarrier, 2> bufferMemoryBarriers = { cameraMemory, materialMemory };
             drawCommandBuffer->pipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr,
-                                               1, &bufferMemory, 0, nullptr);
+                                               2, bufferMemoryBarriers.data(), 0, nullptr);
 
             VkStridedDeviceAddressRegionKHR callableRegion = {};
             drawCommandBuffer->setCheckpoint("Tracing rays.");
@@ -722,38 +806,34 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
             size_t vertexBufferSize = imguiDrawData->TotalVtxCount * sizeof(ImDrawVert);
             size_t indexBufferSize = imguiDrawData->TotalIdxCount * sizeof(ImDrawIdx);
 
-            if (vertexBufferSize > uiVertexStagingBuffer->getSize()) {
+            if (vertexBufferSize > uiVertexBuffer->getSize()) {
                 // We have to allocate a new, bigger vertex buffer for the new data.
                 uiVertexBuffer->destroy();
-                uiVertexStagingBuffer->destroy();
 
-                uiVertexStagingBuffer->create(vertexBufferSize);
-                uiVertexBuffer->create(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                       VMA_MEMORY_USAGE_GPU_ONLY);
+                uiVertexBuffer->create(vertexBufferSize);
+                uiVertexBuffer->createDestinationBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
             }
 
-            if (indexBufferSize > uiIndexStagingBuffer->getSize()) {
+            if (indexBufferSize > uiIndexBuffer->getSize()) {
                 uiIndexBuffer->destroy();
-                uiIndexStagingBuffer->destroy();
 
-                uiIndexStagingBuffer->create(indexBufferSize);
-                uiIndexBuffer->create(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                      VMA_MEMORY_USAGE_GPU_ONLY);
+                uiIndexBuffer->create(indexBufferSize);
+                uiIndexBuffer->createDestinationBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
             }
 
             uint64_t currentVertexOffset = 0, currentIndexOffset = 0;
             for (int i = 0; i < imguiDrawData->CmdListsCount; ++i) {
                 auto& list = imguiDrawData->CmdLists[i];
-                uiVertexStagingBuffer->memoryCopy(list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert), currentVertexOffset);
-                uiIndexStagingBuffer->memoryCopy(list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx), currentIndexOffset);
+                uiVertexBuffer->memoryCopy(list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert), currentVertexOffset);
+                uiIndexBuffer->memoryCopy(list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx), currentIndexOffset);
 
                 currentVertexOffset += list->VtxBuffer.Size * sizeof(ImDrawVert);
                 currentIndexOffset += list->IdxBuffer.Size * sizeof(ImDrawIdx);
             }
 
             // We will now dispatch the copy commands into our draw command buffer
-            uiVertexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiVertexBuffer.get());
-            uiIndexStagingBuffer->copyToBuffer(drawCommandBuffer.get(), uiIndexBuffer.get());
+            uiVertexBuffer->copyIntoVram(drawCommandBuffer.get());
+            uiIndexBuffer->copyIntoVram(drawCommandBuffer.get());
 
             // Place a buffer barrier in here, so that the draw calls are synced
             // to run after the copy has completed.
@@ -779,15 +859,18 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
                                                sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
         }
 
-        // We can now begin rendering
-        // As per the spec, one is actually not allowed to
-        // call vkCmdCopyBuffer while a renderpass is running
+        // We can now begin rendering because per the spec, one is actually not allowed to
+        // call vkCmdCopyBuffer while a renderpass is running.
+        // If we don't render anything the swapchain image content gets reused and
+        // therefore old frames will get shown and UI elements will be shown with a trail.
+        // To mitigate that issue, we clear  the image with a color; black in this case,
+        // instead of loading the previous attachment.
         VkRenderingAttachmentInfo colorAttachmentInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
             .imageView = image->getImageView(),
             .imageLayout = image->getImageLayout(),
             .resolveMode = VK_RESOLVE_MODE_NONE,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .loadOp = handlesForFrame.empty() ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         };
         VkRenderingInfo uiRenderingInfo = {
@@ -823,7 +906,8 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
                                      } };
                 drawCommandBuffer->setScissor(&scissor);
 
-                drawCommandBuffer->drawIndexed(cmd.ElemCount, cmd.VtxOffset + vertexOffset, 1, cmd.IdxOffset + indexOffset);
+                drawCommandBuffer->drawIndexed(cmd.ElemCount, static_cast<int32_t>(cmd.VtxOffset + vertexOffset), 1,
+                                               cmd.IdxOffset + indexOffset);
             }
 
             indexOffset += cmdList->IdxBuffer.Size;
@@ -844,6 +928,9 @@ void krypton::rapi::VulkanRT_RAPI::drawFrame() {
 void krypton::rapi::VulkanRT_RAPI::endFrame() {
     ImGui::EndFrame();
 
+    if (needsResize)
+        return;
+
     auto result = submitFrame();
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         needsResize = true;
@@ -854,6 +941,8 @@ void krypton::rapi::VulkanRT_RAPI::endFrame() {
     auto guard = std::scoped_lock(frameHandleMutex);
     handlesForFrame.clear();
 }
+
+std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::VulkanRT_RAPI::getCameraData() { return cameraData; }
 
 std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanRT_RAPI::getWindow() { return window; }
 
@@ -897,6 +986,7 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     // Create our main graphics queue
     commandPool->create(device->getQueueIndex(vkb::QueueType::graphics), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     drawCommandBuffer = commandPool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 0);
+    device->setDebugUtilsName(*drawCommandBuffer, "drawCommandBuffer");
     graphicsQueue->create(vkb::QueueType::graphics);
 
     // Create the swapchain
@@ -915,17 +1005,16 @@ void krypton::rapi::VulkanRT_RAPI::init() {
     storageImage = std::make_unique<carbon::StorageImage>(device, allocator, VkExtent2D { frameBufferWidth, frameBufferHeight });
 
     tlas = std::make_unique<carbon::TopLevelAccelerationStructure>(device, allocator);
-    tlasInstanceBuffer = std::make_unique<carbon::Buffer>(device, allocator, "tlasInstanceBuffer");
-    tlasInstanceStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "tlasInstanceStagingBuffer");
+    tlasInstanceBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "tlasInstanceBuffer");
+    geometryDescriptionBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "geometryDescriptionBuffer");
+
+    materialBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "materialBuffer");
+    materialBuffer->create(materials.size() * sizeof(krypton::mesh::Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    materialBuffer->createDestinationBuffer(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     asProperties = std::make_unique<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();
     asProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
     physicalDevice->getProperties(asProperties.get());
-
-    // Create camera buffer
-    if (cameraData == nullptr)
-        cameraData = std::make_shared<krypton::rapi::CameraData>();
-    convertedCameraData = std::make_unique<krypton::rapi::CameraData>();
 
     cameraBuffer = std::make_unique<carbon::Buffer>(device, allocator, "cameraBuffer");
     cameraBuffer->create(krypton::rapi::CAMERA_DATA_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -961,7 +1050,7 @@ void krypton::rapi::VulkanRT_RAPI::init() {
         uiVertex = createShader("uiVertex", carbon::ShaderStage::Vertex, uiVertShader.front());
     }
 
-    window->setRapiPointer(this);
+    window->setRapiPointer(static_cast<krypton::rapi::RenderAPI*>(this));
 
     /* Build necessary objects for rendering */
     storageImage->create();
@@ -976,10 +1065,8 @@ void krypton::rapi::VulkanRT_RAPI::init() {
 }
 
 void krypton::rapi::VulkanRT_RAPI::initUi() {
-    uiVertexStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiVertexStagingBuffer");
-    uiIndexStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiIndexStagingBuffer");
-    uiVertexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "uiVertexBuffer");
-    uiIndexBuffer = std::make_unique<carbon::Buffer>(device, allocator, "uiIndexBuffer");
+    uiVertexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiVertexBuffer");
+    uiIndexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiIndexBuffer");
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -995,28 +1082,6 @@ void krypton::rapi::VulkanRT_RAPI::initUi() {
     createUiFontTexture();
 }
 
-void krypton::rapi::VulkanRT_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle,
-                                                           std::shared_ptr<krypton::mesh::Mesh> mesh) {
-    auto lock = std::scoped_lock(renderObjectMutex);
-    if (objects.isHandleValid(handle)) {
-        auto& renderObject = objects.getFromHandle(handle);
-
-        /**
-         * The render object should not have been created yet, so
-         * all of it's members should still be nullptrs.
-         */
-        renderObject.mesh = std::move(mesh);
-        renderObject.blas = std::make_unique<carbon::BottomLevelAccelerationStructure>(device, allocator, renderObject.mesh->name);
-
-        /** We'll also dispatch the BLAS build here too */
-        kt::Scheduler::getInstance().run([this, handle]() {
-            // We read and write from the object here, so it's best to lock here as well.
-            auto lock = std::scoped_lock(renderObjectMutex);
-            buildBLAS(objects.getFromHandle(handle));
-        });
-    }
-}
-
 void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
                                                  const std::function<void(carbon::CommandBuffer*)>& callback) const {
     auto queueGuard = std::move(blasComputeQueue->getLock());
@@ -1026,7 +1091,7 @@ void krypton::rapi::VulkanRT_RAPI::oneTimeSubmit(carbon::Queue* queue, carbon::C
     callback(cmdBuffer.get());
     cmdBuffer->end(queue);
 
-    VkCommandBuffer vkCmdBuffer = VkCommandBuffer(*cmdBuffer);
+    auto vkCmdBuffer = VkCommandBuffer(*cmdBuffer);
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
@@ -1070,9 +1135,19 @@ void krypton::rapi::VulkanRT_RAPI::resize(int width, int height) {
 
     /* Re-bind the storage image */
     VkDescriptorImageInfo storageImageDescriptor = storageImage->getDescriptorImageInfo();
-    rtDescriptorSet->updateImage(2, &storageImageDescriptor, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    rtDescriptorSet->updateImage(4, &storageImageDescriptor, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
     needsResize = false;
+}
+
+void krypton::rapi::VulkanRT_RAPI::setObjectName(RenderObjectHandle& handle, std::string name) {
+    auto lock = std::scoped_lock(renderObjectMutex);
+    objects.getFromHandle(handle).name = std::move(name);
+}
+
+void krypton::rapi::VulkanRT_RAPI::setObjectTransform(krypton::rapi::RenderObjectHandle& handle, glm::mat4x3 transform) {
+    auto lock = std::scoped_lock(renderObjectMutex);
+    objects.getFromHandle(handle).transform = transform;
 }
 
 void krypton::rapi::VulkanRT_RAPI::shutdown() {
@@ -1087,8 +1162,6 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
 
     uiVertexBuffer->destroy();
     uiIndexBuffer->destroy();
-    uiVertexStagingBuffer->destroy();
-    uiIndexStagingBuffer->destroy();
 
     uiPipeline->destroy();
     uiDescriptorSet->destroy();
@@ -1100,7 +1173,6 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
     cameraBuffer->destroy();
     shaderBindingTable->destroy();
 
-    tlasInstanceStagingBuffer->destroy();
     tlasInstanceBuffer->destroy();
     tlas->destroy();
 
@@ -1123,15 +1195,10 @@ void krypton::rapi::VulkanRT_RAPI::shutdown() {
     window->destroy();
 }
 
-void krypton::rapi::VulkanRT_RAPI::setCameraData(std::shared_ptr<krypton::rapi::CameraData> newCameraData) {
-    cameraData.reset();
-    cameraData = std::move(newCameraData);
-}
-
 VkResult krypton::rapi::VulkanRT_RAPI::submitFrame() {
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
-    VkCommandBuffer cmdBuffer = VkCommandBuffer(*drawCommandBuffer);
+    auto cmdBuffer = VkCommandBuffer(*drawCommandBuffer);
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,

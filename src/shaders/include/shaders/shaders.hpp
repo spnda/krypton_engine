@@ -48,6 +48,9 @@ namespace krypton::shaders {
     enum class ShaderStage {
         Vertex,
         Fragment,
+        Geometry,
+        Compute,
+        Mesh,
         RayGen,
         ClosestHit,
         Miss,

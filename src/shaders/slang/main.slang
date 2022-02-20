@@ -7,16 +7,40 @@ struct CameraData {
     float far;
 };
 
+struct GeometryDescription {
+    uint64_t vertexBufferAddress = 0;
+    uint64_t indexBufferAddress = 0;
+    uint32_t materialIndex = 0;
+};
+
+struct Material {
+    float4 baseColor;
+
+    float metallicFactor;
+    float roughnessFactor;
+
+    int baseTextureIndex;
+    int normalTextureIndex;
+    int occlusionTextureIndex;
+    int emissiveTextureIndex;
+    int pbrTextureIndex;
+};
+
 struct RayPayload {
     float4 color;
 };
 
-// slang re-orders these arguments somehow. In the future
-// we should use reflection to scan for the parameters.
-// For now, I'll write these in the real order, from 0 to 2. 
-uniform CameraData camera;
-uniform RaytracingAccelerationStructure sceneBVH;
-uniform RWTexture2D storageImage;
+// We can use vk::binding or vk_binding to specify the layout
+// bindings manually. First comes the binding, then the descriptor set.
+[[vk::binding(0, 0)]] uniform CameraData camera;
+[[vk::binding(1, 0)]] uniform StructuredBuffer<GeometryDescription> geometry;
+
+// I'd prefer if our material buffer was not a free list on the GPU as well,
+// but it makes the copying process so much simpler.
+[[vk::binding(2, 0)]] uniform StructuredBuffer<Material> materials;
+
+[[vk::binding(3, 0)]] uniform RaytracingAccelerationStructure sceneBVH;
+[[vk::binding(4, 0)]] uniform RWTexture2D storageImage;
 
 float3 getRayDirection(uint2 id, uint2 size, in float offset) {
     float2 inUV = (id.xy + offset) / size.xy;
@@ -46,12 +70,18 @@ void raygen() {
 
 [shader("miss")]
 void miss(inout RayPayload payload) {
-    payload.color = float4(0, 0.5, 0, 1);
+    payload.color = float4(0.2, 0.2, 0.2, 1);
 }
 
 [shader("closesthit")]
-void closesthit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attributes) {
+void closesthit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes intersectionAttributes) {
     float3 hitLocation = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 
-    payload.color = float4(1.0, 0.5, 0.5, 1.0);
+    GeometryDescription description = geometry[InstanceIndex() + GeometryIndex()];
+
+    float2 attributes = intersectionAttributes.barycentrics;
+    float3 baryCoords = float3(1.0 - attributes.x - attributes.y, attributes.x, attributes.y);
+
+    float4 color = materials[description.materialIndex].baseColor;
+    payload.color = color;
 }

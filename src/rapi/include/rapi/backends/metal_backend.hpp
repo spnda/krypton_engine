@@ -27,15 +27,17 @@ namespace krypton::rapi {
 
         void beginFrame() override;
         auto createRenderObject() -> RenderObjectHandle override;
+        auto createMaterial(krypton::mesh::Material material) -> MaterialHandle override;
         auto destroyRenderObject(RenderObjectHandle& handle) -> bool override;
+        bool destroyMaterial(MaterialHandle& handle) override;
         void drawFrame() override;
         void endFrame() override;
+        auto getCameraData() -> std::shared_ptr<krypton::rapi::CameraData> override;
         auto getWindow() -> std::shared_ptr<krypton::rapi::Window> override;
         void init() override;
         void loadMeshForRenderObject(RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) override;
         void render(RenderObjectHandle handle) override;
         void resize(int width, int height) override;
-        void setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) override;
         void shutdown() override;
     };
 } // namespace krypton::rapi

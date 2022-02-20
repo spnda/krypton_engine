@@ -77,10 +77,8 @@ namespace krypton::rapi {
         std::shared_ptr<carbon::DescriptorSet> uiDescriptorSet = nullptr;
         std::unique_ptr<carbon::GraphicsPipeline> uiPipeline = nullptr;
         std::unique_ptr<carbon::Texture> uiFontTexture = nullptr;
-        std::unique_ptr<carbon::StagingBuffer> uiVertexStagingBuffer;
-        std::unique_ptr<carbon::StagingBuffer> uiIndexStagingBuffer;
-        std::unique_ptr<carbon::Buffer> uiVertexBuffer;
-        std::unique_ptr<carbon::Buffer> uiIndexBuffer;
+        std::unique_ptr<carbon::StagingBuffer> uiVertexBuffer;
+        std::unique_ptr<carbon::StagingBuffer> uiIndexBuffer;
 
         // RT pipeline
         std::shared_ptr<carbon::DescriptorSet> rtDescriptorSet = nullptr;
@@ -100,10 +98,14 @@ namespace krypton::rapi {
 
         // TLAS
         std::unique_ptr<carbon::TopLevelAccelerationStructure> tlas;
-        std::unique_ptr<carbon::Buffer> tlasInstanceBuffer;
-        std::unique_ptr<carbon::StagingBuffer> tlasInstanceStagingBuffer;
+        std::unique_ptr<carbon::StagingBuffer> tlasInstanceBuffer;
+        std::unique_ptr<carbon::StagingBuffer> geometryDescriptionBuffer;
         std::unique_ptr<VkPhysicalDeviceAccelerationStructurePropertiesKHR> asProperties;
-        static const uint32_t TLAS_DESCRIPTOR_BINDING = 1;
+
+        // Assets
+        std::unique_ptr<carbon::StagingBuffer> materialBuffer;
+        krypton::util::FreeList<krypton::mesh::Material, std::vector> materials;
+        std::mutex materialMutex;
 
         // BLAS Async Compute
         std::shared_ptr<carbon::CommandPool> computeCommandPool;
@@ -126,7 +128,6 @@ namespace krypton::rapi {
         std::mutex renderObjectMutex;
         std::mutex frameHandleMutex;
 
-        void buildBLAS(krypton::rapi::vulkan::RenderObject& renderObject);
         void buildRTPipeline();
         void buildSBT();
         void buildUIPipeline();
@@ -145,17 +146,23 @@ namespace krypton::rapi {
         VulkanRT_RAPI();
         ~VulkanRT_RAPI() override;
 
+        void addPrimitive(RenderObjectHandle& handle, krypton::mesh::Primitive& primitive,
+                          krypton::rapi::MaterialHandle& material) override;
         void beginFrame() override;
+        void buildRenderObject(RenderObjectHandle& handle) override;
         auto createRenderObject() -> RenderObjectHandle override;
-        auto destroyRenderObject(RenderObjectHandle& handle) -> bool override;
+        auto createMaterial(krypton::mesh::Material material) -> MaterialHandle override;
+        bool destroyRenderObject(RenderObjectHandle& handle) override;
+        bool destroyMaterial(MaterialHandle& handle) override;
         void drawFrame() override;
         void endFrame() override;
+        auto getCameraData() -> std::shared_ptr<krypton::rapi::CameraData> override;
         auto getWindow() -> std::shared_ptr<krypton::rapi::Window> override;
         void init() override;
-        void loadMeshForRenderObject(RenderObjectHandle& handle, std::shared_ptr<krypton::mesh::Mesh> mesh) override;
         void render(RenderObjectHandle handle) override;
         void resize(int width, int height) override;
-        void setCameraData(std::shared_ptr<krypton::rapi::CameraData> cameraData) override;
+        void setObjectName(RenderObjectHandle& handle, std::string name) override;
+        void setObjectTransform(RenderObjectHandle& handle, glm::mat4x3 transform) override;
         void shutdown() override;
     };
 } // namespace krypton::rapi

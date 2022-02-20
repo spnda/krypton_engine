@@ -131,6 +131,9 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     switch (shaderInput.shaderStages[0]) {
         case ShaderStage::Vertex: stage = GLSLANG_STAGE_VERTEX; break;
         case ShaderStage::Fragment: stage = GLSLANG_STAGE_FRAGMENT; break;
+        case ShaderStage::Geometry: stage = GLSLANG_STAGE_GEOMETRY; break;
+        case ShaderStage::Compute: stage = GLSLANG_STAGE_COMPUTE; break;
+        case ShaderStage::Mesh: stage = GLSLANG_STAGE_MESH_NV; break;
         case ShaderStage::RayGen: stage = GLSLANG_STAGE_RAYGEN_NV; break;
         case ShaderStage::ClosestHit: stage = GLSLANG_STAGE_CLOSESTHIT_NV; break;
         case ShaderStage::Miss: stage = GLSLANG_STAGE_MISS_NV; break;
@@ -317,8 +320,15 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     // This is our shaders directory relative to the executable.
     spAddSearchPath(request, "shaders/");
 
+    // TODO: Increase debug info level for debug builds.
+    spSetDebugInfoLevel(request, SLANG_DEBUG_INFO_LEVEL_NONE);
+
+    spSetOptimizationLevel(request, SLANG_OPTIMIZATION_LEVEL_HIGH);
+
     // We, by default, use column major.
     spSetMatrixLayoutMode(request, SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
+
+    spSetTargetForceGLSLScalarBufferLayout(request, target, true);
 
     // Could add macros using spAddPreprocessorDefine
 
@@ -336,6 +346,9 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         switch (shaderInput.shaderStages[i]) {
             case ShaderStage::Vertex: slangStage = SLANG_STAGE_VERTEX; break;
             case ShaderStage::Fragment: slangStage = SLANG_STAGE_FRAGMENT; break;
+            case ShaderStage::Geometry: slangStage = SLANG_STAGE_GEOMETRY; break;
+            case ShaderStage::Compute: slangStage = SLANG_STAGE_COMPUTE; break;
+            case ShaderStage::Mesh: slangStage = SLANG_STAGE_MESH; break;
             case ShaderStage::RayGen: slangStage = SLANG_STAGE_RAY_GENERATION; break;
             case ShaderStage::ClosestHit: slangStage = SLANG_STAGE_CLOSEST_HIT; break;
             case ShaderStage::Miss: slangStage = SLANG_STAGE_MISS; break;
@@ -355,6 +368,11 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     const char* diagnostics = spGetDiagnosticOutput(request);
 
     if (anyErrors != 0) {
+        std::istringstream ss(diagnostics);
+        std::string line;
+        while (std::getline(ss, line)) {
+            krypton::log::err("{}: {}", shaderInput.filePath.string(), line);
+        }
         return {};
     }
 
@@ -383,6 +401,9 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
             }
             case ShaderTargetType::SPIRV: {
                 compileResult.resultType = CompileResultType::Spirv;
+                break;
+            }
+            default: {
                 break;
             }
         }

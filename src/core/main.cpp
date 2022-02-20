@@ -39,14 +39,25 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
         if (!loaded) {
             krypton::log::err("Failed to load file!");
         } else {
+            std::vector<krypton::rapi::MaterialHandle> localMaterialHandles;
+            for (auto& mat : fileLoader->materials) {
+                localMaterialHandles.push_back(rapi->createMaterial(mat));
+            }
+
             for (auto& mesh : fileLoader->meshes) {
-                // We lock here because the loadMeshForRenderObject can take a bit and
+                // We lock here because the buildRenderObject can take a bit and
                 // we'd otherwise be blocking our main thread.
                 renderObjectHandleMutex.lock();
-                renderObjectHandles.push_back(rapi->createRenderObject());
-                renderObjectHandleMutex.unlock();
+                auto& handle = renderObjectHandles.emplace_back(rapi->createRenderObject());
 
-                rapi->loadMeshForRenderObject(renderObjectHandles.back(), mesh);
+                for (auto& primitive : mesh->primitives) {
+                    rapi->addPrimitive(handle, primitive, localMaterialHandles[primitive.materialIndex]);
+                }
+
+                rapi->setObjectTransform(handle, mesh->transform);
+                rapi->setObjectName(handle, mesh->name);
+                rapi->buildRenderObject(handle);
+                renderObjectHandleMutex.unlock();
             }
         }
     });
@@ -57,6 +68,7 @@ void drawUi(krypton::rapi::RenderAPI* rapi) {
 
     ImGui::SliderFloat3("Camera Position", cameraPos, -25.0, 25.0);
     ImGui::SliderFloat3("Camera Focus", focus, -25.0, 25.0);
+    ImGui::SliderFloat("Camera Far", &cameraData->far, 1.0f, 1000.0f);
     cameraData->view = glm::lookAt(glm::make_vec3(cameraPos), // position in world
                                    glm::make_vec3(focus),     // look at position; center of world
                                    glm::vec3(0, 1, 0));       // up vector - Y
@@ -76,11 +88,9 @@ auto main(int argc, char* argv[]) -> int {
     try {
         kt::Scheduler::getInstance().start();
 
-        cameraData = std::make_shared<krypton::rapi::CameraData>();
-
         auto rapi = krypton::rapi::getRenderApi();
-        rapi->setCameraData(cameraData);
         rapi->init();
+        cameraData = rapi->getCameraData();
 
         int width, height;
         rapi->getWindow()->getWindowSize(&width, &height);
@@ -91,7 +101,6 @@ auto main(int argc, char* argv[]) -> int {
                                        glm::vec3(0, 1, 0));  // up vector - Y
 
         while (!rapi->getWindow()->shouldClose()) {
-            rapi->getWindow()->pollEvents();
             rapi->beginFrame();
 
             renderObjectHandleMutex.lock();

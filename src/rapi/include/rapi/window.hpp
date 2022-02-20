@@ -17,6 +17,8 @@
 
 namespace krypton::rapi {
     class RenderAPI;
+    class Metal_RAPI;
+    class VulkanRT_RAPI;
 
     /**
      * Abstraction over a GLFW3 window, including helper
@@ -24,35 +26,39 @@ namespace krypton::rapi {
      * handles input and other window events.
      */
     class Window final {
+        // We befriend all the RenderAPIs manually here
+        friend class RenderAPI;
+#ifdef RAPI_WITH_VULKAN
+        friend class VulkanRT_RAPI;
+#elif RAPI_WITH_METAL
+        friend class Metal_RAPI;
+#endif
+
         std::string title = {};
         uint32_t width = 0;
         uint32_t height = 0;
 
         GLFWwindow* window = nullptr;
 
-    public:
-        Window(const std::string& title, uint32_t width, uint32_t height);
-
-        void create(krypton::rapi::Backend backend);
-        void destroy();
-        [[nodiscard]] float getAspectRatio() const;
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
-        void getWindowSize(int* width, int* height) const;
         void initImgui() const;
-
-        /**
-         * Set a pointer to the RendeRAPI instance for callbacks
-         * to use.
-         */
         static void newFrame();
         static void pollEvents();
         void setRapiPointer(krypton::rapi::RenderAPI* rapi);
-        [[nodiscard]] bool shouldClose() const;
         static void waitEvents();
 
 #ifdef RAPI_WITH_VULKAN
         [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;
         [[nodiscard]] static std::vector<const char*> getVulkanExtensions();
 #endif // #ifdef RAPI_WITH_VULKAN
+
+    public:
+        Window(std::string title, uint32_t width, uint32_t height);
+
+        void create(krypton::rapi::Backend backend);
+        void destroy();
+        [[nodiscard]] float getAspectRatio() const;
+        void getWindowSize(int* width, int* height) const;
+        [[nodiscard]] bool shouldClose() const;
     };
 } // namespace krypton::rapi

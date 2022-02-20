@@ -129,6 +129,8 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
                     kPrimitive.indices[i] = static_cast<krypton::mesh::Index>(i);
                 }
             }
+
+            kPrimitive.materialIndex = primitive.material;
         }
     }
 }
@@ -187,8 +189,14 @@ bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
 
         {
             auto& pbrmr = mat.pbrMetallicRoughness;
-            kMaterial.baseColor = glm::fvec3(
-                glm::make_vec3(pbrmr.baseColorFactor.data())); /* baseColorFactor is a vector of doubles, needs to be converted. */
+
+            // baseColorFactor is a vector of doubles, needs to be converted.
+            if (pbrmr.baseColorFactor.size() == 4) {
+                kMaterial.baseColor = glm::make_vec4(pbrmr.baseColorFactor.data());
+            } else {
+                auto baseColor = glm::make_vec3(pbrmr.baseColorFactor.data());
+                kMaterial.baseColor = glm::fvec4(baseColor, 1.0);
+            }
 
             if (pbrmr.baseColorTexture.index >= 0)
                 kMaterial.baseTextureIndex = pbrmr.baseColorTexture.index;
@@ -220,6 +228,7 @@ bool krypton::models::FileLoader::loadFile(const fs::path& path) {
         krypton::log::err("Given path does not point to a file: {}", path.string());
         return false;
     }
+
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
         krypton::log::err("Given path does not exist: {}", path.string());
         return false;
