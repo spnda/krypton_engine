@@ -13,7 +13,9 @@
 #include <util/logging.hpp>
 
 namespace krypton::rapi::window {
-    void errorCallback(int error, const char* desc) { krypton::log::err("{}", desc); }
+    void errorCallback(int error, const char* desc) {
+        krypton::log::err("{}", desc);
+    }
 
     void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {}
 
@@ -61,11 +63,17 @@ void krypton::rapi::Window::destroy() {
     glfwTerminate();
 }
 
-float krypton::rapi::Window::getAspectRatio() const { return (float)width / (float)height; }
+float krypton::rapi::Window::getAspectRatio() const {
+    return (float)width / (float)height;
+}
 
-GLFWwindow* krypton::rapi::Window::getWindowPointer() const { return window; }
+GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
+    return window;
+}
 
-void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const { glfwGetFramebufferSize(window, tWidth, tHeight); }
+void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
+    glfwGetFramebufferSize(window, tWidth, tHeight);
+}
 
 void krypton::rapi::Window::initImgui() const {
 #ifdef RAPI_WITH_VULKAN
@@ -75,15 +83,25 @@ void krypton::rapi::Window::initImgui() const {
 #endif
 }
 
-void krypton::rapi::Window::newFrame() { ImGui_ImplGlfw_NewFrame(); }
+void krypton::rapi::Window::newFrame() {
+    ImGui_ImplGlfw_NewFrame();
+}
 
-void krypton::rapi::Window::pollEvents() { glfwPollEvents(); }
+void krypton::rapi::Window::pollEvents() {
+    glfwPollEvents();
+}
 
-void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) { glfwSetWindowUserPointer(window, rapi); }
+void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
+    glfwSetWindowUserPointer(window, rapi);
+}
 
-bool krypton::rapi::Window::shouldClose() const { return glfwWindowShouldClose(window); }
+bool krypton::rapi::Window::shouldClose() const {
+    return glfwWindowShouldClose(window);
+}
 
-void krypton::rapi::Window::waitEvents() { glfwWaitEvents(); }
+void krypton::rapi::Window::waitEvents() {
+    glfwWaitEvents();
+}
 
 #ifdef RAPI_WITH_VULKAN
 VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) const {

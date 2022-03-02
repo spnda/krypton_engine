@@ -1,9 +1,6 @@
 [submodule "submodules/SPIRV-Cross"]
 	path = submodules/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross
-[submodule "submodules/glslang"]
-	path = submodules/glslang
-	url = https://github.com/KhronosGroup/glslang
 [submodule "submodules/carbon"]
 	path = submodules/carbon
 	url = https://github.com/spnda/carbon

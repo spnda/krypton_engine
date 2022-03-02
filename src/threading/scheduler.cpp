@@ -30,7 +30,9 @@ kt::Scheduler& kt::Scheduler::getInstance() {
     return instance;
 }
 
-[[maybe_unused]] uint32_t kt::Scheduler::getMaxThreadCount() const { return maxThreadCount; }
+[[maybe_unused]] uint32_t kt::Scheduler::getMaxThreadCount() const {
+    return maxThreadCount;
+}
 
 void kt::Scheduler::run(const kt::Scheduler::taskFunction& function) {
     if (!running) {

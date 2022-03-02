@@ -5,25 +5,18 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross" "${CMAKE_BINARY_DI
 
 # Disable the SPIRV-Cross executable from being built.
 set_target_properties(spirv-cross PROPERTIES EXCLUDE_FROM_ALL 1)
+target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
 
 if(TARGET slang::core)
   add_compile_definitions(WITH_SLANG_SHADERS)
-  target_link_libraries(krypton_shaders PUBLIC slang::core slang::gfx)
+  target_link_libraries(krypton_shaders PUBLIC slang::core)
 endif()
 
-add_compile_definitions(WITH_GLSLANG_SHADERS)
-execute_process(COMMAND "${CMAKE_SOURCE_DIR}/submodules/glslang/update_glslang_sources.py"
-                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/submodules/glslang")
+if(TARGET glslang::glslang)
+  add_compile_definitions(WITH_GLSLANG_SHADERS)
+  target_link_libraries(krypton_shaders PUBLIC glslang::glslang)
+endif()
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/glslang" "${CMAKE_BINARY_DIR}/glslang")
-
-# Disable the glslang executables from being built.
-set_target_properties(glslangValidator PROPERTIES EXCLUDE_FROM_ALL 1)
-set_target_properties(spirv-remap PROPERTIES EXCLUDE_FROM_ALL 1)
-
-target_link_libraries(krypton_shaders PUBLIC glslang HLSL SPIRV OGLCompiler)
-
-target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
 target_link_libraries(krypton_shaders PUBLIC krypton::util)
 
 target_compile_features(krypton_shaders PRIVATE cxx_std_20)

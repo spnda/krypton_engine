@@ -15,9 +15,10 @@ class Colors:
     yellow = "\033[93m"
     red = "\033[91m"
     end = "\033[0m"
+    bold = "\033[1m"
 
 
-def call(args, cwd=".", shell=False):
+def call(args, cwd=".", shell=False) -> bool:
     try:
         # It's probably not the best idea to also supress stderr, but it
         # keeps our logs clean and this doesn't do much anyway
@@ -31,6 +32,55 @@ def call(args, cwd=".", shell=False):
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+def create_dir(path):
+    if not os.path.isdir(path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+
+
+# Downloads a zip file from given url and then extracts that zip file
+def download_and_extract(url, path):
+    if len(url) == 0:
+        return
+
+    try:
+        fPath, _ = urllib.request.urlretrieve(url, f"{path}/temp.zip")
+        with zipfile.ZipFile(fPath, "r") as zip_ref:
+            zip_ref.extractall(path)
+        os.remove(fPath)
+    except urllib.error.HTTPError:
+        print(f"{Colors.red}Could not download {url}.{Colors.end}")
+
+
+def download_external(name, url_callback):
+    print(f"{Colors.green}Downloading {name}...{Colors.end}")
+    create_dir(f"external/{name}")
+    url = url_callback()
+    download_and_extract(url, f"external/{name}")
+
+
+def configure_cmake(generator=None):
+    if shutil.which("cmake") is None:
+        print(
+            f"{Colors.red}cmake is not installed. The project cannot be built.{Colors.end}"
+        )
+        return
+
+    create_dir("build/debug")
+    create_dir("build/release")
+
+    gen = ["-G", generator] if generator else []
+    call(
+        ["cmake", *gen, "../.."],
+        "build/debug",
+        platform.system() == "Windows",
+    )
+    call(
+        ["cmake", *gen, "../.."],
+        "build/release",
+        platform.system() == "Windows",
+    )
 
 
 def main():
@@ -55,30 +105,40 @@ def main():
 
     # Clone submodules if the user hasn't already
     print(f"{Colors.green}Cloning submodules...{Colors.end}")
-    call(["git", "submodule", "update", "--init", "--recursive"], ".")
+    call(
+        ["git", "submodule", "update", "--init", "--recursive"],
+        ".",
+        platform.system() != "Windows",
+    )
 
-    print(f"{Colors.green}Downloading slang...{Colors.end}")
-    if not os.path.isdir("external/slang"):
-        Path("external/slang").mkdir(parents=True, exist_ok=True)
-
-    # Determine slang build URL. We update the version here
-    slang_version = "0.23.2"
-    slang_zip_url = ""
+    # Download slang
+    slang_version = "0.23.4"
+    slang_zip_url = (
+        f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/"
+    )
     match platform.system():
         case "Darwin":  # MacOS
-            print(f"{Colors.yellow}slang does not provide MacOS builds.")
+            print(f"{Colors.yellow}slang does not provide MacOS builds.{Colors.end}")
+            slang_zip_url = ""  # so that it doesn't try to download anything
         case "Windows":  # Windows
-            slang_zip_url = f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/slang-{slang_version}-win64.zip"
+            slang_zip_url += f"slang-{slang_version}-win64.zip"
         case "Linux":  # Linux
-            slang_zip_url = f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/slang-{slang_version}-linux-x86_64.zip"
+            slang_zip_url += f"slang-{slang_version}-linux-x86_64.zip"
 
-    # Download slang build from GitHub
-    if len(slang_zip_url) > 0:
-        urllib.request.urlretrieve(slang_zip_url, "external/slang/slang.zip")
+    download_external("slang", lambda: slang_zip_url)
 
-        # Extract slang build zip file
-        with zipfile.ZipFile("external/slang/slang.zip", "r") as zip_ref:
-            zip_ref.extractall("external/slang")
+    # Download glslang
+    glslang_url = "https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-"
+    match platform.system():
+        case "Darwin":  # MacOS
+            glslang_url += "osx"
+        case "Windows":  # Windows
+            glslang_url += "windows-x64"
+        case "Linux":  # Linux
+            glslang_url += "linux"
+
+    download_external("glslang-debug", lambda: glslang_url + "-Debug.zip")
+    download_external("glslang-release", lambda: glslang_url + "-Release.zip")
 
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.
@@ -94,16 +154,10 @@ def main():
             # the packages through e.g. brew
             call(["vcpkg", "install"])
 
-            if shutil.which("cmake") is None:
-                print(
-                    f"{Colors.red}cmake is not installed. The project cannot be built.{Colors.end}"
-                )
-            else:
-                # glslang uses behaviour which was deprecated with CMake 3.13,
-                # therefore we'll disable that warning using -Wno-dev
-                print(f"{Colors.green}Configuring build files...{Colors.end}")
-                call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/debug")
-                call(["cmake", "-G", "Xcode", "-Wno-dev", "../.."], "build/release")
+            # glslang uses behaviour which was deprecated with CMake 3.13,
+            # therefore we'll disable that warning using -Wno-dev
+            print(f"{Colors.green}Configuring build files...{Colors.end}")
+            configure_cmake("Xcode")
         case _:  # Windows / Linux
             print(f"{Colors.green}Installing dependencies through vcpkg...{Colors.end}")
             if shutil.which("vcpkg") is not None:
@@ -116,25 +170,11 @@ def main():
                     f"{Colors.yellow}vcpkg is not installed. This may lead to missing dependencies.{Colors.end}"
                 )
 
-            if shutil.which("cmake") is None:
-                print(
-                    f"{Colors.red}cmake is not installed. The project cannot be built.{Colors.end}"
-                )
-            else:
-                print(f"{Colors.green}Configuring build files...{Colors.end}")
-                call(
-                    ["cmake", "-Wno-dev", "../.."],
-                    "build/debug",
-                    platform.system() == "Windows",
-                )
-                call(
-                    ["cmake", "-Wno-dev", "../.."],
-                    "build/release",
-                    platform.system() == "Windows",
-                )
+            print(f"{Colors.green}Configuring build files...{Colors.end}")
+            configure_cmake()
 
     print(
-        f"{Colors.green}Finished configuring project files in /build/debug/ and /build/release.{Colors.end}"
+        f"{Colors.green}{Colors.bold}Finished configuring project files in /build/debug/ and /build/release.{Colors.end}"
     )
 
 

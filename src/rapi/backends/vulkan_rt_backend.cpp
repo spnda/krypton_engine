@@ -1,10 +1,7 @@
 #ifdef RAPI_WITH_VULKAN
 
-#include <algorithm>
 #include <array>
 #include <cctype>
-#include <iostream>
-#include <locale>
 
 #include <imgui.h>
 
@@ -343,7 +340,9 @@ void krypton::rapi::VulkanRT_RAPI::buildSBT() {
     missShader.region.deviceAddress = sbtAddress + rayGenShader.region.size;
     closestHitShader.region.deviceAddress = missShader.region.deviceAddress + missShader.region.size;
 
-    auto getHandleOffset = [&](uint32_t i) -> auto { return handleStorage.data() + i * handleSize; };
+    auto getHandleOffset = [&](uint32_t i) -> auto {
+        return handleStorage.data() + i * handleSize;
+    };
     uint32_t curHandleIndex = 0;
 
     // Write raygen shader
@@ -942,9 +941,13 @@ void krypton::rapi::VulkanRT_RAPI::endFrame() {
     handlesForFrame.clear();
 }
 
-std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::VulkanRT_RAPI::getCameraData() { return cameraData; }
+std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::VulkanRT_RAPI::getCameraData() {
+    return cameraData;
+}
 
-std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanRT_RAPI::getWindow() { return window; }
+std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanRT_RAPI::getWindow() {
+    return window;
+}
 
 void krypton::rapi::VulkanRT_RAPI::init() {
     window->create(krypton::rapi::Backend::Vulkan);
