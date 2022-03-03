@@ -18,7 +18,7 @@
 namespace krypton::rapi {
     class RenderAPI;
     class Metal_RAPI;
-    class VulkanRT_RAPI;
+    class VulkanBackend;
 
     /**
      * Abstraction over a GLFW3 window, including helper
@@ -29,7 +29,7 @@ namespace krypton::rapi {
         // We befriend all the RenderAPIs manually here
         friend class RenderAPI;
 #ifdef RAPI_WITH_VULKAN
-        friend class VulkanRT_RAPI;
+        friend class VulkanBackend;
 #elif RAPI_WITH_METAL
         friend class Metal_RAPI;
 #endif

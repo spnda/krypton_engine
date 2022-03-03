@@ -8,7 +8,7 @@
 
 #include <mesh/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
-#include <rapi/object_handles.hpp>
+#include <util/handle.hpp>
 
 namespace carbon {
     struct BottomLevelAccelerationStructure;
@@ -22,7 +22,7 @@ namespace krypton::rapi::vulkan {
     struct RenderObject final {
         struct RenderObjectPrimitive {
             krypton::mesh::Primitive primitive;
-            krypton::rapi::MaterialHandle material;
+            krypton::util::Handle<"Material"> material;
         };
 
         std::string name;

@@ -23,10 +23,23 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
 if(MSVC) # cl.exe or clang-cl.exe
   # Microsoft not properly setting __cplusplus by default. AVX should be supported by any AMD/Intel CPU newer than 2011/2012.
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /EHsc /W4 /sdl /O2 /Ob2 /MP /arch:AVX /analyze")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # cmake-format: off
+  add_compile_options(/Zc:__cplusplus /EHsc /W4 /sdl /Ob2 /MP /arch:AVX /analyze)
+  # cmake-format: on
+
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # CMake auto sets /RTC1 which is incompatible with /O1 and /O2.
+  else()
+    add_compile_options(/O2)
+  endif()
+else()
   # Clang, AppleClang, or GCC
-  string(APPEND CMAKE_CXX_FLAGS " -Wall -O2")
+  add_compile_options(-Wall -Wextra -pedantic -Werror -Og)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-Og)
+  else()
+    add_compile_options(-O3)
+  endif()
 endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")

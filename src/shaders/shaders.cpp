@@ -152,7 +152,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
         .language = language,
         .stage = static_cast<glslang_stage_t>(stage),
         .client = GLSLANG_CLIENT_VULKAN,
-        .client_version = GLSLANG_TARGET_VULKAN_1_2,
+        .client_version = GLSLANG_TARGET_VULKAN_1_3,
         .target_language = GLSLANG_TARGET_SPV,
         .target_language_version = spvVersion,
         .code = shaderInput.source.c_str(),
@@ -357,6 +357,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
             case ShaderStage::Callable: slangStage = SLANG_STAGE_CALLABLE; break;
             default: {
                 krypton::log::throwError("[slang] Unrecognized shader stage: {}", static_cast<uint32_t>(shaderInput.shaderStages[i]));
+                continue;
             }
         }
 

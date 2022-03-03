@@ -6,10 +6,10 @@
 #include <util/large_vector.hpp>
 
 namespace krypton::util {
-    template <typename Object>
-    class LargeFreeList : public FreeList<Object, LargeVector> {
+    template <typename Object, TemplateStringLiteral handleId>
+    class LargeFreeList : public FreeList<Object, handleId, LargeVector> {
         // This makes the data() method inaccessible from this class.
-        using FreeList<Object, LargeVector>::data;
+        using FreeList<Object, handleId, LargeVector>::data;
 
     public:
         LargeFreeList() = default;

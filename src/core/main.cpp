@@ -15,6 +15,7 @@
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <threading/scheduler.hpp>
+#include <util/handle.hpp>
 #include <util/logging.hpp>
 
 // Fuck windows.h
@@ -23,7 +24,7 @@
 
 std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
 
-std::vector<krypton::rapi::RenderObjectHandle> renderObjectHandles = {};
+std::vector<krypton::util::Handle<"RenderObject">> renderObjectHandles = {};
 std::mutex renderObjectHandleMutex;
 
 std::string modelPathString;
@@ -39,7 +40,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
         if (!loaded) {
             krypton::log::err("Failed to load file!");
         } else {
-            std::vector<krypton::rapi::MaterialHandle> localMaterialHandles;
+            std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
             for (auto& mat : fileLoader->materials) {
                 localMaterialHandles.push_back(rapi->createMaterial(mat));
             }

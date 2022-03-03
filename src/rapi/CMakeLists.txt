@@ -23,7 +23,7 @@ if(WIN32
   target_link_libraries(krypton_rapi PUBLIC carbon)
 
   add_source_directory(TARGET krypton_rapi FOLDER "backends/vulkan/")
-  add_files(TARGET krypton_rapi "backends/vulkan_rt_backend.cpp")
+  add_files(TARGET krypton_rapi "backends/vulkan_backend.cpp")
 elseif(APPLE)
   add_compile_definitions(RAPI_WITH_METAL)
 
