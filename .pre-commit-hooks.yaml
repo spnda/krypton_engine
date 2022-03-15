@@ -2,4 +2,4 @@
     name: Format C++ and CMake code
     entry: scripts/format.py
     language: python
-    args: [ "--no-write", "src" ]
+    args: [ "--no-write", "--directory", "src" ]
