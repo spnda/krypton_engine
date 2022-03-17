@@ -34,7 +34,7 @@ if(MSVC) # cl.exe or clang-cl.exe
   endif()
 else()
   # Clang, AppleClang, or GCC
-  add_compile_options(-Wall -Wextra -pedantic -Werror -Og)
+  add_compile_options(-Wall -Wextra -pedantic -Og)
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-Og)
   else()

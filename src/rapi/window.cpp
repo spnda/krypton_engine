@@ -40,9 +40,10 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
     switch (backend) {
         case Backend::Vulkan:
             if (!glfwVulkanSupported())
-                throw std::runtime_error("glfw doesn't support Vulkan.");
+                throw std::runtime_error("Vulkan is not supported on this system!");
             break;
-        case Backend::Metal: break;
+        case Backend::Metal:
+            break;
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -67,12 +68,20 @@ float krypton::rapi::Window::getAspectRatio() const {
     return (float)width / (float)height;
 }
 
+void krypton::rapi::Window::getContentScale(float* xScale, float* yScale) const {
+    glfwGetWindowContentScale(window, xScale, yScale);
+}
+
+void krypton::rapi::Window::getFramebufferSize(int* tWidth, int* tHeight) const {
+    glfwGetFramebufferSize(window, tWidth, tHeight);
+}
+
 GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
     return window;
 }
 
 void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
-    glfwGetFramebufferSize(window, tWidth, tHeight);
+    glfwGetWindowSize(window, tWidth, tHeight);
 }
 
 void krypton::rapi::Window::initImgui() const {

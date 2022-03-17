@@ -31,7 +31,7 @@ namespace krypton::log {
         fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), f);
     }
 
-    inline void throwError(const std::string& input) {
+    inline void throwError(const std::string& input) noexcept(false) {
         auto f = fmt::format(fmt::fg(fmt::color::red), input);
         std::time_t t = std::time(nullptr);
         fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), f);
@@ -64,7 +64,7 @@ namespace krypton::log {
     }
 
     template <typename... T>
-    inline void throwError(const std::string& input, T&&... args) {
+    inline void throwError(const std::string& input, T&&... args) noexcept(false) {
         auto f = fmt::format(fmt::runtime(input), args...);
         auto c = fmt::format(fmt::fg(fmt::color::red), f);
         std::time_t t = std::time(nullptr);

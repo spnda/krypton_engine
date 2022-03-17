@@ -11,6 +11,6 @@ std::unique_ptr<krypton::rapi::RenderAPI> krypton::rapi::getRenderApi() {
 #endif // #ifdef RAPI_WITH_VULKAN
 
 #ifdef RAPI_WITH_METAL
-    return std::make_unique<krypton::rapi::Metal_RAPI>();
+    return std::make_unique<krypton::rapi::MetalBackend>();
 #endif // #ifdef RAPI_WITH_METAL
 }

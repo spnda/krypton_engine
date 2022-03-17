@@ -55,9 +55,13 @@ def download_and_extract(url, path):
 
 def download_external(name, url_callback):
     print(f"{Colors.green}Downloading {name}...{Colors.end}")
-    create_dir(f"external/{name}")
+    dir_path = f"external/{name}"
+    create_dir(dir_path)
     url = url_callback()
-    download_and_extract(url, f"external/{name}")
+    if len(url) > 0:
+        download_and_extract(url, dir_path)
+    elif os.path.isdir(dir_path):
+        shutil.rmtree(dir_path)
 
 
 def configure_cmake(generator=None):
@@ -131,14 +135,15 @@ def main():
     glslang_url = "https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-"
     match platform.system():
         case "Darwin":  # MacOS
-            glslang_url += "osx"
+            # glslang builds on MacOS don't ship with the proper headers...
+            glslang_url = ""
         case "Windows":  # Windows
             glslang_url += "windows-x64"
         case "Linux":  # Linux
             glslang_url += "linux"
 
-    download_external("glslang-debug", lambda: glslang_url + "-Debug.zip")
-    download_external("glslang-release", lambda: glslang_url + "-Release.zip")
+    download_external("glslang-debug", lambda: glslang_url + "-Debug.zip" if len(glslang_url) > 0 else "")
+    download_external("glslang-release", lambda: glslang_url + "-Release.zip" if len(glslang_url) > 0 else "")
 
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.

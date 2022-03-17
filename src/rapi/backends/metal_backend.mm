@@ -14,13 +14,19 @@
 #include <imgui_impl_metal.h>
 
 #include <rapi/backends/metal_backend.hpp>
-#include <rapi/render_object_handle.hpp>
 #include <shaders/shaders.hpp>
 #include <util/large_free_list.hpp>
+#include <util/logging.hpp>
 
 namespace krypton::rapi::metal {
+    struct Primitive final {
+        krypton::mesh::Primitive primitive = {};
+        krypton::util::Handle<"Material"> material;
+    };
+
     struct RenderObject final {
-        std::shared_ptr<krypton::mesh::Mesh> mesh;
+        std::vector<Primitive> primitives = {};
+
         id<MTLBuffer> vertexBuffer;
         id<MTLBuffer> indexBuffer;
         uint64_t totalVertexCount = 0, totalIndexCount = 0;
@@ -43,28 +49,93 @@ krypton::shaders::ShaderFile defaultShader;
 
 id<MTLBuffer> cameraBuffer;
 
-krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject> objects = {};
+krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject, "RenderObject"> objects = {};
+std::mutex renderObjectMutex;
 
-krypton::rapi::Metal_RAPI::Metal_RAPI() { window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080); }
+// Placeholder materials free list.
+krypton::util::FreeList<uint32_t, "Material"> materials = {};
+std::mutex materialMutex;
 
-krypton::rapi::Metal_RAPI::~Metal_RAPI() {}
+krypton::rapi::MetalBackend::MetalBackend() {
+    window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
+}
 
-void krypton::rapi::Metal_RAPI::beginFrame() {
+krypton::rapi::MetalBackend::~MetalBackend() = default;
+
+void krypton::rapi::MetalBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+                                               krypton::util::Handle<"Material">& material) {
+    auto lock = std::scoped_lock(renderObjectMutex);
+    auto& object = objects.getFromHandle(handle);
+    object.primitives.push_back({primitive, material});
+}
+
+void krypton::rapi::MetalBackend::beginFrame() {
+    window->pollEvents();
     window->newFrame();
     ImGui::NewFrame();
 
-    /** Update camera data */
+    /* Update camera data */
     void* cameraBufferData = [cameraBuffer contents];
     memcpy(cameraBufferData, cameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 }
 
-krypton::rapi::RenderObjectHandle krypton::rapi::Metal_RAPI::createRenderObject() {
-    return static_cast<krypton::rapi::RenderObjectHandle>(objects.getNewHandle());
+void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+    if (objects.isHandleValid(handle)) {
+        krypton::rapi::metal::RenderObject& renderObject = objects.getFromHandle(handle);
+
+        size_t accumulatedVertexBufferSize = 0, accumulatedIndexBufferSize = 0;
+
+        for (const auto& primitive : renderObject.primitives) {
+            const auto& prim = primitive.primitive;
+            renderObject.totalVertexCount += prim.vertices.size();
+            renderObject.totalIndexCount += prim.indices.size();
+
+            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
+            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index);
+
+            renderObject.bufferVertexOffsets.push_back(accumulatedVertexBufferSize + vertexDataSize);
+            renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize + indexDataSize);
+
+            accumulatedVertexBufferSize += vertexDataSize;
+            accumulatedIndexBufferSize += indexDataSize;
+        }
+
+        renderObject.vertexBuffer = [device newBufferWithLength:accumulatedVertexBufferSize options:0]; // 0 = shared buffer
+        renderObject.indexBuffer = [device newBufferWithLength:accumulatedIndexBufferSize options:0];
+
+        // Copy the vertex data for each primitive into the shared buffer.
+        void* vertexData = [renderObject.vertexBuffer contents];
+        void* indexData = [renderObject.indexBuffer contents];
+        accumulatedVertexBufferSize = 0;
+        accumulatedIndexBufferSize = 0;
+        for (const auto& primitive : renderObject.primitives) {
+            const auto& prim = primitive.primitive;
+            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
+            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index); // index size == 32
+
+            memcpy(reinterpret_cast<uint8_t*>(vertexData) + accumulatedVertexBufferSize, prim.vertices.data(), vertexDataSize);
+            memcpy(reinterpret_cast<uint8_t*>(indexData) + accumulatedIndexBufferSize, prim.indices.data(), indexDataSize);
+
+            accumulatedVertexBufferSize += vertexDataSize;
+            accumulatedIndexBufferSize += indexDataSize;
+        }
+    }
 }
 
-krypton::rapi::MaterialHandle krypton::rapi::Metal_RAPI::createMaterial(krypton::mesh::Material material) {}
+krypton::util::Handle<"RenderObject"> krypton::rapi::MetalBackend::createRenderObject() {
+    auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
+    auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
+    return objects.getNewHandle(refCounter);
+}
 
-bool krypton::rapi::Metal_RAPI::destroyRenderObject(krypton::rapi::RenderObjectHandle& handle) {
+krypton::util::Handle<"Material"> krypton::rapi::MetalBackend::createMaterial(krypton::mesh::Material material) {
+    auto lock = std::scoped_lock(materialMutex);
+    auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
+    return materials.getNewHandle(refCounter);
+}
+
+bool krypton::rapi::MetalBackend::destroyRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+    auto lock = std::scoped_lock(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
     if (valid) {
         auto& object = objects.getFromHandle(handle);
@@ -74,15 +145,9 @@ bool krypton::rapi::Metal_RAPI::destroyRenderObject(krypton::rapi::RenderObjectH
     return valid;
 }
 
-void krypton::rapi::Metal_RAPI::drawFrame() {
-    int width, height;
-    window->getWindowSize(&width, &height);
-    ImGui::GetIO().DisplaySize.x = width;
-    ImGui::GetIO().DisplaySize.y = height;
+bool krypton::rapi::MetalBackend::destroyMaterial(krypton::util::Handle<"Material">& handle) {}
 
-    CGFloat framebufferScale = nswindow.screen.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor;
-    ImGui::GetIO().DisplayFramebufferScale = ImVec2(framebufferScale, framebufferScale);
-
+void krypton::rapi::MetalBackend::drawFrame() {
     @autoreleasepool {
         id<CAMetalDrawable> surface = [swapchain nextDrawable];
 
@@ -97,12 +162,13 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
         id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:mainPass];
 
         // Submit each render object for rendering
-        for (krypton::rapi::RenderObjectHandle& handle : handlesForFrame) {
+        [encoder setRenderPipelineState:pipelineState];
+        [encoder setVertexBuffer:cameraBuffer offset:0 atIndex:1];
+
+        for (krypton::util::Handle<"RenderObject">& handle : handlesForFrame) {
             krypton::rapi::metal::RenderObject& object = objects.getFromHandle(handle);
 
-            [encoder setRenderPipelineState:pipelineState];
             [encoder setVertexBuffer:object.vertexBuffer offset:0 atIndex:0]; /* Vertex buffer is at 0 */
-            [encoder setVertexBuffer:cameraBuffer offset:0 atIndex:1];        /* Camera buffer is at 1 */
 
             /* Dispatch draw call */
             [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
@@ -121,7 +187,10 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
         imguiPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
         imguiPass.colorAttachments[0].storeAction = MTLStoreActionStore;
         imguiPass.colorAttachments[0].texture = surface.texture;
-        ImGui_ImplMetal_NewFrame(imguiPass); // It's safe to call now
+
+        // The glfw imgui implementation which window->newFrame() calls
+        // also updates the ImGuiIO for us.
+        ImGui_ImplMetal_NewFrame(imguiPass);
 
         ImGui::Render();
         ImDrawData* drawData = ImGui::GetDrawData();
@@ -137,20 +206,33 @@ void krypton::rapi::Metal_RAPI::drawFrame() {
     }
 }
 
-void krypton::rapi::Metal_RAPI::endFrame() {
+void krypton::rapi::MetalBackend::endFrame() {
     ImGui::EndFrame();
 
     handlesForFrame.clear();
 }
 
-std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::Metal_RAPI::getCameraData() { return cameraData; }
+std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::MetalBackend::getCameraData() {
+    return cameraData;
+}
 
-std::shared_ptr<krypton::rapi::Window> krypton::rapi::Metal_RAPI::getWindow() { return window; }
+std::shared_ptr<krypton::rapi::Window> krypton::rapi::MetalBackend::getWindow() {
+    return window;
+}
 
-void krypton::rapi::Metal_RAPI::init() {
+void krypton::rapi::MetalBackend::init() {
     __autoreleasing NSError* error = nil;
 
     window->create(krypton::rapi::Backend::Metal);
+
+    int width, height;
+    window->getFramebufferSize(&width, &height);
+
+    // We have to set this because the window otherwise defaults to our
+    // scaled size and not the actual wanted framebuffer size.
+    CGSize drawableSize = {};
+    drawableSize.width = (double)width;
+    drawableSize.height = (double)height;
 
     // Create the device, queue and metal layer
     device = MTLCreateSystemDefaultDevice();
@@ -159,6 +241,9 @@ void krypton::rapi::Metal_RAPI::init() {
     swapchain.device = device;
     swapchain.opaque = YES;
     swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    swapchain.drawableSize = drawableSize;
+
+    krypton::log::log("Setting up Metal on {}", [device.name UTF8String]);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -200,57 +285,21 @@ void krypton::rapi::Metal_RAPI::init() {
     cameraBuffer = [device newBufferWithLength:krypton::rapi::CAMERA_DATA_SIZE options:0];
 }
 
-void krypton::rapi::Metal_RAPI::loadMeshForRenderObject(krypton::rapi::RenderObjectHandle& handle,
-                                                        std::shared_ptr<krypton::mesh::Mesh> mesh) {
-    if (objects.isHandleValid(handle)) {
-        krypton::rapi::metal::RenderObject& renderObject = objects.getFromHandle(handle);
-
-        size_t accumulatedVertexBufferSize = 0, accumulatedIndexBufferSize = 0;
-
-        for (const auto& prim : mesh->primitives) {
-            renderObject.totalVertexCount += prim.vertices.size();
-            renderObject.totalIndexCount += prim.indices.size();
-
-            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index);
-
-            renderObject.bufferVertexOffsets.push_back(accumulatedVertexBufferSize + vertexDataSize);
-            renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize + indexDataSize);
-
-            accumulatedVertexBufferSize += vertexDataSize;
-            accumulatedIndexBufferSize += indexDataSize;
-        }
-
-        renderObject.vertexBuffer = [device newBufferWithLength:accumulatedVertexBufferSize options:0]; // 0 = shared buffer
-        renderObject.indexBuffer = [device newBufferWithLength:accumulatedIndexBufferSize options:0];
-
-        // Copy the vertex data for each primitive into the shared buffer.
-        void* vertexData = [renderObject.vertexBuffer contents];
-        void* indexData = [renderObject.indexBuffer contents];
-        accumulatedVertexBufferSize = 0;
-        accumulatedIndexBufferSize = 0;
-        for (const auto& prim : mesh->primitives) {
-            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index); // index size == 32
-
-            memcpy(reinterpret_cast<uint8_t*>(vertexData) + accumulatedVertexBufferSize, prim.vertices.data(), vertexDataSize);
-            memcpy(reinterpret_cast<uint8_t*>(indexData) + accumulatedIndexBufferSize, prim.indices.data(), indexDataSize);
-
-            accumulatedVertexBufferSize += vertexDataSize;
-            accumulatedIndexBufferSize += indexDataSize;
-        }
-    }
-}
-
-void krypton::rapi::Metal_RAPI::render(RenderObjectHandle handle) {
+void krypton::rapi::MetalBackend::render(krypton::util::Handle<"RenderObject"> handle) {
     if (objects.isHandleValid(handle))
         handlesForFrame.push_back(handle);
 }
 
-void krypton::rapi::Metal_RAPI::resize(int width, int height) {
+void krypton::rapi::MetalBackend::resize(int width, int height) {
     // Metal auto-resizes for us.
 }
 
-void krypton::rapi::Metal_RAPI::shutdown() { ImGui_ImplMetal_DestroyDeviceObjects(); }
+void krypton::rapi::MetalBackend::setObjectName(krypton::util::Handle<"RenderObject">& handle, std::string name) {}
+
+void krypton::rapi::MetalBackend::setObjectTransform(krypton::util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {}
+
+void krypton::rapi::MetalBackend::shutdown() {
+    ImGui_ImplMetal_DestroyDeviceObjects();
+}
 
 #endif // #ifdef RAPI_WITH_METAL

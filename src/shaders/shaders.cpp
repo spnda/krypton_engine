@@ -102,14 +102,19 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
 #endif
 
     krypton::log::throwError("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
+    return {};
 }
 
 #ifdef WITH_GLSLANG_SHADERS
 krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(const krypton::shaders::ShaderCompileInput& shaderInput) {
     glslang_source_t language = GLSLANG_SOURCE_NONE;
     switch (shaderInput.sourceType) {
-        case ShaderSourceType::GLSL: language = GLSLANG_SOURCE_GLSL; break;
-        case ShaderSourceType::HLSL: language = GLSLANG_SOURCE_HLSL; break;
+        case ShaderSourceType::GLSL:
+            language = GLSLANG_SOURCE_GLSL;
+            break;
+        case ShaderSourceType::HLSL:
+            language = GLSLANG_SOURCE_HLSL;
+            break;
         case ShaderSourceType::SLANG: {
             krypton::log::throwError("[glslang] Cannot use slang to compile from slang");
             break;
@@ -129,17 +134,39 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
 
     glslang_stage_t stage;
     switch (shaderInput.shaderStages[0]) {
-        case ShaderStage::Vertex: stage = GLSLANG_STAGE_VERTEX; break;
-        case ShaderStage::Fragment: stage = GLSLANG_STAGE_FRAGMENT; break;
-        case ShaderStage::Geometry: stage = GLSLANG_STAGE_GEOMETRY; break;
-        case ShaderStage::Compute: stage = GLSLANG_STAGE_COMPUTE; break;
-        case ShaderStage::Mesh: stage = GLSLANG_STAGE_MESH_NV; break;
-        case ShaderStage::RayGen: stage = GLSLANG_STAGE_RAYGEN_NV; break;
-        case ShaderStage::ClosestHit: stage = GLSLANG_STAGE_CLOSESTHIT_NV; break;
-        case ShaderStage::Miss: stage = GLSLANG_STAGE_MISS_NV; break;
-        case ShaderStage::AnyHit: stage = GLSLANG_STAGE_ANYHIT_NV; break;
-        case ShaderStage::Intersect: stage = GLSLANG_STAGE_INTERSECT_NV; break;
-        case ShaderStage::Callable: stage = GLSLANG_STAGE_CALLABLE_NV; break;
+        case ShaderStage::Vertex:
+            stage = GLSLANG_STAGE_VERTEX;
+            break;
+        case ShaderStage::Fragment:
+            stage = GLSLANG_STAGE_FRAGMENT;
+            break;
+        case ShaderStage::Geometry:
+            stage = GLSLANG_STAGE_GEOMETRY;
+            break;
+        case ShaderStage::Compute:
+            stage = GLSLANG_STAGE_COMPUTE;
+            break;
+        case ShaderStage::Mesh:
+            stage = GLSLANG_STAGE_MESH_NV;
+            break;
+        case ShaderStage::RayGen:
+            stage = GLSLANG_STAGE_RAYGEN_NV;
+            break;
+        case ShaderStage::ClosestHit:
+            stage = GLSLANG_STAGE_CLOSESTHIT_NV;
+            break;
+        case ShaderStage::Miss:
+            stage = GLSLANG_STAGE_MISS_NV;
+            break;
+        case ShaderStage::AnyHit:
+            stage = GLSLANG_STAGE_ANYHIT_NV;
+            break;
+        case ShaderStage::Intersect:
+            stage = GLSLANG_STAGE_INTERSECT_NV;
+            break;
+        case ShaderStage::Callable:
+            stage = GLSLANG_STAGE_CALLABLE_NV;
+            break;
         default: {
             krypton::log::throwError("[glslang] Unrecognized shader stage type: {}", static_cast<uint32_t>(shaderInput.shaderStages[0]));
         }
@@ -217,8 +244,12 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
     spvc_backend backendTarget = SPVC_BACKEND_NONE;
     switch (target) {
         using namespace krypton::shaders;
-        case ShaderTargetType::GLSL: backendTarget = SPVC_BACKEND_GLSL; break;
-        case ShaderTargetType::HLSL: backendTarget = SPVC_BACKEND_HLSL; break;
+        case ShaderTargetType::GLSL:
+            backendTarget = SPVC_BACKEND_GLSL;
+            break;
+        case ShaderTargetType::HLSL:
+            backendTarget = SPVC_BACKEND_HLSL;
+            break;
         case ShaderTargetType::METAL: {
             krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate Metal.");
             break;
@@ -285,9 +316,15 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     SlangCompileTarget compileTarget = SLANG_TARGET_UNKNOWN;
     switch (shaderInput.targetType) {
         using namespace krypton::shaders;
-        case ShaderTargetType::GLSL: compileTarget = SLANG_GLSL; break;
-        case ShaderTargetType::HLSL: compileTarget = SLANG_HLSL; break;
-        case ShaderTargetType::SPIRV: compileTarget = SLANG_SPIRV; break;
+        case ShaderTargetType::GLSL:
+            compileTarget = SLANG_GLSL;
+            break;
+        case ShaderTargetType::HLSL:
+            compileTarget = SLANG_HLSL;
+            break;
+        case ShaderTargetType::SPIRV:
+            compileTarget = SLANG_SPIRV;
+            break;
         case ShaderTargetType::METAL: {
             krypton::log::throwError("[slang] Cannot use slang to compile to Metal");
             break;
@@ -301,8 +338,12 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
 
     SlangSourceLanguage compileSource = SLANG_SOURCE_LANGUAGE_UNKNOWN;
     switch (shaderInput.sourceType) {
-        case ShaderSourceType::SLANG: compileSource = SLANG_SOURCE_LANGUAGE_SLANG; break;
-        case ShaderSourceType::HLSL: compileSource = SLANG_SOURCE_LANGUAGE_HLSL; break;
+        case ShaderSourceType::SLANG:
+            compileSource = SLANG_SOURCE_LANGUAGE_SLANG;
+            break;
+        case ShaderSourceType::HLSL:
+            compileSource = SLANG_SOURCE_LANGUAGE_HLSL;
+            break;
         case ShaderSourceType::GLSL: {
             krypton::log::throwError("[slang] Cannot use slang to compile from GLSL!");
             break;
@@ -344,17 +385,39 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
     for (size_t i = 0; i < shaderInput.entryPoints.size(); ++i) {
         SlangStage slangStage;
         switch (shaderInput.shaderStages[i]) {
-            case ShaderStage::Vertex: slangStage = SLANG_STAGE_VERTEX; break;
-            case ShaderStage::Fragment: slangStage = SLANG_STAGE_FRAGMENT; break;
-            case ShaderStage::Geometry: slangStage = SLANG_STAGE_GEOMETRY; break;
-            case ShaderStage::Compute: slangStage = SLANG_STAGE_COMPUTE; break;
-            case ShaderStage::Mesh: slangStage = SLANG_STAGE_MESH; break;
-            case ShaderStage::RayGen: slangStage = SLANG_STAGE_RAY_GENERATION; break;
-            case ShaderStage::ClosestHit: slangStage = SLANG_STAGE_CLOSEST_HIT; break;
-            case ShaderStage::Miss: slangStage = SLANG_STAGE_MISS; break;
-            case ShaderStage::AnyHit: slangStage = SLANG_STAGE_ANY_HIT; break;
-            case ShaderStage::Intersect: slangStage = SLANG_STAGE_INTERSECTION; break;
-            case ShaderStage::Callable: slangStage = SLANG_STAGE_CALLABLE; break;
+            case ShaderStage::Vertex:
+                slangStage = SLANG_STAGE_VERTEX;
+                break;
+            case ShaderStage::Fragment:
+                slangStage = SLANG_STAGE_FRAGMENT;
+                break;
+            case ShaderStage::Geometry:
+                slangStage = SLANG_STAGE_GEOMETRY;
+                break;
+            case ShaderStage::Compute:
+                slangStage = SLANG_STAGE_COMPUTE;
+                break;
+            case ShaderStage::Mesh:
+                slangStage = SLANG_STAGE_MESH;
+                break;
+            case ShaderStage::RayGen:
+                slangStage = SLANG_STAGE_RAY_GENERATION;
+                break;
+            case ShaderStage::ClosestHit:
+                slangStage = SLANG_STAGE_CLOSEST_HIT;
+                break;
+            case ShaderStage::Miss:
+                slangStage = SLANG_STAGE_MISS;
+                break;
+            case ShaderStage::AnyHit:
+                slangStage = SLANG_STAGE_ANY_HIT;
+                break;
+            case ShaderStage::Intersect:
+                slangStage = SLANG_STAGE_INTERSECTION;
+                break;
+            case ShaderStage::Callable:
+                slangStage = SLANG_STAGE_CALLABLE;
+                break;
             default: {
                 krypton::log::throwError("[slang] Unrecognized shader stage: {}", static_cast<uint32_t>(shaderInput.shaderStages[i]));
                 continue;

@@ -17,7 +17,7 @@
 
 namespace krypton::rapi {
     class RenderAPI;
-    class Metal_RAPI;
+    class MetalBackend;
     class VulkanBackend;
 
     /**
@@ -31,7 +31,7 @@ namespace krypton::rapi {
 #ifdef RAPI_WITH_VULKAN
         friend class VulkanBackend;
 #elif RAPI_WITH_METAL
-        friend class Metal_RAPI;
+        friend class MetalBackend;
 #endif
 
         std::string title = {};
@@ -58,6 +58,8 @@ namespace krypton::rapi {
         void create(krypton::rapi::Backend backend);
         void destroy();
         [[nodiscard]] float getAspectRatio() const;
+        void getContentScale(float* xScale, float* yScale) const;
+        void getFramebufferSize(int* width, int* height) const;
         void getWindowSize(int* width, int* height) const;
         [[nodiscard]] bool shouldClose() const;
     };

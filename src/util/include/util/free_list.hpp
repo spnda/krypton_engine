@@ -24,9 +24,9 @@ namespace krypton::util {
      *         at least size(), capacity(), resize(), data(),
      *         push_back(T&&), and operator[int].
      */
-    template <typename Object, TemplateStringLiteral handleId, template <typename T = Object> typename Container = std::vector>
+    template <typename Object, TemplateStringLiteral handleId, typename Container = std::vector<Object>>
     class FreeList {
-        Container<Object> container;
+        Container container;
         std::vector<FreeListObject> mappings;
 
         [[nodiscard]] auto createSlot() -> uint32_t;
@@ -43,18 +43,18 @@ namespace krypton::util {
         [[nodiscard]] auto size() const noexcept -> uint32_t;
     };
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     FreeList<Object, handleId, Container>::FreeList() {
         container.push_back(Object {});
         mappings.emplace_back();
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     uint32_t FreeList<Object, handleId, Container>::capacity() const noexcept {
         return static_cast<uint32_t>(container.capacity());
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     uint32_t FreeList<Object, handleId, Container>::createSlot() {
         // We check for the first free hole and use it.
         const uint32_t slot = mappings[0].next;
@@ -69,12 +69,12 @@ namespace krypton::util {
         return static_cast<uint32_t>(size - 1);
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     constexpr const Object* FreeList<Object, handleId, Container>::data() const noexcept {
         return container.data();
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     Object& FreeList<Object, handleId, Container>::getFromHandle(const Handle<handleId>& handle) {
         // Verify first that the handle is valid
         assert(isHandleValid(handle));
@@ -82,20 +82,20 @@ namespace krypton::util {
         return container[handle.getIndex()];
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     Handle<handleId> FreeList<Object, handleId, Container>::getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) {
         auto slot = createSlot();
         return Handle<handleId> { std::move(refCounter), slot, mappings[slot].generation };
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     bool FreeList<Object, handleId, Container>::isHandleValid(const Handle<handleId>& handle) {
         if (size() < handle.getIndex())
             return false;
         return mappings[handle.getIndex()].generation == handle.getGeneration();
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     void FreeList<Object, handleId, Container>::removeHandle(Handle<handleId>& handle) {
         assert(isHandleValid(handle));
 
@@ -107,7 +107,7 @@ namespace krypton::util {
         mappings[handle.getIndex()].generation++;
     }
 
-    template <typename Object, TemplateStringLiteral handleId, template <typename> typename Container>
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     uint32_t FreeList<Object, handleId, Container>::size() const noexcept {
         return static_cast<uint32_t>(container.size());
     }

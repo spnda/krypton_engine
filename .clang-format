@@ -1,7 +1,7 @@
 ---
 # We'll let every language be based on the LLVM formatting rules
 BasedOnStyle: LLVM
-AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
 ColumnLimit: 140
 IndentCaseLabels: true
 IndentWidth: 4
@@ -15,7 +15,6 @@ Language: Cpp
 AccessModifierOffset: -4
 AlignOperands: Align
 AllowAllArgumentsOnNextLine: true
-AllowShortFunctionsOnASingleLine: Empty
 AlwaysBreakTemplateDeclarations: Yes
 Cpp11BracedListStyle: false
 SortUsingDeclarations: true
