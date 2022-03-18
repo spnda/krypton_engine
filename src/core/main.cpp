@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <vector>
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/glm.hpp>
@@ -21,6 +22,8 @@
 // Fuck windows.h
 #undef near
 #undef far
+
+namespace fs = std::filesystem;
 
 std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
 
@@ -65,6 +68,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
 }
 
 void drawUi(krypton::rapi::RenderAPI* rapi) {
+    return;
     ImGui::Begin("Main");
 
     ImGui::SliderFloat3("Camera Position", cameraPos, -25.0, 25.0);

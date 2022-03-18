@@ -145,6 +145,10 @@ def main():
     download_external("glslang-debug", lambda: glslang_url + "-Debug.zip" if len(glslang_url) > 0 else "")
     download_external("glslang-release", lambda: glslang_url + "-Release.zip" if len(glslang_url) > 0 else "")
 
+    metalcpp_url = "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+    if platform.system() == "Darwin":
+        download_external("metal-cpp", lambda: metalcpp_url)
+
     # The VCPKG_ROOT environment variable should point to the vpckg installation.
     # Without this, our CMake script might not be able to identify where to find dependencies.
     if "VCPKG_ROOT" not in os.environ:

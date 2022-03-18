@@ -1,20 +1,21 @@
 #ifdef RAPI_WITH_METAL
 
-#include <memory>
-#include <vector>
+// These definitions need to be at the top so that the objective-c classes
+// and selectors are properly created.
+#define NS_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
+#define CU_PRIVATE_IMPLEMENTATION // our custom metal-cpp additions
 
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-
-#define GLFW_EXPOSE_NATIVE_COCOA
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+#include <Metal/Metal.hpp>
+#include <QuartzCore/QuartzCore.hpp>
 
 #include <imgui.h>
-#include <imgui_impl_metal.h>
+// #include <imgui_impl_metal.h>
 
+#include <rapi/backends/metal/CAMetalLayer.hpp>
+#include <rapi/backends/metal/metal_layer_bridge.hpp>
 #include <rapi/backends/metal_backend.hpp>
-#include <shaders/shaders.hpp>
 #include <util/large_free_list.hpp>
 #include <util/logging.hpp>
 
@@ -27,27 +28,13 @@ namespace krypton::rapi::metal {
     struct RenderObject final {
         std::vector<Primitive> primitives = {};
 
-        id<MTLBuffer> vertexBuffer;
-        id<MTLBuffer> indexBuffer;
+        MTL::Buffer* vertexBuffer;
+        MTL::Buffer* indexBuffer;
         uint64_t totalVertexCount = 0, totalIndexCount = 0;
         std::vector<uint64_t> bufferVertexOffsets;
         std::vector<uint64_t> bufferIndexOffsets;
     };
-}
-
-/**
- * Our rendering variables, they're made global as we
- * cannot put them in the non-Objective-C header
- */
-id<MTLDevice> device;
-id<MTLLibrary> library;
-id<MTLCommandQueue> queue;
-id<MTLRenderPipelineState> pipelineState;
-CAMetalLayer* swapchain = nullptr;
-NSWindow* nswindow = nullptr;
-krypton::shaders::ShaderFile defaultShader;
-
-id<MTLBuffer> cameraBuffer;
+} // namespace krypton::rapi::metal
 
 krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject, "RenderObject"> objects = {};
 std::mutex renderObjectMutex;
@@ -66,16 +53,16 @@ void krypton::rapi::MetalBackend::addPrimitive(krypton::util::Handle<"RenderObje
                                                krypton::util::Handle<"Material">& material) {
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
-    object.primitives.push_back({primitive, material});
+    object.primitives.push_back({ primitive, material });
 }
 
 void krypton::rapi::MetalBackend::beginFrame() {
     window->pollEvents();
-    window->newFrame();
-    ImGui::NewFrame();
+    // window->newFrame();
+    // ImGui::NewFrame();
 
     /* Update camera data */
-    void* cameraBufferData = [cameraBuffer contents];
+    void* cameraBufferData = cameraBuffer->contents();
     memcpy(cameraBufferData, cameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 }
 
@@ -100,12 +87,12 @@ void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"Rende
             accumulatedIndexBufferSize += indexDataSize;
         }
 
-        renderObject.vertexBuffer = [device newBufferWithLength:accumulatedVertexBufferSize options:0]; // 0 = shared buffer
-        renderObject.indexBuffer = [device newBufferWithLength:accumulatedIndexBufferSize options:0];
+        renderObject.vertexBuffer = device->newBuffer(accumulatedVertexBufferSize, MTL::ResourceStorageModeShared);
+        renderObject.indexBuffer = device->newBuffer(accumulatedIndexBufferSize, MTL::ResourceStorageModeShared);
 
         // Copy the vertex data for each primitive into the shared buffer.
-        void* vertexData = [renderObject.vertexBuffer contents];
-        void* indexData = [renderObject.indexBuffer contents];
+        void* vertexData = renderObject.vertexBuffer->contents();
+        void* indexData = renderObject.indexBuffer->contents();
         accumulatedVertexBufferSize = 0;
         accumulatedIndexBufferSize = 0;
         for (const auto& primitive : renderObject.primitives) {
@@ -148,66 +135,67 @@ bool krypton::rapi::MetalBackend::destroyRenderObject(krypton::util::Handle<"Ren
 bool krypton::rapi::MetalBackend::destroyMaterial(krypton::util::Handle<"Material">& handle) {}
 
 void krypton::rapi::MetalBackend::drawFrame() {
-    @autoreleasepool {
-        id<CAMetalDrawable> surface = [swapchain nextDrawable];
+    CA::MetalDrawable* surface = swapchain->nextDrawable();
 
-        // Create render pass
-        MTLRenderPassDescriptor* mainPass = [MTLRenderPassDescriptor renderPassDescriptor];
-        mainPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.25);
-        mainPass.colorAttachments[0].loadAction = MTLLoadActionClear;
-        mainPass.colorAttachments[0].storeAction = MTLStoreActionStore;
-        mainPass.colorAttachments[0].texture = surface.texture;
+    // Create render pass
+    MTL::RenderPassDescriptor* mainPass = MTL::RenderPassDescriptor::renderPassDescriptor();
+    auto colorAttachment = mainPass->colorAttachments()->object(0);
 
-        id<MTLCommandBuffer> buffer = [queue commandBuffer];
-        id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:mainPass];
+    colorAttachment->setClearColor(MTL::ClearColor::Make(0, 0, 0, 0.25));
+    colorAttachment->setLoadAction(MTL::LoadActionClear);
+    colorAttachment->setStoreAction(MTL::StoreActionStore);
+    colorAttachment->setTexture(surface->texture());
 
-        // Submit each render object for rendering
-        [encoder setRenderPipelineState:pipelineState];
-        [encoder setVertexBuffer:cameraBuffer offset:0 atIndex:1];
+    MTL::CommandBuffer* buffer = queue->commandBuffer();
+    MTL::RenderCommandEncoder* encoder = buffer->renderCommandEncoder(mainPass);
 
-        for (krypton::util::Handle<"RenderObject">& handle : handlesForFrame) {
-            krypton::rapi::metal::RenderObject& object = objects.getFromHandle(handle);
+    // Submit each render object for rendering
+    encoder->setRenderPipelineState(pipelineState);
+    encoder->setVertexBuffer(cameraBuffer, 0, 1);
 
-            [encoder setVertexBuffer:object.vertexBuffer offset:0 atIndex:0]; /* Vertex buffer is at 0 */
+    for (krypton::util::Handle<"RenderObject">& handle : handlesForFrame) {
+        krypton::rapi::metal::RenderObject& object = objects.getFromHandle(handle);
 
-            /* Dispatch draw call */
-            [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
-                                indexCount:object.totalIndexCount
-                                 indexType:MTLIndexTypeUInt32
-                               indexBuffer:object.indexBuffer
-                         indexBufferOffset:0];
-            // Could also pass instanceCount and baseInstance to the above function
-            // to instance rendering
-        }
+        encoder->setVertexBuffer(object.vertexBuffer, 0, 0); /* Vertex buffer is at 0 */
 
-        [encoder endEncoding];
-
-        // Draw ImGui
-        MTLRenderPassDescriptor* imguiPass = [MTLRenderPassDescriptor renderPassDescriptor];
-        imguiPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
-        imguiPass.colorAttachments[0].storeAction = MTLStoreActionStore;
-        imguiPass.colorAttachments[0].texture = surface.texture;
-
-        // The glfw imgui implementation which window->newFrame() calls
-        // also updates the ImGuiIO for us.
-        ImGui_ImplMetal_NewFrame(imguiPass);
-
-        ImGui::Render();
-        ImDrawData* drawData = ImGui::GetDrawData();
-        id<MTLRenderCommandEncoder> imguiEncoder = [buffer renderCommandEncoderWithDescriptor:imguiPass];
-        [imguiEncoder pushDebugGroup:@"Dear ImGui rendering"];
-        ImGui_ImplMetal_RenderDrawData(drawData, buffer, imguiEncoder);
-        [imguiEncoder popDebugGroup];
-
-        // Present
-        [imguiEncoder endEncoding];
-        [buffer presentDrawable:surface];
-        [buffer commit];
+        /* Dispatch draw call */
+        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, object.totalIndexCount, MTL::IndexTypeUInt32, object.indexBuffer, 0);
+        // Could also pass instanceCount and baseInstance to the above function
+        // to instance rendering
     }
+
+    encoder->endEncoding();
+
+    // Draw ImGui
+    /*MTLRenderPassDescriptor* imguiPass = [MTLRenderPassDescriptor renderPassDescriptor];
+    imguiPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    imguiPass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    imguiPass.colorAttachments[0].texture = surface.texture;
+
+    // The glfw imgui implementation which window->newFrame() calls
+    // also updates the ImGuiIO for us.
+    ImGui_ImplMetal_NewFrame(imguiPass);
+
+    ImGui::Render();
+    ImDrawData* drawData = ImGui::GetDrawData();
+    id<MTLRenderCommandEncoder> imguiEncoder = [buffer renderCommandEncoderWithDescriptor:imguiPass];
+    [imguiEncoder pushDebugGroup:@"Dear ImGui rendering"];
+    ImGui_ImplMetal_RenderDrawData(drawData, buffer, imguiEncoder);
+    [imguiEncoder popDebugGroup];
+
+    // Present
+    [imguiEncoder endEncoding];*/
+    buffer->presentDrawable(surface);
+    buffer->commit();
+
+    mainPass->release();
+    encoder->release();
+    buffer->release();
+    surface->release();
 }
 
 void krypton::rapi::MetalBackend::endFrame() {
-    ImGui::EndFrame();
+    // ImGui::EndFrame();
 
     handlesForFrame.clear();
 }
@@ -221,7 +209,8 @@ std::shared_ptr<krypton::rapi::Window> krypton::rapi::MetalBackend::getWindow() 
 }
 
 void krypton::rapi::MetalBackend::init() {
-    __autoreleasing NSError* error = nil;
+    // __autoreleasing NSError* error = nil;
+    NS::Error* error = nullptr;
 
     window->create(krypton::rapi::Backend::Metal);
 
@@ -230,59 +219,58 @@ void krypton::rapi::MetalBackend::init() {
 
     // We have to set this because the window otherwise defaults to our
     // scaled size and not the actual wanted framebuffer size.
-    CGSize drawableSize = {};
-    drawableSize.width = (double)width;
-    drawableSize.height = (double)height;
+    CG::Size drawableSize = {
+        .height = (double)height,
+        .width = (double)width,
+    };
 
     // Create the device, queue and metal layer
-    device = MTLCreateSystemDefaultDevice();
-    queue = [device newCommandQueue];
-    swapchain = [CAMetalLayer layer];
-    swapchain.device = device;
-    swapchain.opaque = YES;
-    swapchain.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    swapchain.drawableSize = drawableSize;
+    device = MTL::CreateSystemDefaultDevice();
+    queue = device->newCommandQueue();
+    swapchain = CA::MetalLayer::layer();
+    swapchain->setDevice(device);
+    swapchain->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+    swapchain->setDrawableSize(drawableSize);
 
-    krypton::log::log("Setting up Metal on {}", [device.name UTF8String]);
+    krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    // ImGui::CreateContext();
 
-    ImGui::StyleColorsDark();
+    // ImGui::StyleColorsDark();
 
-    window->initImgui();
+    // window->initImgui();
 
-    ImGui_ImplMetal_Init(device);
+    // ImGui_ImplMetal_Init(device);
 
     // Get the NSWindow*
     GLFWwindow* pWindow = window->getWindowPointer();
-    nswindow = glfwGetCocoaWindow(pWindow);
-    nswindow.contentView.layer = swapchain;
-    nswindow.contentView.wantsLayer = YES;
+    metal::setMetalLayerOnWindow(pWindow, swapchain);
 
     // Create the shaders
     defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
-    NSString* shaderSource = [NSString stringWithUTF8String:defaultShader.content.c_str()];
-    library = [device newLibraryWithSource:shaderSource options:0 error:&error];
+    NS::String* shaderSource = NS::String::string(defaultShader.content.c_str(), NS::StringEncoding::UTF8StringEncoding);
+    library = device->newLibrary(shaderSource, 0, &error);
     if (!library) {
-        [NSException raise:@"Failed to compile shaders" format:@"%@", [error localizedDescription]];
+        // raise exception somehow else?
+        // [NSException raise:@"Failed to compile shaders" format:@"%@", [error localizedDescription]];
     }
 
     // Create the pipeline
-    id<MTLFunction> vertexProgram = [library newFunctionWithName:@"basic_vertex"];
-    id<MTLFunction> fragmentProgram = [library newFunctionWithName:@"basic_fragment"];
+    MTL::Function* vertexProgram = library->newFunction(NS::String::string("basic_vertex", NS::StringEncoding::ASCIIStringEncoding));
+    MTL::Function* fragmentProgram = library->newFunction(NS::String::string("basic_fragment", NS::StringEncoding::ASCIIStringEncoding));
 
-    MTLRenderPipelineDescriptor* pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    [pipelineStateDescriptor setVertexFunction:vertexProgram];
-    [pipelineStateDescriptor setFragmentFunction:fragmentProgram];
-    pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-
-    pipelineState = [device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
+    MTL::RenderPipelineDescriptor* pipelineStateDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
+    pipelineStateDescriptor->setVertexFunction(vertexProgram);
+    pipelineStateDescriptor->setFragmentFunction(fragmentProgram);
+    pipelineStateDescriptor->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+    pipelineState = device->newRenderPipelineState(pipelineStateDescriptor, &error);
+    pipelineStateDescriptor->release();
 
     if (cameraData == nullptr)
         cameraData = std::make_shared<krypton::rapi::CameraData>();
 
-    cameraBuffer = [device newBufferWithLength:krypton::rapi::CAMERA_DATA_SIZE options:0];
+    cameraBuffer = device->newBuffer(krypton::rapi::CAMERA_DATA_SIZE, MTL::ResourceStorageModeShared);
 }
 
 void krypton::rapi::MetalBackend::render(krypton::util::Handle<"RenderObject"> handle) {
@@ -299,7 +287,10 @@ void krypton::rapi::MetalBackend::setObjectName(krypton::util::Handle<"RenderObj
 void krypton::rapi::MetalBackend::setObjectTransform(krypton::util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {}
 
 void krypton::rapi::MetalBackend::shutdown() {
-    ImGui_ImplMetal_DestroyDeviceObjects();
+    // ImGui_ImplMetal_DestroyDeviceObjects();
+    queue->release();
+    library->release();
+    device->release();
 }
 
 #endif // #ifdef RAPI_WITH_METAL

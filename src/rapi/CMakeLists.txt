@@ -27,11 +27,13 @@ if(WIN32
 elseif(APPLE)
   add_compile_definitions(RAPI_WITH_METAL)
 
-  target_link_libraries(krypton_rapi PUBLIC metal)
+  target_link_libraries(krypton_rapi PUBLIC metal-cpp)
 
-  add_files(TARGET krypton_rapi "backends/metal_backend.mm")
+  add_source_directory(TARGET krypton_rapi FOLDER "backends/metal/")
+  add_files(TARGET krypton_rapi "backends/metal_backend.cpp")
 endif()
 
+add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/backends/metal/")
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/backends/vulkan/")
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/backends/")
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/")

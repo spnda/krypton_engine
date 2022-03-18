@@ -6,6 +6,7 @@ function(add_source_directory)
 
     file(GLOB SLANG_TARGET_SOURCES ${PARAM_FOLDER}/*.c ${PARAM_FOLDER}/*.cpp)
     file(GLOB SLANG_TARGET_HEADERS ${PARAM_FOLDER}/*.h ${PARAM_FOLDER}/*.hpp)
+    file(GLOB SLANG_TARGET_HEADERS ${PARAM_FOLDER}/*.h ${PARAM_FOLDER}/*.mm)
 
     foreach (SLANG_SOURCE ${SLANG_TARGET_SOURCES})
         target_sources(${PARAM_TARGET} PRIVATE ${SLANG_SOURCE})

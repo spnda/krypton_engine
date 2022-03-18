@@ -3,10 +3,15 @@
 #ifdef RAPI_WITH_METAL
 
 #include <memory>
+#include <vector>
 
-#include <mesh/mesh.hpp>
+#include <Metal/Metal.hpp>
+
+#include <assets/mesh.hpp>
+#include <rapi/backends/metal/CAMetalLayer.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
+#include <shaders/shaders.hpp>
 #include <util/handle.hpp>
 
 namespace krypton::rapi {
@@ -15,6 +20,15 @@ namespace krypton::rapi {
      */
     class MetalBackend final : public RenderAPI {
         std::shared_ptr<krypton::rapi::Window> window;
+        MTL::Device* device;
+        MTL::Library* library;
+        MTL::CommandQueue* queue;
+        MTL::RenderPipelineState* pipelineState;
+        CA::MetalLayer* swapchain = nullptr;
+
+        krypton::shaders::ShaderFile defaultShader;
+
+        MTL::Buffer* cameraBuffer;
 
         std::vector<krypton::util::Handle<"RenderObject">> handlesForFrame = {};
 
