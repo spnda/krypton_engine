@@ -5,7 +5,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
   # slang
   add_library(slang-core SHARED IMPORTED GLOBAL)
   add_library(slang::core ALIAS slang-core)
-  target_include_directories(slang-core PUBLIC "${CMAKE_SOURCE_DIR}/external/slang")
+  target_include_directories(slang-core INTERFACE "${CMAKE_SOURCE_DIR}/external/slang")
   if(WIN32)
     set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64/release/slang.dll")
     set_target_properties(slang-core PROPERTIES IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64/release/slang.lib")
@@ -40,23 +40,26 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   add_library(glslang::glslang ALIAS glslang)
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(GLSLANG_LIB_POSTFIX ".lib")
     set(GLSLANG_LIB_DIR "${CMAKE_SOURCE_DIR}/external/glslang-debug/lib")
     if(WIN32)
       set(GLSLANG_LIB_POSTFIX "d.lib")
     endif()
   else()
     set(GLSLANG_LIB_DIR "${CMAKE_SOURCE_DIR}/external/glslang-release/lib")
+    if(WIN32)
+      set(GLSLANG_LIB_POSTFIX ".lib")
+    endif()
   endif()
 
   if(WIN32)
     set(GLSLANG_LIB_PREFIX "")
   elseif(UNIX)
     set(GLSLANG_LIB_PREFIX "lib")
+    set(GLSLANG_LIB_POSTFIX ".a")
   endif()
 
   # We just use the headers from glslang-release.
-  target_include_directories(glslang PUBLIC "${CMAKE_SOURCE_DIR}/external/glslang-release/include")
+  target_include_directories(glslang INTERFACE "${CMAKE_SOURCE_DIR}/external/glslang-release/include")
   set_target_properties(glslang PROPERTIES IMPORTED_LOCATION "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}glslang${GLSLANG_LIB_POSTFIX}")
 
   # Dependencies for MachineIndependent.lib
@@ -75,7 +78,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}MachineIndependent${GLSLANG_LIB_POSTFIX}")
 endif()
 
-if (EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
+if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
   message(STATUS "Found metal-cpp")
 
   find_library(METAL_LIBRARY Metal)

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <mesh/mesh.hpp>
+#include <assets/mesh.hpp>
 
 #include <rapi/camera.hpp>
 #include <rapi/window.hpp>
@@ -24,7 +24,7 @@ namespace krypton::rapi {
     public:
         virtual ~RenderAPI() = default;
 
-        virtual void addPrimitive(util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+        virtual void addPrimitive(util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                                   util::Handle<"Material">& material) = 0;
 
         virtual void beginFrame() = 0;
@@ -41,7 +41,7 @@ namespace krypton::rapi {
          */
         [[nodiscard]] virtual auto createRenderObject() -> util::Handle<"RenderObject"> = 0;
 
-        [[nodiscard]] virtual auto createMaterial(krypton::mesh::Material material) -> util::Handle<"Material"> = 0;
+        [[nodiscard]] virtual auto createMaterial(krypton::assets::Material material) -> util::Handle<"Material"> = 0;
 
         [[nodiscard]] virtual bool destroyRenderObject(util::Handle<"RenderObject">& handle) = 0;
 

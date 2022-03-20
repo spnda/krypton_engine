@@ -6,7 +6,7 @@
 
 #include <glm/glm.hpp>
 
-#include <mesh/mesh.hpp>
+#include <assets/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
 #include <util/handle.hpp>
 
@@ -21,7 +21,7 @@ namespace krypton::rapi::vulkan {
      */
     struct RenderObject final {
         struct RenderObjectPrimitive {
-            krypton::mesh::Primitive primitive;
+            krypton::assets::Primitive primitive;
             krypton::util::Handle<"Material"> material;
         };
 

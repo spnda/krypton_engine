@@ -251,7 +251,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(const 
             backendTarget = SPVC_BACKEND_HLSL;
             break;
         case ShaderTargetType::METAL: {
-            krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate Metal.");
+            backendTarget = SPVC_BACKEND_MSL;
             break;
         }
         case ShaderTargetType::SPIRV: {

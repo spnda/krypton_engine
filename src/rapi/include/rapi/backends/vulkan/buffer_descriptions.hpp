@@ -2,7 +2,7 @@
 
 #ifdef RAPI_WITH_VULKAN
 
-#include <mesh/vertex.hpp>
+#include <assets/vertex.hpp>
 
 namespace krypton::rapi::vulkan {
     /**
@@ -13,7 +13,7 @@ namespace krypton::rapi::vulkan {
     struct GeometryDescription {
         uint64_t vertexBufferAddress = 0;
         uint64_t indexBufferAddress = 0;
-        krypton::mesh::Index materialIndex = 0;
+        krypton::assets::Index materialIndex = 0;
     };
 } // namespace krypton::rapi::vulkan
 

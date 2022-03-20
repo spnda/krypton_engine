@@ -6,10 +6,10 @@
 #include <glm/gtx/quaternion.hpp>
 // #include <tiny_gltf.h> // Include it again so the above defines do their job.
 
-#include <models/fileloader.hpp>
+#include <assets/loader/fileloader.hpp>
 #include <util/logging.hpp>
 
-namespace krypton::models {
+namespace krypton::assets::loader {
     struct PrimitiveBufferValue {
         const float* data = nullptr;
         uint64_t stride = 0;
@@ -57,11 +57,13 @@ namespace krypton::models {
         for (size_t i = 0; i < count; ++i)
             out[i] = static_cast<T>(src[i]);
     }
-} // namespace krypton::models
+} // namespace krypton::assets::loader
 
-void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node,
-                                               glm::mat4 parentMatrix) {
-    auto& kMesh = meshes.emplace_back(std::make_shared<krypton::mesh::Mesh>());
+namespace ka = krypton::assets;
+
+void ka::loader::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node,
+                                          glm::mat4 parentMatrix) {
+    auto& kMesh = meshes.emplace_back(std::make_shared<ka::Mesh>());
     kMesh->name = mesh.name;
     kMesh->transform = parentMatrix;
 
@@ -111,7 +113,7 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
 
                 switch (accessor.componentType) {
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
-                        writeToVector(static_cast<const krypton::mesh::Index*>(dataPtr), indexCount, kPrimitive.indices);
+                        writeToVector(static_cast<const ka::Index*>(dataPtr), indexCount, kPrimitive.indices);
                         break;
                     }
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
@@ -126,7 +128,7 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
                 /* As there are no indices, we'll generate them */
                 kPrimitive.indices.resize(positions.count);
                 for (size_t i = 0; i < positions.count; ++i) {
-                    kPrimitive.indices[i] = static_cast<krypton::mesh::Index>(i);
+                    kPrimitive.indices[i] = static_cast<ka::Index>(i);
                 }
             }
 
@@ -135,7 +137,7 @@ void krypton::models::FileLoader::loadGltfMesh(tinygltf::Model& model, const tin
     }
 }
 
-void krypton::models::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t nodeIndex, glm::mat4 matrix) {
+void ka::loader::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t nodeIndex, glm::mat4 matrix) {
     matrix = getTransformMatrix(model.nodes[nodeIndex], matrix);
 
     auto& node = model.nodes[nodeIndex];
@@ -148,7 +150,7 @@ void krypton::models::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t 
     }
 }
 
-bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
+bool ka::loader::FileLoader::loadGltfFile(const fs::path& path) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err, warn;
@@ -219,7 +221,7 @@ bool krypton::models::FileLoader::loadGltfFile(const fs::path& path) {
     return true;
 }
 
-bool krypton::models::FileLoader::loadFile(const fs::path& path) {
+bool ka::loader::FileLoader::loadFile(const fs::path& path) {
     meshes.clear();
     materials.clear();
     textures.clear();

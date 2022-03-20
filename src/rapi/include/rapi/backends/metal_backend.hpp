@@ -38,12 +38,12 @@ namespace krypton::rapi {
         MetalBackend();
         ~MetalBackend() override;
 
-        void addPrimitive(util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+        void addPrimitive(util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                           util::Handle<"Material">& material) override;
         void beginFrame() override;
         void buildRenderObject(util::Handle<"RenderObject">& handle) override;
         auto createRenderObject() -> util::Handle<"RenderObject"> override;
-        auto createMaterial(krypton::mesh::Material material) -> util::Handle<"Material"> override;
+        auto createMaterial(krypton::assets::Material material) -> util::Handle<"Material"> override;
         auto destroyRenderObject(util::Handle<"RenderObject">& handle) -> bool override;
         bool destroyMaterial(util::Handle<"Material">& handle) override;
         void drawFrame() override;

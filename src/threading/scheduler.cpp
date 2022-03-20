@@ -68,7 +68,6 @@ void kt::Scheduler::start() {
     krypton::log::log("Launching thread pool with {} threads", maxThreadCount);
 
     if (threadPool.capacity() != maxThreadCount) {
-
         // Possible that this scheduler has never been used. We reserve
         // enough threads to saturate every available thread.
         threadPool.reserve(maxThreadCount);

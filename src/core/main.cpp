@@ -10,9 +10,9 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include <mesh/mesh.hpp>
-#include <mesh/scene.hpp>
-#include <models/fileloader.hpp>
+#include <assets/loader/fileloader.hpp>
+#include <assets/mesh.hpp>
+#include <assets/scene.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <threading/scheduler.hpp>
@@ -37,7 +37,7 @@ float focus[3] = { 0, 0, 0 };
 
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
     kt::Scheduler::getInstance().run([rapi, path]() {
-        auto fileLoader = std::make_unique<krypton::models::FileLoader>();
+        auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
         auto loaded = fileLoader->loadFile(path);
 
         if (!loaded) {

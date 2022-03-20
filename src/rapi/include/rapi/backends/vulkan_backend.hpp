@@ -15,7 +15,7 @@
 #include <carbon/shaders/shader_stage.hpp>
 #include <carbon/vulkan.hpp>
 
-#include <mesh/mesh.hpp>
+#include <assets/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
 #include <rapi/backends/vulkan/render_object.hpp>
 #include <rapi/backends/vulkan/texture.hpp>
@@ -104,10 +104,10 @@ namespace krypton::rapi {
 
         // Assets
         std::unique_ptr<carbon::StagingBuffer> materialBuffer;
-        krypton::util::FreeList<krypton::mesh::Material, "Material", std::vector> materials;
+        krypton::util::FreeList<krypton::assets::Material, "Material", std::vector<krypton::assets::Material>> materials;
         std::mutex materialMutex;
 
-        krypton::util::FreeList<krypton::rapi::vulkan::Texture, "Texture", std::vector> textures;
+        krypton::util::FreeList<krypton::rapi::vulkan::Texture, "Texture", std::vector<krypton::rapi::vulkan::Texture>> textures;
         std::mutex textureMutex;
 
         // BLAS Async Compute
@@ -149,12 +149,12 @@ namespace krypton::rapi {
         VulkanBackend();
         ~VulkanBackend() override;
 
-        void addPrimitive(util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+        void addPrimitive(util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                           util::Handle<"Material">& material) override;
         void beginFrame() override;
         void buildRenderObject(util::Handle<"RenderObject">& handle) override;
         auto createRenderObject() -> util::Handle<"RenderObject"> override;
-        auto createMaterial(krypton::mesh::Material material) -> util::Handle<"Material"> override;
+        auto createMaterial(krypton::assets::Material material) -> util::Handle<"Material"> override;
         bool destroyRenderObject(util::Handle<"RenderObject">& handle) override;
         bool destroyMaterial(util::Handle<"Material">& handle) override;
         void drawFrame() override;

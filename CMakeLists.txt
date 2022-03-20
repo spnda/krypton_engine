@@ -22,13 +22,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:
                                                                       # folders.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
 if(MSVC) # cl.exe or clang-cl.exe
-  # Microsoft not properly setting __cplusplus by default. AVX should be supported by any AMD/Intel CPU newer than 2011/2012.
+  # Microsoft not properly setting __cplusplus by default. AVX should be supported by any AMD/Intel CPU newer than 2011/2012. setting
+  # /external makes warnings/diagnostic information not be printed for all headers included with angle-brackets.
   # cmake-format: off
-  add_compile_options(/Zc:__cplusplus /EHsc /W4 /sdl /Ob2 /MP /arch:AVX /analyze)
+  add_compile_options(/Zc:__cplusplus /EHsc /W4 /Ob2 /MP /arch:AVX /external:anglebrackets)
   # cmake-format: on
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # CMake auto sets /RTC1 which is incompatible with /O1 and /O2.
+    add_compile_options(/analyze /sdl)
   else()
     add_compile_options(/O2)
   endif()
@@ -67,9 +69,8 @@ if(APPLE)
   add_subdirectory("${CMAKE_SOURCE_DIR}/src/metal")
 endif()
 
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/assets")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/mesh")
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/models")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/rapi")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/shaders")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/threading")

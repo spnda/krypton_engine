@@ -2,9 +2,9 @@
 
 #include <glm/glm.hpp>
 
-#include <mesh/vertex.hpp>
+#include <assets/vertex.hpp>
 
-namespace krypton::mesh {
+namespace krypton::assets {
     struct Material final {
         glm::fvec4 baseColor = glm::fvec4(1.0f);
         float metallicFactor = 1.0f;
@@ -15,4 +15,4 @@ namespace krypton::mesh {
         Index emissiveTextureIndex = -1;
         Index pbrTextureIndex = -1;
     };
-} // namespace krypton::mesh
+} // namespace krypton::assets

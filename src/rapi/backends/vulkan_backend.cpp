@@ -61,9 +61,15 @@ namespace krypton::rapi::vulkan {
                                                               VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) {
         switch (messageSeverity) {
-            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: krypton::log::err(pCallbackData->pMessage); break;
-            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: krypton::log::warn(pCallbackData->pMessage); break;
-            default: krypton::log::log(pCallbackData->pMessage); break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+                krypton::log::err(pCallbackData->pMessage);
+                break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+                krypton::log::warn(pCallbackData->pMessage);
+                break;
+            default:
+                krypton::log::log(pCallbackData->pMessage);
+                break;
         }
 
         return VK_FALSE;
@@ -102,7 +108,7 @@ krypton::rapi::VulkanBackend::VulkanBackend() {
 
 krypton::rapi::VulkanBackend::~VulkanBackend() = default;
 
-void krypton::rapi::VulkanBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+void krypton::rapi::VulkanBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                                                 krypton::util::Handle<"Material">& material) {
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
@@ -147,7 +153,7 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
     uint64_t totalVertexSize = 0, totalIndexSize = 0;
     for (auto& primitive : renderObject.primitives) {
         auto& description = renderObject.geometryDescriptions.emplace_back();
-        description.materialIndex = static_cast<krypton::mesh::Index>(primitive.material.getIndex());
+        description.materialIndex = static_cast<krypton::assets::Index>(primitive.material.getIndex());
 
         // We use the address beforehand to store an offset into the actual address.
         description.vertexBufferAddress = totalVertexSize;
@@ -155,7 +161,7 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
 
         auto& prim = primitive.primitive;
         std::span<std::byte> vertex = { reinterpret_cast<std::byte*>(prim.vertices.data()),
-                                        prim.vertices.size() * krypton::mesh::VERTEX_STRIDE };
+                                        prim.vertices.size() * krypton::assets::VERTEX_STRIDE };
         std::span<std::byte> index = { reinterpret_cast<std::byte*>(prim.indices.data()), prim.indices.size() * sizeof(uint32_t) };
 
         totalVertexSize += vertex.size();
@@ -195,7 +201,7 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
                     .vertexData {
                         .deviceAddress = vertexAddress,
                     },
-                    .vertexStride = krypton::mesh::VERTEX_STRIDE,
+                    .vertexStride = krypton::assets::VERTEX_STRIDE,
                     .maxVertex = static_cast<uint32_t>(prim.primitive.vertices.size() - 1),
                     .indexType = VK_INDEX_TYPE_UINT32,
                     .indexData = {
@@ -587,7 +593,7 @@ krypton::util::Handle<"RenderObject"> krypton::rapi::VulkanBackend::createRender
     return objects.getNewHandle(refCounter);
 }
 
-krypton::util::Handle<"Material"> krypton::rapi::VulkanBackend::createMaterial(krypton::mesh::Material material) {
+krypton::util::Handle<"Material"> krypton::rapi::VulkanBackend::createMaterial(krypton::assets::Material material) {
     auto mutex = std::scoped_lock(materialMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     auto handle = materials.getNewHandle(refCounter);
@@ -717,14 +723,14 @@ void krypton::rapi::VulkanBackend::drawFrame() {
     cameraBuffer->memoryCopy(convertedCameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
 
     // Resize the material buffer and update the descriptor.
-    materialBuffer->resize(materials.capacity() * sizeof(krypton::mesh::Material));
+    materialBuffer->resize(materials.capacity() * sizeof(krypton::assets::Material));
     auto materialBufferInfo = materialBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
     rtDescriptorSet->updateBuffer(2, &materialBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
     auto& image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
     drawCommandBuffer->begin();
 
-    materialBuffer->memoryCopy(materials.data(), materials.size() * sizeof(krypton::mesh::Material));
+    materialBuffer->memoryCopy(materials.data(), materials.size() * sizeof(krypton::assets::Material));
     materialBuffer->copyIntoVram(drawCommandBuffer.get());
 
     // We update/rebuild the TLAS every frame so that new BLAS instances
@@ -1013,7 +1019,7 @@ void krypton::rapi::VulkanBackend::init() {
     geometryDescriptionBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "geometryDescriptionBuffer");
 
     materialBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "materialBuffer");
-    materialBuffer->create(materials.size() * sizeof(krypton::mesh::Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    materialBuffer->create(materials.size() * sizeof(krypton::assets::Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     materialBuffer->createDestinationBuffer(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     asProperties = std::make_unique<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();

@@ -21,7 +21,7 @@
 
 namespace krypton::rapi::metal {
     struct Primitive final {
-        krypton::mesh::Primitive primitive = {};
+        krypton::assets::Primitive primitive = {};
         krypton::util::Handle<"Material"> material;
     };
 
@@ -49,7 +49,7 @@ krypton::rapi::MetalBackend::MetalBackend() {
 
 krypton::rapi::MetalBackend::~MetalBackend() = default;
 
-void krypton::rapi::MetalBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::mesh::Primitive& primitive,
+void krypton::rapi::MetalBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                                                krypton::util::Handle<"Material">& material) {
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
@@ -77,8 +77,8 @@ void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"Rende
             renderObject.totalVertexCount += prim.vertices.size();
             renderObject.totalIndexCount += prim.indices.size();
 
-            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index);
+            size_t vertexDataSize = prim.vertices.size() * krypton::assets::VERTEX_STRIDE;
+            size_t indexDataSize = prim.indices.size() * sizeof(krypton::assets::Index);
 
             renderObject.bufferVertexOffsets.push_back(accumulatedVertexBufferSize + vertexDataSize);
             renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize + indexDataSize);
@@ -97,8 +97,8 @@ void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"Rende
         accumulatedIndexBufferSize = 0;
         for (const auto& primitive : renderObject.primitives) {
             const auto& prim = primitive.primitive;
-            size_t vertexDataSize = prim.vertices.size() * krypton::mesh::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::mesh::Index); // index size == 32
+            size_t vertexDataSize = prim.vertices.size() * krypton::assets::VERTEX_STRIDE;
+            size_t indexDataSize = prim.indices.size() * sizeof(krypton::assets::Index); // index size == 32
 
             memcpy(reinterpret_cast<uint8_t*>(vertexData) + accumulatedVertexBufferSize, prim.vertices.data(), vertexDataSize);
             memcpy(reinterpret_cast<uint8_t*>(indexData) + accumulatedIndexBufferSize, prim.indices.data(), indexDataSize);
@@ -115,7 +115,7 @@ krypton::util::Handle<"RenderObject"> krypton::rapi::MetalBackend::createRenderO
     return objects.getNewHandle(refCounter);
 }
 
-krypton::util::Handle<"Material"> krypton::rapi::MetalBackend::createMaterial(krypton::mesh::Material material) {
+krypton::util::Handle<"Material"> krypton::rapi::MetalBackend::createMaterial(krypton::assets::Material material) {
     auto lock = std::scoped_lock(materialMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     return materials.getNewHandle(refCounter);

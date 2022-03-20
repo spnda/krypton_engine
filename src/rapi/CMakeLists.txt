@@ -6,7 +6,7 @@ find_package(imgui CONFIG REQUIRED)
 
 target_link_libraries(krypton_rapi PRIVATE glfw)
 target_link_libraries(krypton_rapi PRIVATE imgui::imgui)
-target_link_libraries(krypton_rapi PUBLIC krypton::mesh)
+target_link_libraries(krypton_rapi PUBLIC krypton::assets)
 target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
 target_link_libraries(krypton_rapi PUBLIC krypton::threading)
 target_link_libraries(krypton_rapi PUBLIC krypton::util)
