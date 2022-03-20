@@ -21,5 +21,5 @@ target_link_libraries(krypton_assets_loader PUBLIC glm::glm)
 target_link_libraries(krypton_assets_loader PUBLIC krypton::assets)
 target_include_directories(krypton_assets_loader PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 
-add_source_directory(TARGET krypton_assets_loader FOLDER "include/models/loader/")
+add_source_directory(TARGET krypton_assets_loader FOLDER "include/assets/loader/")
 add_source_directory(TARGET krypton_assets_loader FOLDER "loader/")

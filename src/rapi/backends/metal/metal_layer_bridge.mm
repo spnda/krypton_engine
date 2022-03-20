@@ -1,3 +1,5 @@
+#ifdef RAPI_WITH_METAL
+
 #define GLFW_EXPOSE_NATIVE_COCOA
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -17,3 +19,5 @@ namespace krypton::rapi::metal {
         nswindow.contentView.wantsLayer = YES;
     }
 }
+
+#endif // #ifdef RAPI_WITH_METAL

@@ -5,7 +5,6 @@
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
-#define CU_PRIVATE_IMPLEMENTATION // our custom metal-cpp additions
 
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>

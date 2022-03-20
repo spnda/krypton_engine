@@ -65,10 +65,6 @@ if(WIN32
   add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/carbon")
 endif()
 
-if(APPLE)
-  add_subdirectory("${CMAKE_SOURCE_DIR}/src/metal")
-endif()
-
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/assets")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/rapi")

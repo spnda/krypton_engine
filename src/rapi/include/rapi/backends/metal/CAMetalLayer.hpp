@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef RAPI_WITH_METAL
+
 #include <Foundation/NSObject.hpp>
 #include <QuartzCore/CADefines.hpp>
 #include <QuartzCore/CAMetalDrawable.hpp>
@@ -90,3 +92,5 @@ inline void CA::MetalLayer::setPixelFormat(MTL::PixelFormat format) {
 inline void CA::MetalLayer::setDrawableSize(CG::Size size) {
     return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setDrawableSize), size);
 }
+
+#endif // #ifdef RAPI_WITH_METAL
