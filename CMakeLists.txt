@@ -10,6 +10,8 @@ set(KRYPTON_TRACY_CALLSTACK_SIZE
 # This forces us to set variables explicitly in CACHE so that the option() command does not override the value.
 cmake_policy(SET CMP0077 NEW)
 
+option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
+
 # Automatically find our vcpkg.cmake toolchain file. We only do this on Windows, as on Linux or Mac the user could also use the package
 # manager.
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
