@@ -37,7 +37,7 @@ namespace krypton::threading {
 
         // The function that gets executed by each worker thread in which
         // they wait on new work by listening to the std::condition_variable.
-        void workerThreadLoop();
+        void workerThreadLoop(uint32_t threadId);
 
         explicit Scheduler();
 

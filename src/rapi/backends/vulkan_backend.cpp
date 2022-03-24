@@ -5,8 +5,7 @@
 
 #include <imgui.h>
 
-#define VMA_IMPLEMENTATION
-#define VMA_ASSERT(expr) // We don't want VMA to do any assertions.
+#include <Tracy.hpp>
 
 #include <carbon/base/command_buffer.hpp>
 #include <carbon/base/command_pool.hpp>
@@ -345,7 +344,7 @@ void krypton::rapi::VulkanBackend::buildSBT() {
     missShader.region.deviceAddress = sbtAddress + rayGenShader.region.size;
     closestHitShader.region.deviceAddress = missShader.region.deviceAddress + missShader.region.size;
 
-    auto getHandleOffset = [&](uint32_t i) -> auto {
+    auto getHandleOffset = [&](uint32_t i) -> auto{
         return handleStorage.data() + i * handleSize;
     };
     uint32_t curHandleIndex = 0;

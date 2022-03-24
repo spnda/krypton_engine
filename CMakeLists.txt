@@ -1,4 +1,9 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.22)
+
+option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
+
+# This forces us to set variables explicitly in CACHE so that the option() command does not override the value.
+cmake_policy(SET CMP0077 NEW)
 
 # Automatically find our vcpkg.cmake toolchain file. We only do this on Windows, as on Linux or Mac the user could also use the package
 # manager.
@@ -13,6 +18,26 @@ elseif(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     WARNING
       "The CMAKE_TOOLCHAIN_FILE define and the VCPKG_ROOT environment variable are not defined, this could cause issues while searching for dependencies."
   )
+endif()
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE
+      "Debug"
+      CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+endif()
+
+# Normalize the CMAKE_BUILD_TYPE variable to be in PascalCase.
+string(TOUPPER ${CMAKE_BUILD_TYPE} KRYPTON_BUILD_TYPE_UPPER)
+if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
+  set(CMAKE_BUILD_TYPE "Debug")
+elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "RELEASE")
+  set(CMAKE_BUILD_TYPE "Release")
+elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "RELWITHDEBINFO")
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "MINSIZEREL")
+  set(CMAKE_BUILD_TYPE "MinSizeRel")
+else()
+  message(FATAL_ERROR "The CMAKE_BUILD_TYPE variable is not set to a valid value, options are: Debug Release RelWithDebInfo MinSizeRel.")
 endif()
 
 project("krypton_engine")
@@ -46,11 +71,21 @@ endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE
-      "Debug"
-      CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+find_package(Threads REQUIRED) # Tracy requires the threads lib
+
+# We set the TRACY_ENABLE variable accordingly.
+if(KRYPTON_USE_TRACY)
+  message(STATUS "Using tracy")
+  add_compile_definitions(TRACY_ENABLE)
+  add_compile_definitions(KRYPTON_USE_TRACY)
+else()
+  # Explicitely setting this variable in the cache is probably not the best idea but it does the job with CMP0077 set to its NEW behaviour.
+  set(TRACY_ENABLE
+      OFF
+      CACHE BOOL "" FORCE)
 endif()
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/tracy")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 include(add_files)

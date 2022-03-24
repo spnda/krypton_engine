@@ -1,3 +1,5 @@
+#include <Tracy.hpp>
+
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 // We disable clang-format as the order of these headers matters!
@@ -74,7 +76,7 @@ void kt::Scheduler::start() {
     }
 
     for (uint32_t i = 0; i < maxThreadCount; ++i) {
-        threadPool.emplace_back(&Scheduler::workerThreadLoop, this);
+        threadPool.emplace_back(&Scheduler::workerThreadLoop, this, i);
 #ifdef WIN32
         auto threadName = fmt::format("Worker thread {}", i);
         std::wstring wthreadName = std::wstring(threadName.begin(), threadName.end());
@@ -85,7 +87,9 @@ void kt::Scheduler::start() {
     running = true;
 }
 
-void kt::Scheduler::workerThreadLoop() {
+void kt::Scheduler::workerThreadLoop(uint32_t threadId) {
+    tracy::SetThreadName(fmt::format("Worker Thread {}", threadId).c_str());
+
     // This thread is supposed to run infinitely.
     while (true) {
         kt::Scheduler::taskFunction job;
@@ -111,7 +115,7 @@ void kt::Scheduler::workerThreadLoop() {
 
         // Now, execute the job.
         if (job) {
-            job();
+            ZoneScoped job();
         }
     }
 }

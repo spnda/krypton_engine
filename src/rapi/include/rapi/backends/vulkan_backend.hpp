@@ -18,7 +18,6 @@
 #include <assets/mesh.hpp>
 #include <rapi/backends/vulkan/buffer_descriptions.hpp>
 #include <rapi/backends/vulkan/render_object.hpp>
-#include <rapi/backends/vulkan/texture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
@@ -107,7 +106,7 @@ namespace krypton::rapi {
         krypton::util::FreeList<krypton::assets::Material, "Material", std::vector<krypton::assets::Material>> materials;
         std::mutex materialMutex;
 
-        krypton::util::FreeList<krypton::rapi::vulkan::Texture, "Texture", std::vector<krypton::rapi::vulkan::Texture>> textures;
+        // krypton::util::FreeList<krypton::rapi::vulkan::Texture, "Texture", std::vector<krypton::rapi::vulkan::Texture>> textures;
         std::mutex textureMutex;
 
         // BLAS Async Compute

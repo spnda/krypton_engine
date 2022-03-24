@@ -17,7 +17,7 @@ def find_clang_format():
         return "clang-format"
 
     # Now we search for a versioned clang-format with the highest version number
-    for version in range(13, 1, -1):  # We support up to clang-format-13 for now
+    for version in range(14, 1, -1):  # We support up to clang-format-14 for now
         if shutil.which(f"clang-format-{version}") is not None:
             return f"clang-format-{version}"
 

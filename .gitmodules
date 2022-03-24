@@ -4,3 +4,6 @@
 [submodule "submodules/carbon"]
 	path = submodules/carbon
 	url = https://github.com/spnda/carbon
+[submodule "submodules/tracy"]
+	path = submodules/tracy
+	url = https://github.com/wolfpld/tracy

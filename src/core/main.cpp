@@ -10,6 +10,8 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
+#include <Tracy.hpp>
+
 #include <assets/loader/fileloader.hpp>
 #include <assets/mesh.hpp>
 #include <assets/scene.hpp>
@@ -49,7 +51,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
             }
 
             for (auto& mesh : fileLoader->meshes) {
-                // We lock here because the buildRenderObject can take a bit and
+                // We lock here because the buildRenderObject can take a bit, and
                 // we'd otherwise be blocking our main thread.
                 renderObjectHandleMutex.lock();
                 auto& handle = renderObjectHandles.emplace_back(rapi->createRenderObject());
@@ -68,7 +70,6 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
 }
 
 void drawUi(krypton::rapi::RenderAPI* rapi) {
-    return;
     ImGui::Begin("Main");
 
     ImGui::SliderFloat3("Camera Position", cameraPos, -25.0, 25.0);
@@ -106,7 +107,7 @@ auto main(int argc, char* argv[]) -> int {
                                        glm::vec3(0, 1, 0));  // up vector - Y
 
         while (!rapi->getWindow()->shouldClose()) {
-            rapi->beginFrame();
+            ZoneScoped FrameMark rapi->beginFrame();
 
             renderObjectHandleMutex.lock();
             for (auto& handle : renderObjectHandles) {
