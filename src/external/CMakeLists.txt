@@ -5,7 +5,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
   # slang
   add_library(slang-core SHARED IMPORTED GLOBAL)
   add_library(slang::core ALIAS slang-core)
-  target_include_directories(slang-core INTERFACE "${CMAKE_SOURCE_DIR}/external/slang")
+  target_include_directories(slang-core SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/slang")
   if(WIN32)
     set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64/release/slang.dll")
     set_target_properties(slang-core PROPERTIES IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64/release/slang.lib")
@@ -59,7 +59,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   endif()
 
   # We just use the headers from glslang-release.
-  target_include_directories(glslang INTERFACE "${CMAKE_SOURCE_DIR}/external/glslang-release/include")
+  target_include_directories(glslang SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/glslang-release/include")
   set_target_properties(glslang PROPERTIES IMPORTED_LOCATION "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}glslang${GLSLANG_LIB_POSTFIX}")
 
   # Dependencies for MachineIndependent.lib
@@ -86,7 +86,26 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
 
   # metal-cpp is a header only external dependency
   add_library(metal-cpp INTERFACE)
-  target_include_directories(metal-cpp INTERFACE "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp")
+  target_include_directories(metal-cpp SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp")
   target_link_libraries(metal-cpp INTERFACE ${METAL_LIBRARY})
   target_link_libraries(metal-cpp INTERFACE ${QUARTZCORE_LIBRARY})
+endif()
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/submodules/tracy")
+  message(STATUS "Found tracy")
+  find_package(Threads REQUIRED)
+
+  add_library(tracy_client "${CMAKE_SOURCE_DIR}/submodules/tracy/TracyClient.cpp")
+  add_library(Tracy::TracyClient ALIAS tracy_client)
+
+  target_compile_features(tracy_client PUBLIC cxx_std_11)
+  target_include_directories(tracy_client SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/submodules/tracy/")
+  target_link_libraries(tracy_client PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
+
+  if(KRYPTON_USE_TRACY)
+    message(STATUS "TRACY CALLSTACK: ${KRYPTON_TRACY_CALLSTACK_SIZE}")
+    target_compile_definitions(tracy_client PUBLIC TRACY_ENABLE=1 TRACY_CALLSTACK=${KRYPTON_TRACY_CALLSTACK_SIZE})
+  else()
+    # We have to remove the definition for tracy to not profile, simply setting it to 0 will not work as we might expect.
+  endif()
 endif()

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <Tracy.hpp>
 #include <fmt/core.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -31,6 +32,7 @@ namespace krypton::rapi::window {
 krypton::rapi::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
 
 void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
+    ZoneScoped;
     using namespace krypton::rapi;
     if (!glfwInit())
         throw std::runtime_error("glfwInit failed.");
@@ -85,6 +87,7 @@ void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
 }
 
 void krypton::rapi::Window::initImgui() const {
+    ZoneScoped;
 #ifdef RAPI_WITH_VULKAN
     ImGui_ImplGlfw_InitForVulkan(window, true);
 #elif RAPI_WITH_METAL
@@ -93,10 +96,12 @@ void krypton::rapi::Window::initImgui() const {
 }
 
 void krypton::rapi::Window::newFrame() {
+    ZoneScoped;
     ImGui_ImplGlfw_NewFrame();
 }
 
 void krypton::rapi::Window::pollEvents() {
+    ZoneScoped;
     glfwPollEvents();
 }
 
@@ -105,15 +110,18 @@ void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
 }
 
 bool krypton::rapi::Window::shouldClose() const {
+    ZoneScoped;
     return glfwWindowShouldClose(window);
 }
 
 void krypton::rapi::Window::waitEvents() {
+    ZoneScoped;
     glfwWaitEvents();
 }
 
 #ifdef RAPI_WITH_VULKAN
 VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) const {
+    ZoneScoped;
     VkSurfaceKHR surface = nullptr;
     auto res = glfwCreateWindowSurface(vkInstance, window, nullptr, &surface);
     if (res) {
@@ -124,6 +132,7 @@ VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) c
 }
 
 std::vector<const char*> krypton::rapi::Window::getVulkanExtensions() {
+    ZoneScoped;
     uint32_t count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
     std::vector<const char*> exts(count);

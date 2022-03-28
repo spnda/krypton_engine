@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.22)
 
 option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
 
+# Using 'INTERNAL' allows us to use ints for cache variables... There seems to be no other way
+set(KRYPTON_TRACY_CALLSTACK_SIZE
+    10
+    CACHE INTERNAL "Set the size of the callstack for tracy to capture")
+
 # This forces us to set variables explicitly in CACHE so that the option() command does not override the value.
 cmake_policy(SET CMP0077 NEW)
 
@@ -71,21 +76,12 @@ endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
 
-find_package(Threads REQUIRED) # Tracy requires the threads lib
-
 # We set the TRACY_ENABLE variable accordingly.
 if(KRYPTON_USE_TRACY)
   message(STATUS "Using tracy")
   add_compile_definitions(TRACY_ENABLE)
   add_compile_definitions(KRYPTON_USE_TRACY)
-else()
-  # Explicitely setting this variable in the cache is probably not the best idea but it does the job with CMP0077 set to its NEW behaviour.
-  set(TRACY_ENABLE
-      OFF
-      CACHE BOOL "" FORCE)
 endif()
-
-add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/tracy")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 include(add_files)

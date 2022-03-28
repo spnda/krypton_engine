@@ -109,12 +109,14 @@ krypton::rapi::VulkanBackend::~VulkanBackend() = default;
 
 void krypton::rapi::VulkanBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
                                                 krypton::util::Handle<"Material">& material) {
+    ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
     object.primitives.push_back({ primitive, material });
 }
 
 void krypton::rapi::VulkanBackend::beginFrame() {
+    ZoneScoped;
     if (!needsResize) {
         window->pollEvents();
 
@@ -136,6 +138,7 @@ void krypton::rapi::VulkanBackend::beginFrame() {
 }
 
 void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+    ZoneScoped;
     auto lock = std::unique_lock(renderObjectMutex);
     auto& renderObject = objects.getFromHandle(handle);
 
@@ -268,6 +271,7 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
 }
 
 void krypton::rapi::VulkanBackend::buildRTPipeline() {
+    ZoneScoped;
     rtProperties = std::make_unique<VkPhysicalDeviceRayTracingPipelinePropertiesKHR>();
     rtProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
     physicalDevice->getProperties(rtProperties.get());
@@ -312,6 +316,7 @@ void krypton::rapi::VulkanBackend::buildRTPipeline() {
 }
 
 void krypton::rapi::VulkanBackend::buildSBT() {
+    ZoneScoped;
     // The pipeline wasn't built or is invalid.
     if (!rtPipeline)
         return;
@@ -366,6 +371,7 @@ void krypton::rapi::VulkanBackend::buildSBT() {
 }
 
 void krypton::rapi::VulkanBackend::buildUIPipeline() {
+    ZoneScoped;
     if (!uiFragment || !uiVertex) {
         // No shaders, can't build pipeline.
         return;
@@ -436,6 +442,7 @@ void krypton::rapi::VulkanBackend::buildUIPipeline() {
 }
 
 void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
+    ZoneScoped;
     frameHandleMutex.lock();
     renderObjectMutex.lock();
 
@@ -587,12 +594,14 @@ void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 }
 
 krypton::util::Handle<"RenderObject"> krypton::rapi::VulkanBackend::createRenderObject() {
+    ZoneScoped;
     auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     return objects.getNewHandle(refCounter);
 }
 
 krypton::util::Handle<"Material"> krypton::rapi::VulkanBackend::createMaterial(krypton::assets::Material material) {
+    ZoneScoped;
     auto mutex = std::scoped_lock(materialMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     auto handle = materials.getNewHandle(refCounter);
@@ -601,6 +610,7 @@ krypton::util::Handle<"Material"> krypton::rapi::VulkanBackend::createMaterial(k
 }
 
 void krypton::rapi::VulkanBackend::createUiFontTexture() {
+    ZoneScoped;
     uint8_t* pixels;
     int width, height;
     ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
@@ -655,6 +665,7 @@ void krypton::rapi::VulkanBackend::createUiFontTexture() {
 
 std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanBackend::createShader(const std::string& name, carbon::ShaderStage stage,
                                                                                  krypton::shaders::ShaderCompileResult& result) {
+    ZoneScoped;
     if (result.resultType == krypton::shaders::CompileResultType::String)
         return nullptr;
 
@@ -667,6 +678,7 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanBackend::createShader
 }
 
 bool krypton::rapi::VulkanBackend::destroyRenderObject(util::Handle<"RenderObject">& handle) {
+    ZoneScoped;
     auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
     if (valid) {
@@ -681,6 +693,7 @@ bool krypton::rapi::VulkanBackend::destroyRenderObject(util::Handle<"RenderObjec
 }
 
 bool krypton::rapi::VulkanBackend::destroyMaterial(util::Handle<"Material">& handle) {
+    ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
     auto valid = materials.isHandleValid(handle);
     if (valid) {
@@ -690,6 +703,7 @@ bool krypton::rapi::VulkanBackend::destroyMaterial(util::Handle<"Material">& han
 }
 
 void krypton::rapi::VulkanBackend::drawFrame() {
+    ZoneScoped;
     if (needsResize)
         return;
 
@@ -931,6 +945,7 @@ void krypton::rapi::VulkanBackend::drawFrame() {
 }
 
 void krypton::rapi::VulkanBackend::endFrame() {
+    ZoneScoped;
     ImGui::EndFrame();
 
     if (needsResize)
@@ -956,6 +971,7 @@ std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanBackend::getWindow()
 }
 
 void krypton::rapi::VulkanBackend::init() {
+    ZoneScoped;
     window->create(krypton::rapi::Backend::Vulkan);
 
     int width, height;
@@ -1074,6 +1090,7 @@ void krypton::rapi::VulkanBackend::init() {
 }
 
 void krypton::rapi::VulkanBackend::initUi() {
+    ZoneScoped;
     uiVertexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiVertexBuffer");
     uiIndexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiIndexBuffer");
 
@@ -1093,6 +1110,7 @@ void krypton::rapi::VulkanBackend::initUi() {
 
 void krypton::rapi::VulkanBackend::oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
                                                  const std::function<void(carbon::CommandBuffer*)>& callback) const {
+    ZoneScoped;
     auto queueGuard = std::move(blasComputeQueue->getLock());
 
     auto cmdBuffer = pool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -1120,6 +1138,7 @@ void krypton::rapi::VulkanBackend::oneTimeSubmit(carbon::Queue* queue, carbon::C
 }
 
 void krypton::rapi::VulkanBackend::render(krypton::util::Handle<"RenderObject"> handle) {
+    ZoneScoped;
     auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
     if (objects.isHandleValid(handle)) {
         auto mutex = std::scoped_lock<std::mutex>(frameHandleMutex);
@@ -1128,6 +1147,7 @@ void krypton::rapi::VulkanBackend::render(krypton::util::Handle<"RenderObject"> 
 }
 
 void krypton::rapi::VulkanBackend::resize(int width, int height) {
+    ZoneScoped;
     auto result = device->waitIdle();
     checkResult(graphicsQueue.get(), result, "Failed to wait on device idle");
 
@@ -1152,11 +1172,13 @@ void krypton::rapi::VulkanBackend::resize(int width, int height) {
 }
 
 void krypton::rapi::VulkanBackend::setObjectName(krypton::util::Handle<"RenderObject">& handle, std::string name) {
+    ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     objects.getFromHandle(handle).name = std::move(name);
 }
 
 void krypton::rapi::VulkanBackend::setObjectTransform(krypton::util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
+    ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     objects.getFromHandle(handle).transform = transform;
 }
@@ -1207,6 +1229,7 @@ void krypton::rapi::VulkanBackend::shutdown() {
 }
 
 VkResult krypton::rapi::VulkanBackend::submitFrame() {
+    ZoneScoped;
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
     auto cmdBuffer = VkCommandBuffer(*drawCommandBuffer);
@@ -1229,6 +1252,7 @@ VkResult krypton::rapi::VulkanBackend::submitFrame() {
 }
 
 VkResult krypton::rapi::VulkanBackend::waitForFrame() {
+    ZoneScoped;
     renderFence->wait();
     renderFence->reset();
     return swapchain->acquireNextImage(presentCompleteSemaphore, &swapchainIndex);

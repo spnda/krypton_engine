@@ -38,8 +38,9 @@ float cameraPos[3] = { 10, 0, -1 };
 float focus[3] = { 0, 0, 0 };
 
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
+    ZoneScoped;
     kt::Scheduler::getInstance().run([rapi, path]() {
-        auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
+        ZoneScopedN("Threaded loadModel") auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
         auto loaded = fileLoader->loadFile(path);
 
         if (!loaded) {
@@ -70,6 +71,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
 }
 
 void drawUi(krypton::rapi::RenderAPI* rapi) {
+    ZoneScoped;
     ImGui::Begin("Main");
 
     ImGui::SliderFloat3("Camera Position", cameraPos, -25.0, 25.0);
@@ -107,7 +109,9 @@ auto main(int argc, char* argv[]) -> int {
                                        glm::vec3(0, 1, 0));  // up vector - Y
 
         while (!rapi->getWindow()->shouldClose()) {
-            ZoneScoped FrameMark rapi->beginFrame();
+            ZoneScoped;
+            FrameMark;
+            rapi->beginFrame();
 
             renderObjectHandleMutex.lock();
             for (auto& handle : renderObjectHandles) {

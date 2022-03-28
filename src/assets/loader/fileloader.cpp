@@ -6,6 +6,8 @@
 #include <glm/gtx/quaternion.hpp>
 // #include <tiny_gltf.h> // Include it again so the above defines do their job.
 
+#include <Tracy.hpp>
+
 #include <assets/loader/fileloader.hpp>
 #include <util/logging.hpp>
 
@@ -53,6 +55,7 @@ namespace krypton::assets::loader {
 
     template <typename T, typename S>
     void writeToVector(const T* src, const size_t count, std::vector<S>& out) {
+        ZoneScoped;
         out.resize(count);
         for (size_t i = 0; i < count; ++i)
             out[i] = static_cast<T>(src[i]);
@@ -63,6 +66,7 @@ namespace ka = krypton::assets;
 
 void ka::loader::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node,
                                           glm::mat4 parentMatrix) {
+    ZoneScoped;
     auto& kMesh = meshes.emplace_back(std::make_shared<ka::Mesh>());
     kMesh->name = mesh.name;
     kMesh->transform = parentMatrix;
@@ -138,6 +142,7 @@ void ka::loader::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf
 }
 
 void ka::loader::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t nodeIndex, glm::mat4 matrix) {
+    ZoneScoped;
     matrix = getTransformMatrix(model.nodes[nodeIndex], matrix);
 
     auto& node = model.nodes[nodeIndex];
@@ -151,6 +156,7 @@ void ka::loader::FileLoader::loadGltfNode(tinygltf::Model& model, uint32_t nodeI
 }
 
 bool ka::loader::FileLoader::loadGltfFile(const fs::path& path) {
+    ZoneScoped;
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err, warn;
@@ -222,6 +228,7 @@ bool ka::loader::FileLoader::loadGltfFile(const fs::path& path) {
 }
 
 bool ka::loader::FileLoader::loadFile(const fs::path& path) {
+    ZoneScoped;
     meshes.clear();
     materials.clear();
     textures.clear();
