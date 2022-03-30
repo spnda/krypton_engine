@@ -17,6 +17,7 @@
             "features": [ "glfw-binding", "metal-binding" ],
             "platform": "osx"
         },
+        "stb",
         "tinygltf",
         {
             "name": "vk-bootstrap",

@@ -14,6 +14,9 @@ namespace krypton::util {
      */
     template <TemplateStringLiteral id>
     class Handle {
+        // This tells us if the handle can still be used.
+        bool valid = true;
+
         // Our handle values
         uint32_t index = 0;
         uint32_t generation = 0;
@@ -79,8 +82,22 @@ namespace krypton::util {
         [[nodiscard]] inline uint32_t getIndex() const noexcept {
             return index;
         }
+
         [[nodiscard]] inline uint32_t getGeneration() const noexcept {
             return generation;
+        }
+
+        [[nodiscard]] inline bool isValid() const noexcept {
+            return valid;
+        }
+
+        /**
+         * This invalidates this handle and using it anywhere should yield
+         * a invalid handle exception/assertion.
+         */
+        inline void invalidate() noexcept {
+            refCounter = nullptr;
+            valid = false;
         }
     };
 } // namespace krypton::util

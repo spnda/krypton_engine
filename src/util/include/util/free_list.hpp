@@ -92,6 +92,8 @@ namespace krypton::util {
     bool FreeList<Object, handleId, Container>::isHandleValid(const Handle<handleId>& handle) {
         if (size() < handle.getIndex())
             return false;
+        if (!handle.isValid())
+            return false;
         return mappings[handle.getIndex()].generation == handle.getGeneration();
     }
 

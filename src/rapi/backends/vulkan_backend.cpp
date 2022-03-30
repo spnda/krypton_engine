@@ -1,6 +1,7 @@
 #ifdef RAPI_WITH_VULKAN
 
 #include <array>
+#include <bit>
 #include <cctype>
 
 #include <imgui.h>
@@ -20,6 +21,7 @@
 #include <carbon/pipeline/graphics_pipeline.hpp>
 #include <carbon/resource/buffer.hpp>
 #include <carbon/resource/image.hpp>
+#include <carbon/resource/mappedbuffer.hpp>
 #include <carbon/resource/stagingbuffer.hpp>
 #include <carbon/resource/storageimage.hpp>
 #include <carbon/resource/texture.hpp>
@@ -33,13 +35,16 @@
 #include <threading/scheduler.hpp>
 #include <util/logging.hpp>
 
-static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShaderKinds = {
-    { carbon::ShaderStage::RayGeneration, krypton::shaders::ShaderStage::RayGen },
-    { carbon::ShaderStage::ClosestHit, krypton::shaders::ShaderStage::ClosestHit },
-    { carbon::ShaderStage::RayMiss, krypton::shaders::ShaderStage::Miss },
-    { carbon::ShaderStage::AnyHit, krypton::shaders::ShaderStage::AnyHit },
-    { carbon::ShaderStage::Intersection, krypton::shaders::ShaderStage::Intersect },
-    { carbon::ShaderStage::Callable, krypton::shaders::ShaderStage::Callable },
+namespace ka = krypton::assets;
+namespace kl = krypton::log;
+namespace kr = krypton::rapi;
+namespace ks = krypton::shaders;
+namespace ku = krypton::util;
+
+static std::map<carbon::ShaderStage, ks::ShaderStage> carbonShaderKinds = {
+    { carbon::ShaderStage::RayGeneration, ks::ShaderStage::RayGen },   { carbon::ShaderStage::ClosestHit, ks::ShaderStage::ClosestHit },
+    { carbon::ShaderStage::RayMiss, ks::ShaderStage::Miss },           { carbon::ShaderStage::AnyHit, ks::ShaderStage::AnyHit },
+    { carbon::ShaderStage::Intersection, ks::ShaderStage::Intersect }, { carbon::ShaderStage::Callable, ks::ShaderStage::Callable },
 };
 
 struct ImGuiPushConstants {
@@ -56,18 +61,41 @@ namespace krypton::rapi::vulkan {
         return vkMatrix;
     }
 
+    VkFormat getImageFormat(TextureFormat textureFormat, ColorEncoding encoding) {
+        switch (textureFormat) {
+            case TextureFormat::RGBA8: {
+                if (encoding == ColorEncoding::LINEAR) {
+                    return VK_FORMAT_R8G8B8A8_UNORM;
+                } else { // SRGB
+                    return VK_FORMAT_R8G8B8A8_SRGB;
+                }
+            }
+            case TextureFormat::A8: {
+                if (encoding == ColorEncoding::LINEAR) {
+                    return VK_FORMAT_R8_UNORM;
+                } else {
+                    return VK_FORMAT_R8_SRGB;
+                }
+            }
+            default: {
+                log::throwError("Failed to convert texture format {}", static_cast<uint32_t>(textureFormat));
+                return VK_FORMAT_UNDEFINED;
+            }
+        }
+    }
+
     inline VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                               VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) {
         switch (messageSeverity) {
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-                krypton::log::err(pCallbackData->pMessage);
+                kl::err(pCallbackData->pMessage);
                 break;
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-                krypton::log::warn(pCallbackData->pMessage);
+                kl::warn(pCallbackData->pMessage);
                 break;
             default:
-                krypton::log::log(pCallbackData->pMessage);
+                kl::log(pCallbackData->pMessage);
                 break;
         }
 
@@ -75,9 +103,9 @@ namespace krypton::rapi::vulkan {
     }
 } // namespace krypton::rapi::vulkan
 
-krypton::rapi::VulkanBackend::VulkanBackend() {
+kr::VulkanBackend::VulkanBackend() {
     instance = std::make_unique<carbon::Instance>();
-    instance->setDebugCallback(krypton::rapi::vulkan::vulkanDebugCallback);
+    instance->setDebugCallback(kr::vulkan::vulkanDebugCallback);
     instance->setApplicationData({ .apiVersion = VK_API_VERSION_1_3,
                                    .applicationVersion = 1,
                                    .engineVersion = 1,
@@ -87,7 +115,7 @@ krypton::rapi::VulkanBackend::VulkanBackend() {
 
     physicalDevice = std::make_shared<carbon::PhysicalDevice>();
     device = std::make_shared<carbon::Device>();
-    window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
+    window = std::make_shared<kr::Window>("Krypton", 1920, 1080);
 
     renderFence = std::make_shared<carbon::Fence>(device, "renderFence");
     presentCompleteSemaphore = std::make_shared<carbon::Semaphore>(device, "presentComplete");
@@ -100,23 +128,26 @@ krypton::rapi::VulkanBackend::VulkanBackend() {
     blasComputeQueue = std::make_unique<carbon::Queue>(device, "blasComputeQueue");
     computeCommandPool = std::make_shared<carbon::CommandPool>(device, "computeCommandPool");
 
+    mainTransferQueue = std::make_unique<carbon::Queue>(device, "mainTransferQueue");
+
     // Create camera buffer
-    cameraData = std::make_shared<krypton::rapi::CameraData>();
-    convertedCameraData = std::make_unique<krypton::rapi::CameraData>();
+    cameraData = std::make_shared<kr::CameraData>();
+    convertedCameraData = std::make_unique<kr::CameraData>();
 }
 
-krypton::rapi::VulkanBackend::~VulkanBackend() = default;
+kr::VulkanBackend::~VulkanBackend() = default;
 
-void krypton::rapi::VulkanBackend::addPrimitive(krypton::util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
-                                                krypton::util::Handle<"Material">& material) {
+void kr::VulkanBackend::addPrimitive(ku::Handle<"RenderObject">& handle, ka::Primitive& primitive, ku::Handle<"Material">& material) {
     ZoneScoped;
+
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
     object.primitives.push_back({ primitive, material });
 }
 
-void krypton::rapi::VulkanBackend::beginFrame() {
+void kr::VulkanBackend::beginFrame() {
     ZoneScoped;
+
     if (!needsResize) {
         window->pollEvents();
 
@@ -135,11 +166,24 @@ void krypton::rapi::VulkanBackend::beginFrame() {
     // and drawFrame.
     window->newFrame();
     ImGui::NewFrame();
+
+    vmaSetCurrentFrameIndex(allocator, ++frameIndex);
 }
 
-void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+void kr::VulkanBackend::buildMaterial(ku::Handle<"Material">& handle) {
     ZoneScoped;
-    auto lock = std::unique_lock(renderObjectMutex);
+
+    auto lock = std::scoped_lock(materialMutex);
+    if (materials.isHandleValid(handle)) {
+        auto& material = materials.getFromHandle(handle);
+        materialsToCopy.push(handle);
+    }
+}
+
+void kr::VulkanBackend::buildRenderObject(ku::Handle<"RenderObject">& handle) {
+    ZoneScoped;
+
+    auto lock = std::scoped_lock(renderObjectMutex);
     auto& renderObject = objects.getFromHandle(handle);
 
     auto primitiveSize = renderObject.primitives.size();
@@ -155,15 +199,14 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
     uint64_t totalVertexSize = 0, totalIndexSize = 0;
     for (auto& primitive : renderObject.primitives) {
         auto& description = renderObject.geometryDescriptions.emplace_back();
-        description.materialIndex = static_cast<krypton::assets::Index>(primitive.material.getIndex());
+        description.materialIndex = static_cast<ka::Index>(primitive.material.getIndex());
 
         // We use the address beforehand to store an offset into the actual address.
         description.vertexBufferAddress = totalVertexSize;
         description.indexBufferAddress = totalIndexSize;
 
         auto& prim = primitive.primitive;
-        std::span<std::byte> vertex = { reinterpret_cast<std::byte*>(prim.vertices.data()),
-                                        prim.vertices.size() * krypton::assets::VERTEX_STRIDE };
+        std::span<std::byte> vertex = { reinterpret_cast<std::byte*>(prim.vertices.data()), prim.vertices.size() * ka::VERTEX_STRIDE };
         std::span<std::byte> index = { reinterpret_cast<std::byte*>(prim.indices.data()), prim.indices.size() * sizeof(uint32_t) };
 
         totalVertexSize += vertex.size();
@@ -171,8 +214,6 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
 
         primitiveData.emplace_back(vertex, index);
     }
-
-    lock.unlock();
 
     VkTransformMatrixKHR blasTransform = vulkan::glmToVulkanMatrix(renderObject.transform);
     renderObject.blas->createMeshBuffers(primitiveData, blasTransform);
@@ -203,7 +244,7 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
                     .vertexData {
                         .deviceAddress = vertexAddress,
                     },
-                    .vertexStride = krypton::assets::VERTEX_STRIDE,
+                    .vertexStride = ka::VERTEX_STRIDE,
                     .maxVertex = static_cast<uint32_t>(prim.primitive.vertices.size() - 1),
                     .indexType = VK_INDEX_TYPE_UINT32,
                     .indexData = {
@@ -270,8 +311,9 @@ void krypton::rapi::VulkanBackend::buildRenderObject(krypton::util::Handle<"Rend
     renderObject.blas->destroyMeshBuffers();
 }
 
-void krypton::rapi::VulkanBackend::buildRTPipeline() {
+void kr::VulkanBackend::buildRTPipeline() {
     ZoneScoped;
+
     rtProperties = std::make_unique<VkPhysicalDeviceRayTracingPipelinePropertiesKHR>();
     rtProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
     physicalDevice->getProperties(rtProperties.get());
@@ -315,8 +357,9 @@ void krypton::rapi::VulkanBackend::buildRTPipeline() {
     rtDescriptorSet->updateImage(4, &storageImageDescriptor, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 }
 
-void krypton::rapi::VulkanBackend::buildSBT() {
+void kr::VulkanBackend::buildSBT() {
     ZoneScoped;
+
     // The pipeline wasn't built or is invalid.
     if (!rtPipeline)
         return;
@@ -340,10 +383,10 @@ void krypton::rapi::VulkanBackend::buildSBT() {
     auto result = rtPipeline->getShaderGroupHandles(handleCount, handleStorage);
     checkResult(result, "Failed to get ray tracing shader group handles!");
 
-    shaderBindingTable->create(sbtSize,
-                               VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                   VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR,
-                               VMA_MEMORY_USAGE_CPU_TO_GPU);
+    shaderBindingTable->create(
+        sbtSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR,
+        VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     auto sbtAddress = shaderBindingTable->getDeviceAddress();
     rayGenShader.region.deviceAddress = sbtAddress;
     missShader.region.deviceAddress = sbtAddress + rayGenShader.region.size;
@@ -352,26 +395,34 @@ void krypton::rapi::VulkanBackend::buildSBT() {
     auto getHandleOffset = [&](uint32_t i) -> auto{
         return handleStorage.data() + i * handleSize;
     };
+    auto writeAtOffset = [&](void* dst, void* source, uint64_t size, uint64_t offset) {
+        std::memcpy(reinterpret_cast<uint8_t*>(dst) + offset, source, size);
+    };
     uint32_t curHandleIndex = 0;
 
+    void* sbtMemory;
+    shaderBindingTable->mapMemory(&sbtMemory);
+
     // Write raygen shader
-    shaderBindingTable->memoryCopy(getHandleOffset(curHandleIndex++), handleSize, 0);
+    writeAtOffset(sbtMemory, getHandleOffset(curHandleIndex++), handleSize, 0);
 
     // Write miss shaders
     for (uint32_t i = 0; i < missCount; i++) {
-        shaderBindingTable->memoryCopy(getHandleOffset(curHandleIndex++), handleSize,
-                                       rayGenShader.region.size + missShader.region.stride * i);
+        writeAtOffset(sbtMemory, getHandleOffset(curHandleIndex++), handleSize, rayGenShader.region.size + missShader.region.stride * i);
     }
 
     // Write chit shaders
     for (uint32_t i = 0; i < chitCount; i++) {
-        shaderBindingTable->memoryCopy(getHandleOffset(curHandleIndex++), handleSize,
-                                       rayGenShader.region.size + missShader.region.size + closestHitShader.region.stride * i);
+        writeAtOffset(sbtMemory, getHandleOffset(curHandleIndex++), handleSize,
+                      rayGenShader.region.size + missShader.region.size + closestHitShader.region.stride * i);
     }
+
+    shaderBindingTable->unmapMemory();
 }
 
-void krypton::rapi::VulkanBackend::buildUIPipeline() {
+void kr::VulkanBackend::buildUIPipeline() {
     ZoneScoped;
+
     if (!uiFragment || !uiVertex) {
         // No shaders, can't build pipeline.
         return;
@@ -437,12 +488,16 @@ void krypton::rapi::VulkanBackend::buildUIPipeline() {
     uiPipeline->create();
     uiPipeline->setName("ui_pipeline");
 
-    auto fontTextureInfo = uiFontTexture->getDescriptorImageInfo();
+    auto lock = std::scoped_lock(textureMutex);
+    assert(uiFontTexture.has_value());
+    auto& tex = textures.getFromHandle(uiFontTexture.value());
+    auto fontTextureInfo = tex.texture->getDescriptorImageInfo();
     uiDescriptorSet->updateImage(0, &fontTextureInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 }
 
-void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
+void kr::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     ZoneScoped;
+
     frameHandleMutex.lock();
     renderObjectMutex.lock();
 
@@ -455,7 +510,7 @@ void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     // or not ready to be used yet.
     uint32_t primitiveCount = 0;
     std::vector<VkAccelerationStructureInstanceKHR> instances(maxPrimitiveCount, VkAccelerationStructureInstanceKHR {});
-    std::vector<krypton::rapi::vulkan::GeometryDescription> descriptions = {};
+    std::vector<kr::vulkan::GeometryDescription> descriptions = {};
     for (auto& handle : handlesForFrame) {
         if (!objects.isHandleValid(handle))
             continue; // The handle is invalid; the object was probably destroyed
@@ -491,7 +546,7 @@ void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
 
     if (primitiveCount > 0) {
         size_t instanceBufferSize = sizeof(VkAccelerationStructureInstanceKHR) * primitiveCount;
-        size_t descriptionBufferSize = sizeof(krypton::rapi::vulkan::GeometryDescription) * descriptions.size();
+        size_t descriptionBufferSize = sizeof(kr::vulkan::GeometryDescription) * descriptions.size();
 
         if (instanceBufferSize <= tlasInstanceBuffer->getSize() && tlasInstanceBuffer->getSize() != 0) {
             // We can re-use the old instance buffers
@@ -593,80 +648,67 @@ void krypton::rapi::VulkanBackend::buildTLAS(carbon::CommandBuffer* cmdBuffer) {
     cmdBuffer->buildAccelerationStructures(buildGeometryInfos, buildRangeInfos);
 }
 
-krypton::util::Handle<"RenderObject"> krypton::rapi::VulkanBackend::createRenderObject() {
+ku::Handle<"RenderObject"> kr::VulkanBackend::createRenderObject() {
     ZoneScoped;
-    auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
-    auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
+
+    auto mutex = std::scoped_lock(renderObjectMutex);
+    auto refCounter = std::make_shared<ku::ReferenceCounter>();
     return objects.getNewHandle(refCounter);
 }
 
-krypton::util::Handle<"Material"> krypton::rapi::VulkanBackend::createMaterial(krypton::assets::Material material) {
+ku::Handle<"Material"> kr::VulkanBackend::createMaterial() {
     ZoneScoped;
+
     auto mutex = std::scoped_lock(materialMutex);
-    auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
+    auto refCounter = std::make_shared<ku::ReferenceCounter>();
     auto handle = materials.getNewHandle(refCounter);
-    materials.getFromHandle(handle) = material;
+
+    auto& material = materials.getFromHandle(handle);
+    material.refCounter = refCounter;
+
     return std::move(handle);
 }
 
-void krypton::rapi::VulkanBackend::createUiFontTexture() {
+ku::Handle<"Texture"> kr::VulkanBackend::createTexture() {
     ZoneScoped;
+
+    auto mutex = std::scoped_lock(textureMutex);
+    auto refCounter = std::make_shared<ku::ReferenceCounter>();
+    auto handle = textures.getNewHandle(refCounter);
+
+    auto& texture = textures.getFromHandle(handle);
+    texture.refCounter = refCounter;
+
+    return handle;
+}
+
+void kr::VulkanBackend::createUiFontTexture() {
+    ZoneScoped;
+
     uint8_t* pixels;
     int width, height;
     ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
     size_t textureSize = width * height * sizeof(uint8_t); // Single alpha channel
 
-    VkExtent2D extent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+    std::vector<std::byte> bytes(textureSize);
+    std::memcpy(bytes.data(), pixels, textureSize);
 
-    // Create the texture
-    uiFontTexture = std::make_unique<carbon::Texture>(device, allocator, extent, "uiFontTexture");
-
-    // This essentially set's every value in the texture to vec3(1.0, 1.0, 1.0, val).
-    uiFontTexture->setComponentMapping({
-        .r = VK_COMPONENT_SWIZZLE_ONE,
-        .g = VK_COMPONENT_SWIZZLE_ONE,
-        .b = VK_COMPONENT_SWIZZLE_ONE,
-        .a = VK_COMPONENT_SWIZZLE_R,
-    });
-    uiFontTexture->createTexture(VK_FORMAT_R8_UNORM, 1, 1); // This also creates a sampler for us
-
-    // Create the staging buffer for the texture data
-    auto textureStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiFontTextureStagingBuffer");
-    textureStagingBuffer->create(textureSize);
-    textureStagingBuffer->memoryCopy(pixels, textureSize);
-
-    oneTimeSubmit(graphicsQueue.get(), commandPool.get(), [&](carbon::CommandBuffer* cmdBuffer) {
-        auto imageSubresource = VkImageSubresourceRange {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .levelCount = 1,
-            .layerCount = 1,
-        };
-        uiFontTexture->changeLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageSubresource, VK_PIPELINE_STAGE_HOST_BIT,
-                                    VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-        VkBufferImageCopy copy = {
-            .imageSubresource = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .layerCount = 1,
-            },
-            .imageExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
-        };
-        textureStagingBuffer->copyToImage(cmdBuffer, uiFontTexture.get(), uiFontTexture->getImageLayout(), &copy);
-
-        uiFontTexture->changeLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageSubresource, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    });
-
-    textureStagingBuffer->destroy();
+    uiFontTexture = createTexture();
+    setTextureColorEncoding(uiFontTexture.value(), ColorEncoding::LINEAR);
+    setTextureData(uiFontTexture.value(), static_cast<uint32_t>(width), static_cast<uint32_t>(height), bytes, TextureFormat::A8);
+    uploadTexture(uiFontTexture.value());
 
     // Store the VkImage handle as a texture ID for ImGui.
-    ImGui::GetIO().Fonts->SetTexID((ImTextureID)(intptr_t)VkImage(*uiFontTexture));
+    auto lock = std::scoped_lock(textureMutex);
+    auto& tex = textures.getFromHandle(uiFontTexture.value());
+    ImGui::GetIO().Fonts->SetTexID((ImTextureID)(intptr_t)VkImage(*tex.texture));
 }
 
-std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanBackend::createShader(const std::string& name, carbon::ShaderStage stage,
-                                                                                 krypton::shaders::ShaderCompileResult& result) {
+std::unique_ptr<carbon::ShaderModule> kr::VulkanBackend::createShader(const std::string& name, carbon::ShaderStage stage,
+                                                                      ks::ShaderCompileResult& result) {
     ZoneScoped;
-    if (result.resultType == krypton::shaders::CompileResultType::String)
+
+    if (result.resultType != ks::CompileResultType::Spirv)
         return nullptr;
 
     if (result.resultSize <= 0)
@@ -677,9 +719,9 @@ std::unique_ptr<carbon::ShaderModule> krypton::rapi::VulkanBackend::createShader
     return shader;
 }
 
-bool krypton::rapi::VulkanBackend::destroyRenderObject(util::Handle<"RenderObject">& handle) {
+bool kr::VulkanBackend::destroyRenderObject(ku::Handle<"RenderObject">& handle) {
     ZoneScoped;
-    auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
+    auto lock = std::scoped_lock(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
     if (valid) {
         /** Also delete the buffers */
@@ -688,22 +730,52 @@ bool krypton::rapi::VulkanBackend::destroyRenderObject(util::Handle<"RenderObjec
         object.blas->destroy();
 
         objects.removeHandle(handle);
+        handle.invalidate();
     }
     return valid;
 }
 
-bool krypton::rapi::VulkanBackend::destroyMaterial(util::Handle<"Material">& handle) {
+bool kr::VulkanBackend::destroyMaterial(ku::Handle<"Material">& handle) {
     ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
     auto valid = materials.isHandleValid(handle);
     if (valid) {
-        materials.removeHandle(handle);
+        auto& mat = materials.getFromHandle(handle);
+        mat.refCounter->decrement();
+        if (mat.refCounter->count() == 0) {
+            materials.removeHandle(handle);
+        } else {
+            // This generally shouldn't happen.
+            log::warn("destroyMaterial called on material which is still in use!");
+        }
+        handle.invalidate();
     }
     return valid;
 }
 
-void krypton::rapi::VulkanBackend::drawFrame() {
+bool kr::VulkanBackend::destroyTexture(ku::Handle<"Texture">& handle) {
     ZoneScoped;
+    auto lock = std::scoped_lock(textureMutex);
+    auto valid = textures.isHandleValid(handle);
+    if (valid) {
+        auto& tex = textures.getFromHandle(handle);
+        tex.refCounter->decrement();
+        if (tex.refCounter->count() == 0) {
+            tex.texture->destroy();
+            textures.removeHandle(handle);
+        } else {
+            // This generally shouldn't happen.
+            log::warn("destroyTexture called on texture which is still in use! {}", tex.name);
+        }
+        handle.invalidate();
+    }
+
+    return valid;
+}
+
+void kr::VulkanBackend::drawFrame() {
+    ZoneScoped;
+
     if (needsResize)
         return;
 
@@ -715,11 +787,20 @@ void krypton::rapi::VulkanBackend::drawFrame() {
         return;
     }
 
+    std::vector<VmaBudget> budgets(memoryProperties->memoryProperties.memoryHeapCount);
+    vmaGetHeapBudgets(allocator, budgets.data());
+
+    // We take the memory usage of the main memory heap, which
+    // is usually the DEVICE_LOCAL memory.
+    size_t mainMemoryUsage = budgets[0].usage, mainMemoryBudget = budgets[0].budget;
+
     // We'll also draw our settings UI now.
     // It is a completely separate window, so it shouldn't interfere
     // with any other imgui calls.
     ImGui::Begin("Renderer Settings");
     ImGui::Text("%s", fmt::format("Rendering on {}", device->getPhysicalDevice()->getDeviceName()).c_str());
+    ImGui::Text("Memory usage: %.2fGB / %.2fGB", static_cast<float>(mainMemoryUsage) / 1000000000.0f,
+                static_cast<float>(mainMemoryBudget) / 1000000000.0f);
     ImGui::Separator();
     for (auto& handle : handlesForFrame) {
         auto& object = objects.getFromHandle(handle);
@@ -733,18 +814,19 @@ void krypton::rapi::VulkanBackend::drawFrame() {
 
     // Have to flip the projection matrix because when raytracing, the image is written to the "wrong" way round.
     convertedCameraData->projection[1][1] *= -1.0;
-    cameraBuffer->memoryCopy(convertedCameraData.get(), krypton::rapi::CAMERA_DATA_SIZE);
-
-    // Resize the material buffer and update the descriptor.
-    materialBuffer->resize(materials.capacity() * sizeof(krypton::assets::Material));
-    auto materialBufferInfo = materialBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
-    rtDescriptorSet->updateBuffer(2, &materialBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    cameraBuffer->memoryCopy(convertedCameraData.get(), kr::CAMERA_DATA_SIZE);
 
     auto& image = swapchain->swapchainImages[static_cast<size_t>(swapchainIndex)];
     drawCommandBuffer->begin();
 
-    materialBuffer->memoryCopy(materials.data(), materials.size() * sizeof(krypton::assets::Material));
-    materialBuffer->copyIntoVram(drawCommandBuffer.get());
+    // Resize the material buffer and update the descriptor.
+    // If the updateMaterialBuffer returns true, it had to copy the oldMaterialBuffer to our new
+    // materialBuffer using the given command buffer and we'll have to insert a pipeline barrier.
+    if (updateMaterialBuffer(drawCommandBuffer.get())) {
+        VkBufferMemoryBarrier materialMemory = materialBuffer->getMemoryBarrier(VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+        drawCommandBuffer->pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr,
+                                           1, &materialMemory, 0, nullptr);
+    }
 
     // We update/rebuild the TLAS every frame so that new BLAS instances
     // are added instantly.
@@ -910,8 +992,8 @@ void krypton::rapi::VulkanBackend::drawFrame() {
 
         uint32_t vertexOffset = 0, indexOffset = 0;
         for (size_t i = 0; i < imguiDrawData->CmdListsCount; ++i) {
-
             const ImDrawList* cmdList = imguiDrawData->CmdLists[i];
+
             for (int32_t j = 0; j < cmdList->CmdBuffer.Size; ++j) {
                 auto& cmd = cmdList->CmdBuffer[j];
 
@@ -944,7 +1026,7 @@ void krypton::rapi::VulkanBackend::drawFrame() {
     drawCommandBuffer->end(graphicsQueue.get());
 }
 
-void krypton::rapi::VulkanBackend::endFrame() {
+void kr::VulkanBackend::endFrame() {
     ZoneScoped;
     ImGui::EndFrame();
 
@@ -962,28 +1044,28 @@ void krypton::rapi::VulkanBackend::endFrame() {
     handlesForFrame.clear();
 }
 
-std::shared_ptr<krypton::rapi::CameraData> krypton::rapi::VulkanBackend::getCameraData() {
+std::shared_ptr<kr::CameraData> kr::VulkanBackend::getCameraData() {
     return cameraData;
 }
 
-std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanBackend::getWindow() {
+std::shared_ptr<kr::Window> kr::VulkanBackend::getWindow() {
     return window;
 }
 
-void krypton::rapi::VulkanBackend::init() {
+void kr::VulkanBackend::init() {
     ZoneScoped;
-    window->create(krypton::rapi::Backend::Vulkan);
+    window->create(kr::Backend::Vulkan);
 
     int width, height;
     window->getWindowSize(&width, &height);
     frameBufferWidth = width;
     frameBufferHeight = height;
 
-    auto exts = window->getVulkanExtensions();
-    for (auto& e : exts) {
+    auto windowExtensions = window->getVulkanExtensions();
+    for (auto& e : windowExtensions) {
         std::string ext = std::string { e };
         instanceExtensions.push_back(ext);
-        krypton::log::log("Requesting window extension: {}", ext.c_str());
+        kl::log("Requesting window extension: {}", ext.c_str());
     }
     instance->addExtensions(instanceExtensions);
     instance->create();
@@ -992,11 +1074,19 @@ void krypton::rapi::VulkanBackend::init() {
     // Create device and allocator
     physicalDevice->create(instance.get(), surface);
     device->create(physicalDevice);
+    memoryProperties = physicalDevice->getMemoryProperties(nullptr);
 
-    krypton::log::log("Setting up Vulkan on: {}", physicalDevice->getDeviceName());
+    kl::log("Setting up Vulkan on: {}", physicalDevice->getDeviceName());
+
+    bool supportsMemoryBudget = device->getPhysicalDevice()->supportsExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+    VmaAllocatorCreateFlags vmaAllocatorFlags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    if (supportsMemoryBudget) {
+        kl::log("Device supports VK_EXT_memory_budget");
+        vmaAllocatorFlags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    }
 
     // Create our VMA Allocator
-    VmaAllocatorCreateInfo allocatorInfo = { .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+    VmaAllocatorCreateInfo allocatorInfo = { .flags = vmaAllocatorFlags,
                                              .physicalDevice = *physicalDevice,
                                              .device = *device,
                                              .instance = *instance,
@@ -1017,12 +1107,14 @@ void krypton::rapi::VulkanBackend::init() {
     // Create the swapchain
     swapchain->create(surface, { frameBufferWidth, frameBufferHeight });
 
-    // Initialize ImGui
-    initUi();
-
     // Create our secondary compute queue
     blasComputeQueue->create(vkb::QueueType::compute);
     computeCommandPool->create(device->getQueueIndex(vkb::QueueType::compute), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    mainTransferQueue->create(vkb::QueueType::transfer);
+
+    // Initialize ImGui
+    initUi();
 
     /* These all need the allocator in their ctor and the allocator was only constructed now,
      * therefore these are here. */
@@ -1033,31 +1125,32 @@ void krypton::rapi::VulkanBackend::init() {
     tlasInstanceBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "tlasInstanceBuffer");
     geometryDescriptionBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "geometryDescriptionBuffer");
 
-    materialBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "materialBuffer");
-    materialBuffer->create(materials.size() * sizeof(krypton::assets::Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    materialBuffer->createDestinationBuffer(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
     asProperties = std::make_unique<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();
     asProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
     physicalDevice->getProperties(asProperties.get());
 
-    cameraBuffer = std::make_unique<carbon::Buffer>(device, allocator, "cameraBuffer");
-    cameraBuffer->create(krypton::rapi::CAMERA_DATA_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    cameraBuffer->memoryCopy(&cameraData, krypton::rapi::CAMERA_DATA_SIZE);
+    materialBuffer = std::make_unique<carbon::MappedBuffer>(device, allocator, "materialBuffer");
+    materialBuffer->create(materials.size() * sizeof(ka::Material),
+                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                           VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
+    cameraBuffer = std::make_unique<carbon::MappedBuffer>(device, allocator, "cameraBuffer");
+    cameraBuffer->create(kr::CAMERA_DATA_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    cameraBuffer->memoryCopy(&cameraData, kr::CAMERA_DATA_SIZE);
 
     // Create shaders
-    using namespace krypton::shaders;
-    auto shaderFile = readShaderFile("shaders/main.slang");
-    auto input = std::vector { ShaderCompileInput {
+    auto shaderFile = ks::readShaderFile("shaders/main.slang");
+    auto input = std::vector { ks::ShaderCompileInput {
         .filePath = "shaders/main.slang",
         .source = shaderFile.content,
         .entryPoints = { "raygen", "miss", "closesthit" },
-        .shaderStages = { ShaderStage::RayGen, ShaderStage::Miss, ShaderStage::ClosestHit },
-        .sourceType = ShaderSourceType::SLANG,
-        .targetType = ShaderTargetType::SPIRV,
+        .shaderStages = { ks::ShaderStage::RayGen, ks::ShaderStage::Miss, ks::ShaderStage::ClosestHit },
+        .sourceType = ks::ShaderSourceType::SLANG,
+        .targetType = ks::ShaderTargetType::SPIRV,
     } };
-    auto mainShader = compileShaders(input);
-    auto rahitShader = compileShaders("shaders/anyhit.rahit", ShaderStage::AnyHit, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
+    auto mainShader = ks::compileShaders(input);
+    auto rahitShader =
+        ks::compileShaders("shaders/anyhit.rahit", ks::ShaderStage::AnyHit, ks::ShaderSourceType::GLSL, ks::ShaderTargetType::SPIRV);
 
     if (mainShader.size() == input.front().entryPoints.size() && !rahitShader.empty()) {
         rayGenShader.shader = createShader("raygen", carbon::ShaderStage::RayGeneration, mainShader[0]);
@@ -1067,15 +1160,17 @@ void krypton::rapi::VulkanBackend::init() {
     }
 
     // Create UI shaders
-    auto uiFragShader = compileShaders("shaders/ui.frag", ShaderStage::Fragment, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
-    auto uiVertShader = compileShaders("shaders/ui.vert", ShaderStage::Vertex, ShaderSourceType::GLSL, ShaderTargetType::SPIRV);
+    auto uiFragShader =
+        ks::compileShaders("shaders/ui.frag", ks::ShaderStage::Fragment, ks::ShaderSourceType::GLSL, ks::ShaderTargetType::SPIRV);
+    auto uiVertShader =
+        ks::compileShaders("shaders/ui.vert", ks::ShaderStage::Vertex, ks::ShaderSourceType::GLSL, ks::ShaderTargetType::SPIRV);
 
     if (!uiFragShader.empty() && !uiVertShader.empty()) {
         uiFragment = createShader("uiFragment", carbon::ShaderStage::Fragment, uiFragShader.front());
         uiVertex = createShader("uiVertex", carbon::ShaderStage::Vertex, uiVertShader.front());
     }
 
-    window->setRapiPointer(static_cast<krypton::rapi::RenderAPI*>(this));
+    window->setRapiPointer(static_cast<kr::RenderAPI*>(this));
 
     /* Build necessary objects for rendering */
     storageImage->create();
@@ -1089,7 +1184,7 @@ void krypton::rapi::VulkanBackend::init() {
     this->buildSBT();
 }
 
-void krypton::rapi::VulkanBackend::initUi() {
+void kr::VulkanBackend::initUi() {
     ZoneScoped;
     uiVertexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiVertexBuffer");
     uiIndexBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "uiIndexBuffer");
@@ -1108,10 +1203,10 @@ void krypton::rapi::VulkanBackend::initUi() {
     createUiFontTexture();
 }
 
-void krypton::rapi::VulkanBackend::oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
-                                                 const std::function<void(carbon::CommandBuffer*)>& callback) const {
+void kr::VulkanBackend::oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
+                                      const std::function<void(carbon::CommandBuffer*)>& callback) const {
     ZoneScoped;
-    auto queueGuard = std::move(blasComputeQueue->getLock());
+    auto queueGuard = std::move(queue->getLock());
 
     auto cmdBuffer = pool->allocateBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     cmdBuffer->begin();
@@ -1137,16 +1232,16 @@ void krypton::rapi::VulkanBackend::oneTimeSubmit(carbon::Queue* queue, carbon::C
     pool->freeBuffers({ cmdBuffer.get() });
 }
 
-void krypton::rapi::VulkanBackend::render(krypton::util::Handle<"RenderObject"> handle) {
+void kr::VulkanBackend::render(ku::Handle<"RenderObject"> handle) {
     ZoneScoped;
-    auto lock = std::scoped_lock<std::mutex>(renderObjectMutex);
+    auto lock = std::scoped_lock(renderObjectMutex);
     if (objects.isHandleValid(handle)) {
-        auto mutex = std::scoped_lock<std::mutex>(frameHandleMutex);
+        auto mutex = std::scoped_lock(frameHandleMutex);
         handlesForFrame.emplace_back(handle);
     }
 }
 
-void krypton::rapi::VulkanBackend::resize(int width, int height) {
+void kr::VulkanBackend::resize(int width, int height) {
     ZoneScoped;
     auto result = device->waitIdle();
     checkResult(graphicsQueue.get(), result, "Failed to wait on device idle");
@@ -1171,20 +1266,66 @@ void krypton::rapi::VulkanBackend::resize(int width, int height) {
     needsResize = false;
 }
 
-void krypton::rapi::VulkanBackend::setObjectName(krypton::util::Handle<"RenderObject">& handle, std::string name) {
+void kr::VulkanBackend::setObjectName(ku::Handle<"RenderObject">& handle, std::string name) {
     ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     objects.getFromHandle(handle).name = std::move(name);
 }
 
-void krypton::rapi::VulkanBackend::setObjectTransform(krypton::util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
+void kr::VulkanBackend::setObjectTransform(ku::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
     ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     objects.getFromHandle(handle).transform = transform;
 }
 
-void krypton::rapi::VulkanBackend::shutdown() {
+void kr::VulkanBackend::setMaterialBaseColor(ku::Handle<"Material"> handle, glm::vec3 color) {
+    auto lock = std::scoped_lock(materialMutex);
+    materials.getFromHandle(handle).material.baseColor = glm::fvec4(color, 1.0);
+}
+
+void kr::VulkanBackend::setMaterialDiffuseTexture(ku::Handle<"Material"> handle, ku::Handle<"Texture"> textureHandle) {
+    auto lock = std::scoped_lock(materialMutex);
+    if (!materials.isHandleValid(handle) || !textures.isHandleValid(textureHandle))
+        return;
+    auto& mat = materials.getFromHandle(handle);
+    mat.diffuseTexture = std::move(textureHandle);
+    mat.material.baseTextureIndex = static_cast<ka::Index>(mat.diffuseTexture->getIndex());
+}
+
+void kr::VulkanBackend::setTextureData(ku::Handle<"Texture"> handle, uint32_t width, uint32_t height, const std::vector<std::byte>& pixels,
+                                       kr::TextureFormat format) {
+    auto lock = std::scoped_lock(textureMutex);
+    if (!textures.isHandleValid(handle))
+        return;
+
+    auto& texture = textures.getFromHandle(handle);
+    texture.width = width;
+    texture.height = height;
+    texture.format = format;
+    texture.pixels = pixels; // We create a copy of our pixel data.
+}
+
+void kr::VulkanBackend::setTextureColorEncoding(ku::Handle<"Texture"> handle, kr::ColorEncoding encoding) {
+    auto lock = std::scoped_lock(textureMutex);
+    if (textures.isHandleValid(handle)) {
+        textures.getFromHandle(handle).encoding = encoding;
+    }
+}
+
+void kr::VulkanBackend::shutdown() {
     checkResult(graphicsQueue.get(), device->waitIdle(), "Failed waiting on device idle");
+
+    // Destroy all textures that still exist. We don't care about
+    // handles now, they're all being invalidated anyway.
+    textureMutex.lock();
+    const vulkan::Texture* ptrTextures = textures.data();
+    for (uint32_t i = 0; i < textures.size(); ++i) {
+        if (ptrTextures[i].texture != nullptr)
+            ptrTextures[i].texture->destroy();
+    }
+    textureMutex.unlock();
+
+    materialBuffer->destroy();
 
     rayGenShader.shader->destroy();
     closestHitShader.shader->destroy();
@@ -1198,7 +1339,6 @@ void krypton::rapi::VulkanBackend::shutdown() {
 
     uiPipeline->destroy();
     uiDescriptorSet->destroy();
-    uiFontTexture->destroy();
 
     rtPipeline->destroy();
     rtDescriptorSet->destroy();
@@ -1228,7 +1368,7 @@ void krypton::rapi::VulkanBackend::shutdown() {
     window->destroy();
 }
 
-VkResult krypton::rapi::VulkanBackend::submitFrame() {
+VkResult kr::VulkanBackend::submitFrame() {
     ZoneScoped;
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
@@ -1251,7 +1391,120 @@ VkResult krypton::rapi::VulkanBackend::submitFrame() {
     return swapchain->queuePresent(graphicsQueue, swapchainIndex, renderCompleteSemaphore);
 }
 
-VkResult krypton::rapi::VulkanBackend::waitForFrame() {
+bool kr::VulkanBackend::updateMaterialBuffer(carbon::CommandBuffer* cmdBuffer) {
+    ZoneScoped;
+
+    // Resize the material buffer and update the descriptor.
+    size_t newMaterialBufferSize = materials.capacity() * sizeof(ka::Material);
+    bool requiresNewMaterialBuffer = materialBuffer->getSize() < newMaterialBufferSize;
+
+    // Copy enqueued materials into the buffer, but only if it doesn't have to be resized.
+    if (!requiresNewMaterialBuffer) {
+        auto materialsToCopySize = materialsToCopy.size();
+        while (materialsToCopySize > 0) {
+            auto& materialHandle = materialsToCopy.front();
+
+            if (materials.isHandleValid(materialHandle)) {
+                // We'll check if the material fits into the current buffer. If it doesn't fit we'll not
+                // copy any materials yet and let the buffer resize first.
+                if (materialHandle.getIndex() * sizeof(ka::Material) >= materialBuffer->getSize())
+                    break;
+
+                auto material = materials.getFromHandle(materialHandle);
+                materialBuffer->memoryCopy(&material.material, sizeof(ka::Material), materialHandle.getIndex() * sizeof(ka::Material));
+            }
+
+            // Even if the handle is invalid, we'll pop it because we want to get rid of it.
+            materialsToCopy.pop();
+            --materialsToCopySize;
+        }
+    }
+
+    if (oldMaterialBuffer)
+        oldMaterialBuffer->destroy();
+
+    if (requiresNewMaterialBuffer) {
+        oldMaterialBuffer = std::move(materialBuffer);
+
+        // We updated the materialBuffer's size, and it had to reallocate, which means that the memory
+        // has been reset and is now uninitialized. We therefore re-copy all the materials.
+        materialBuffer = std::make_unique<carbon::MappedBuffer>(device, allocator, "materialBuffer");
+        materialBuffer->destroy();
+        materialBuffer->create(newMaterialBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                               VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
+        auto materialBufferInfo = materialBuffer->getDescriptorInfo(VK_WHOLE_SIZE, 0);
+        rtDescriptorSet->updateBuffer(2, &materialBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+        // If the updateMaterialBuffer returned true, we copy the existing oldMaterialBuffer
+        // to the new one
+        oldMaterialBuffer->copyToBuffer(cmdBuffer, materialBuffer.get());
+    }
+
+    return requiresNewMaterialBuffer;
+}
+
+void kr::VulkanBackend::uploadTexture(ku::Handle<"Texture"> handle) {
+    ZoneScoped;
+    auto lock = std::scoped_lock(textureMutex);
+
+    if (!textures.isHandleValid(handle))
+        return;
+
+    auto& texture = textures.getFromHandle(handle);
+    VkExtent2D extent = { .width = texture.width, .height = texture.height };
+
+    texture.texture = std::make_unique<carbon::Texture>(device, allocator, extent);
+
+    // TODO: Improve detection for when component mapping should be applied
+    if (texture.format == TextureFormat::A8) {
+        texture.texture->setComponentMapping({
+            .r = VK_COMPONENT_SWIZZLE_ONE,
+            .g = VK_COMPONENT_SWIZZLE_ONE,
+            .b = VK_COMPONENT_SWIZZLE_ONE,
+            .a = VK_COMPONENT_SWIZZLE_R,
+        });
+    }
+
+    texture.texture->createTexture(vulkan::getImageFormat(texture.format, texture.encoding));
+
+    // Our staging buffer for the texture
+    auto textureStagingBuffer = std::make_unique<carbon::StagingBuffer>(device, allocator, "textureStagingBuffer");
+    textureStagingBuffer->create(texture.pixels.size());
+    textureStagingBuffer->memoryCopy(texture.pixels.data(), texture.pixels.size());
+
+    // vkCmdCopyBufferToImage is supported on transfer queues. We should use mainTransferQueue here instead.
+    oneTimeSubmit(blasComputeQueue.get(), computeCommandPool.get(), [&](carbon::CommandBuffer* cmdBuffer) {
+        auto imageSubresource = VkImageSubresourceRange {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .levelCount = 1,
+            .layerCount = 1,
+        };
+        texture.texture->changeLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageSubresource, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                      VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        VkBufferImageCopy copy = {
+            .imageSubresource = {
+                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                 .mipLevel = 0,
+                 .layerCount = 1,
+             },
+             .imageExtent = {
+                 .width = texture.width,
+                 .height = texture.height,
+                 .depth = 1,
+             }
+         };
+        textureStagingBuffer->copyToImage(cmdBuffer, texture.texture.get(), texture.texture->getImageLayout(), &copy);
+
+        texture.texture->changeLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageSubresource, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+    });
+
+    textureStagingBuffer->destroy();
+}
+
+VkResult kr::VulkanBackend::waitForFrame() {
     ZoneScoped;
     renderFence->wait();
     renderFence->reset();

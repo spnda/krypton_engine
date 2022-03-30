@@ -37,7 +37,7 @@ completed yet. This is especially notable when mesh loading is done on a separat
 backend will itself check if the objects are ready and will only render them if so. Big objects
 might take a bit of time to be built, causing the rendering to be slightly delayed.
 
-# Material system
+## Materials
 
 Materials are dynamic and can be assigned to each mesh primitive individually. They hold data
 on the colors and all relevant textures, e.g. diffuse, roughness, occlusion, emissive, ...
@@ -47,10 +47,59 @@ between values within the same frame, as values are only updated once at the sta
 
 ```cpp
 auto handle = rapi->createMaterial();
-rapi->setBaseColor(handle, glm::vec3(0.5, 0.0, 1.0));
+
+// This sets the material base color.
+rapi->setMaterialBaseColor(handle, glm::vec3(0.5, 0.0, 1.0));
+
+// This binds the diffuseTexture to this material. Even if one should call destroyTexture
+// on this diffuseTexture, it would not actually be destroyed as this material still exists.
+rapi->setMaterialDiffuseTexture(handle, diffuseTexture);
 ```
 
-# Handles
+## Textures
+
+Textures are a crucial part for modern rendering. They incorporate color, roughness, depth and much
+more. Within the RAPI, textures are supposed to be a static object. Uploading and editing textures
+is a tedious and expensive process, requiring a lot of copying of potentially large data. Therefore,
+textures are usually created once and never change.
+
+```cpp
+auto handle = rapi->createTexture();
+
+// By default, textures are interpreted in linear encoding. This
+// is not correct in terms of color textures, where the colors are actually
+// in srgb colorspace.
+rapi->setTextureColorEncoding(handle, kr::ColorEncoding::SRGB);
+
+// We can pass a std::vector<std::byte> into the setTextureData function. The texture size has to
+// be passed in here too. The last parameter describes how to interpret the texture data. The
+// texture size has to be passed in here too. The texture format will usually be RGBA8, but can
+// also be a compressed format like BC, ETC, or ASTC.
+rapi->setTextureData(handle, 256, 256, textureData, kr::TextureFormat::RGBA8);
+
+// The texture is uploaded. Textures can be reuploaded but it is strongly
+// discouraged to do so.
+rapi->uploadTexture(handle);
+```
+
+### Texture format
+
+The texture format will usually be RGBA8 for textures loaded from PNG or JPEG files, but can also
+be a compressed format like BC, ETC, or ASTC. Passing this value here is only telling the backend
+how to interpret the texture data. The rendering backend will itself decide which version of these
+compression formats to use, as some devices may support only some of them or only some of the
+sub-formats and compressing them at runtime is very expensive and not recommended. For example,
+desktop GPUs will usually support BCn, but not ETC2 nor ASTC, whereas mobile will support ETC2 and
+ASTC, but not BCn.
+
+For Vulkan, details on which devices support which compression format can be found
+[on Sascha Willem's database](https://vulkan.gpuinfo.org/listoptimaltilingformats.php). This database
+also includes a rough idea of what formats are supported by Metal devices, as MoltenVK can give a good
+idea about what is supported and what not. It also includes metrics as to how many devices on a given
+platform support which compression format which should help deciding which formats to use based on a
+target platform.
+
+## Handles
 
 Handles obtained from the RAPI interface are ref counted and the resource will live as long as it
 is in use. Say you call `rapi->destroyMaterial(handle)` but the material is still bound to a primitive,
@@ -64,10 +113,11 @@ atomic counter. The counter is incremented when the handle is created and decrem
 destroyed. When the counter reaches 0, the resource behind the handle is destroyed. Every created handle
 holds a pointer to a `ReferenceCounter` object, so that handle copies are respected.
 
-A possible ref-counted implementation can be found in src/util/include/util/handle.hpp. It uses a
-`std::shared_ptr` to hold the reference counter over multiple threads. It also implements copy and move
-operations to ensure that ref counts are properly updated. The handles have a template argumnet parameter
-to allow for different types of handles, which are simply separated by a string argument.
+A possible ref-counted implementation can be found in `src/util/include/util/handle.hpp`. It uses a
+`std::shared_ptr` to hold the reference counter over multiple threads. It also implements copy and
+move operations to ensure that ref counts are properly updated. The handles have a template argument
+parameter to allow for different types of handles, which are simply separated by a string argument
+and are still fully typesafe.
 
 ```cpp
 krypton::util::Handle<"Material"> materialHandle;

@@ -7,6 +7,8 @@
 #include <rapi/camera.hpp>
 #include <rapi/window.hpp>
 
+#include <rapi/color_encoding.hpp>
+#include <rapi/texture_format.hpp>
 #include <util/handle.hpp>
 
 namespace kr = krypton::rapi;
@@ -29,6 +31,8 @@ namespace krypton::rapi {
 
         virtual void beginFrame() = 0;
 
+        virtual void buildMaterial(util::Handle<"Material">& handle) = 0;
+
         /**
          * This finalizes the process of creating a render object. If a object has been built
          * previously, it has to be rebuilt after adding new primitives or changing the transform.
@@ -41,11 +45,15 @@ namespace krypton::rapi {
          */
         [[nodiscard]] virtual auto createRenderObject() -> util::Handle<"RenderObject"> = 0;
 
-        [[nodiscard]] virtual auto createMaterial(krypton::assets::Material material) -> util::Handle<"Material"> = 0;
+        [[nodiscard]] virtual auto createMaterial() -> util::Handle<"Material"> = 0;
 
-        [[nodiscard]] virtual bool destroyRenderObject(util::Handle<"RenderObject">& handle) = 0;
+        [[nodiscard]] virtual auto createTexture() -> util::Handle<"Texture"> = 0;
 
-        [[nodiscard]] virtual bool destroyMaterial(util::Handle<"Material">& handle) = 0;
+        virtual bool destroyRenderObject(util::Handle<"RenderObject">& handle) = 0;
+
+        virtual bool destroyMaterial(util::Handle<"Material">& handle) = 0;
+
+        virtual bool destroyTexture(util::Handle<"Texture">& handle) = 0;
 
         /**
          * The UI has to be constructed through ImGui before calling this.
@@ -81,10 +89,27 @@ namespace krypton::rapi {
 
         virtual void setObjectTransform(util::Handle<"RenderObject">& handle, glm::mat4x3 transform) = 0;
 
+        virtual void setMaterialBaseColor(util::Handle<"Material"> handle, glm::vec3 color) = 0;
+
+        virtual void setMaterialDiffuseTexture(util::Handle<"Material"> handle, util::Handle<"Texture"> textureHandle) = 0;
+
+        virtual void setTextureData(util::Handle<"Texture"> handle, uint32_t width, uint32_t height, const std::vector<std::byte>& pixels,
+                                    krypton::rapi::TextureFormat format) = 0;
+
+        /**
+         * By default, textures are interpreted as linear.
+         */
+        virtual void setTextureColorEncoding(util::Handle<"Texture"> handle, krypton::rapi::ColorEncoding colorEncoding) = 0;
+
         /**
          * Shutdowns the rendering backend and makes it useless
          * for further rendering commands.
          */
         virtual void shutdown() = 0;
+
+        /**
+         * This finalizes the texture creation process by uploading the texture to the GPU.
+         */
+        virtual void uploadTexture(util::Handle<"Texture"> handle) = 0;
     };
 } // namespace krypton::rapi

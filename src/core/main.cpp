@@ -26,10 +26,14 @@
 #undef far
 
 namespace fs = std::filesystem;
+namespace ka = krypton::assets;
+namespace kr = krypton::rapi;
+namespace ku = krypton::util;
+namespace kl = krypton::log;
 
-std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
+std::shared_ptr<kr::CameraData> cameraData = nullptr;
 
-std::vector<krypton::util::Handle<"RenderObject">> renderObjectHandles = {};
+std::vector<ku::Handle<"RenderObject">> renderObjectHandles = {};
 std::mutex renderObjectHandleMutex;
 
 std::string modelPathString;
@@ -37,19 +41,36 @@ std::string modelPathString;
 float cameraPos[3] = { 10, 0, -1 };
 float focus[3] = { 0, 0, 0 };
 
-void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
+void loadModel(kr::RenderAPI* rapi, const fs::path& path) {
     ZoneScoped;
+
     kt::Scheduler::getInstance().run([rapi, path]() {
-        ZoneScopedN("Threaded loadModel") auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
+        ZoneScopedN("Threaded loadModel");
+        auto fileLoader = std::make_unique<ka::loader::FileLoader>();
         auto loaded = fileLoader->loadFile(path);
 
         if (!loaded) {
             krypton::log::err("Failed to load file!");
         } else {
-            std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
-            for (auto& mat : fileLoader->materials) {
-                localMaterialHandles.push_back(rapi->createMaterial(mat));
+            std::vector<ku::Handle<"Texture">> localTextureHandles = {};
+            for (auto& tex : fileLoader->textures) {
+                auto handle = localTextureHandles.emplace_back(rapi->createTexture());
+                rapi->setTextureColorEncoding(handle, kr::ColorEncoding::SRGB);
+                rapi->setTextureData(handle, tex.width, tex.height, tex.pixels, kr::TextureFormat::RGBA8);
+                rapi->uploadTexture(handle);
             }
+
+            std::vector<ku::Handle<"Material">> localMaterialHandles;
+            for (auto& mat : fileLoader->materials) {
+                auto handle = localMaterialHandles.emplace_back(rapi->createMaterial());
+                rapi->setMaterialBaseColor(handle, mat.baseColor);
+                if (mat.baseTextureIndex != krypton::assets::INVALID_INDEX && mat.baseTextureIndex < localTextureHandles.size()) {
+                    rapi->setMaterialDiffuseTexture(handle, localTextureHandles[mat.baseTextureIndex]);
+                }
+                rapi->buildMaterial(handle);
+            }
+
+            // rapi->destroyTexture(localTextureHandles.front());
 
             for (auto& mesh : fileLoader->meshes) {
                 // We lock here because the buildRenderObject can take a bit, and
@@ -70,7 +91,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
     });
 }
 
-void drawUi(krypton::rapi::RenderAPI* rapi) {
+void drawUi(kr::RenderAPI* rapi) {
     ZoneScoped;
     ImGui::Begin("Main");
 
@@ -96,7 +117,7 @@ auto main(int argc, char* argv[]) -> int {
     try {
         kt::Scheduler::getInstance().start();
 
-        auto rapi = krypton::rapi::getRenderApi();
+        auto rapi = kr::getRenderApi();
         rapi->init();
         cameraData = rapi->getCameraData();
 
@@ -107,6 +128,8 @@ auto main(int argc, char* argv[]) -> int {
         cameraData->view = glm::lookAt(glm::vec3(10, 0, -1), // position in world
                                        glm::vec3(0, 0, 0),   // look at position; center of world
                                        glm::vec3(0, 1, 0));  // up vector - Y
+
+        kl::log("Finished initializing!");
 
         while (!rapi->getWindow()->shouldClose()) {
             ZoneScoped;
@@ -127,14 +150,14 @@ auto main(int argc, char* argv[]) -> int {
 
         for (auto& handle : renderObjectHandles) {
             if (!rapi->destroyRenderObject(handle))
-                krypton::log::err("Failed to destroy a render object handle");
+                kl::err("Failed to destroy a render object handle");
         }
 
         rapi->shutdown();
 
         kt::Scheduler::getInstance().shutdown();
     } catch (const std::exception& e) {
-        krypton::log::err("Exception occured: {}", e.what());
+        kl::err("Exception occured: {}", e.what());
     }
     return 0;
 }

@@ -15,9 +15,14 @@ namespace fs = std::filesystem;
 
 namespace krypton::assets::loader {
     class FileLoader final {
+        static bool loadImageData(tinygltf::Image*, int, std::string*, std::string*, int, int, const unsigned char*, int,
+                                  void* user_pointer);
         void loadGltfMesh(tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Node& node, glm::mat4 parentMatrix);
         void loadGltfNode(tinygltf::Model& model, uint32_t nodeIndex, glm::mat4 matrix);
         [[nodiscard]] bool loadGltfFile(const fs::path& path);
+
+        // Just making sure the loadImageData function is written properly.
+        static_assert(std::is_same<decltype(&loadImageData), tinygltf::LoadImageDataFunction>());
 
     public:
         std::vector<std::shared_ptr<krypton::assets::Mesh>> meshes;

@@ -64,7 +64,8 @@ if(MSVC) # cl.exe or clang-cl.exe
     # CMake auto sets /RTC1 which is incompatible with /O1 and /O2.
     add_compile_options(/analyze /sdl)
   else()
-    add_compile_options(/O2)
+    add_compile_options(/O2 /GL)
+    add_link_options(/LTCG)
   endif()
 else()
   # Clang, AppleClang, or GCC
@@ -81,6 +82,10 @@ set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
 # We set the TRACY_ENABLE variable accordingly.
 if(KRYPTON_USE_TRACY)
   message(STATUS "Using tracy")
+  set(TRACY_CALLSTACK
+      ON
+      CACHE BOOL "" FORCE)
+
   add_compile_definitions(TRACY_ENABLE)
   add_compile_definitions(KRYPTON_USE_TRACY)
 endif()
