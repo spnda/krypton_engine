@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 import os
-from pathlib import Path
 import platform
 import shutil
 import subprocess
 import sys
-import urllib.request
 import zipfile
+from pathlib import Path
+import urllib.request
+import urllib.error
+from typing import Callable
 
 
 class Colors:
@@ -40,20 +42,20 @@ def create_dir(path):
 
 
 # Downloads a zip file from given url and then extracts that zip file
-def download_and_extract(url, path):
+def download_and_extract(url: str, path: str):
     if len(url) == 0:
         return
 
     try:
-        fPath, _ = urllib.request.urlretrieve(url, f"{path}/temp.zip")
-        with zipfile.ZipFile(fPath, "r") as zip_ref:
+        f_path, _ = urllib.request.urlretrieve(url, f"{path}/temp.zip")
+        with zipfile.ZipFile(f_path, "r") as zip_ref:
             zip_ref.extractall(path)
-        os.remove(fPath)
+        os.remove(f_path)
     except urllib.error.HTTPError:
         print(f"{Colors.red}Could not download {url}.{Colors.end}")
 
 
-def download_external(name, url_callback):
+def download_external(name: str, url_callback: Callable[[], str]):
     print(f"{Colors.green}Downloading {name}...{Colors.end}")
     dir_path = f"external/{name}"
     create_dir(dir_path)
@@ -64,7 +66,7 @@ def download_external(name, url_callback):
         shutil.rmtree(dir_path)
 
 
-def configure_cmake(generator=None):
+def configure_cmake(generator: str | None = None):
     if shutil.which("cmake") is None:
         print(
             f"{Colors.red}cmake is not installed. The project cannot be built.{Colors.end}"
@@ -74,7 +76,7 @@ def configure_cmake(generator=None):
     create_dir("build/debug")
     create_dir("build/release")
 
-    gen = ["-G", generator] if generator else []
+    gen = ["-G", generator] if generator is not None else []
     call(
         ["cmake", *gen, "../.."],
         "build/debug",
@@ -112,7 +114,6 @@ def main():
     call(
         ["git", "submodule", "update", "--init", "--recursive"],
         ".",
-        platform.system() != "Windows",
     )
 
     # Download slang
@@ -153,7 +154,8 @@ def main():
     # Without this, our CMake script might not be able to identify where to find dependencies.
     if "VCPKG_ROOT" not in os.environ:
         print(
-            f"{Colors.yellow}VCPKG_ROOT is not defined as an environment variable. This may lead to missing dependencies.{Colors.end}"
+            f"{Colors.yellow}VCPKG_ROOT is not defined as an environment variable. This may lead to missing "
+            f"dependencies.{Colors.end} "
         )
 
     match platform.system():

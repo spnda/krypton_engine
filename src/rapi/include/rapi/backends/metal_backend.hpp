@@ -15,20 +15,21 @@
 #include <util/handle.hpp>
 
 namespace krypton::rapi {
-    /**
-     * supposed to be a C++ header and most Metal related API is Objective-C.
-     */
     class MetalBackend final : public RenderAPI {
         std::shared_ptr<krypton::rapi::Window> window;
-        MTL::Device* device;
-        MTL::Library* library;
-        MTL::CommandQueue* queue;
-        MTL::RenderPipelineState* pipelineState;
+        MTL::Device* device = nullptr;
+        MTL::Library* library = nullptr;
+        MTL::CommandQueue* queue = nullptr;
+        MTL::RenderPipelineState* pipelineState = nullptr;
         CA::MetalLayer* swapchain = nullptr;
+
+        // We keep this as a member of the backend, because we only allocate this object
+        // once, so that we can prematurely pass it to the ImGui Metal backend.
+        MTL::RenderPassDescriptor* imGuiPassDescriptor = nullptr;
 
         krypton::shaders::ShaderFile defaultShader;
 
-        MTL::Buffer* cameraBuffer;
+        MTL::Buffer* cameraBuffer = nullptr;
 
         std::vector<krypton::util::Handle<"RenderObject">> handlesForFrame = {};
 

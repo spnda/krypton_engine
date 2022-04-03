@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.21)
 
 option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
 
@@ -89,12 +89,7 @@ include(add_source_directory)
 
 # We add this first as this provides targets other subdirectories require
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/external")
-
-if(WIN32
-   OR UNIX
-   AND NOT APPLE)
-  add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/carbon")
-endif()
+add_subdirectory("${CMAKE_SOURCE_DIR}/submodules")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/assets")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")

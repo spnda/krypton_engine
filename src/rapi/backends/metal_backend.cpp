@@ -9,8 +9,9 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
+#include <Tracy.hpp>
 #include <imgui.h>
-// #include <imgui_impl_metal.h>
+#include <imgui_impl_metal.h>
 
 #include <rapi/backends/metal/CAMetalLayer.hpp>
 #include <rapi/backends/metal/metal_layer_bridge.hpp>
@@ -56,9 +57,11 @@ void krypton::rapi::MetalBackend::addPrimitive(krypton::util::Handle<"RenderObje
 }
 
 void krypton::rapi::MetalBackend::beginFrame() {
+    ZoneScoped;
     window->pollEvents();
-    // window->newFrame();
-    // ImGui::NewFrame();
+
+    window->newFrame();
+    ImGui::NewFrame();
 
     /* Update camera data */
     void* cameraBufferData = cameraBuffer->contents();
@@ -66,6 +69,7 @@ void krypton::rapi::MetalBackend::beginFrame() {
 }
 
 void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+    ZoneScoped;
     if (objects.isHandleValid(handle)) {
         krypton::rapi::metal::RenderObject& renderObject = objects.getFromHandle(handle);
 
@@ -109,18 +113,21 @@ void krypton::rapi::MetalBackend::buildRenderObject(krypton::util::Handle<"Rende
 }
 
 krypton::util::Handle<"RenderObject"> krypton::rapi::MetalBackend::createRenderObject() {
+    ZoneScoped;
     auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     return objects.getNewHandle(refCounter);
 }
 
 krypton::util::Handle<"Material"> krypton::rapi::MetalBackend::createMaterial(krypton::assets::Material material) {
+    ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
     auto refCounter = std::make_shared<krypton::util::ReferenceCounter>();
     return materials.getNewHandle(refCounter);
 }
 
 bool krypton::rapi::MetalBackend::destroyRenderObject(krypton::util::Handle<"RenderObject">& handle) {
+    ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
     if (valid) {
@@ -134,6 +141,7 @@ bool krypton::rapi::MetalBackend::destroyRenderObject(krypton::util::Handle<"Ren
 bool krypton::rapi::MetalBackend::destroyMaterial(krypton::util::Handle<"Material">& handle) {}
 
 void krypton::rapi::MetalBackend::drawFrame() {
+    ZoneScoped;
     CA::MetalDrawable* surface = swapchain->nextDrawable();
 
     // Create render pass
@@ -166,35 +174,33 @@ void krypton::rapi::MetalBackend::drawFrame() {
     encoder->endEncoding();
 
     // Draw ImGui
-    /*MTLRenderPassDescriptor* imguiPass = [MTLRenderPassDescriptor renderPassDescriptor];
-    imguiPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
-    imguiPass.colorAttachments[0].storeAction = MTLStoreActionStore;
-    imguiPass.colorAttachments[0].texture = surface.texture;
+    auto imguiColorAttachment = imGuiPassDescriptor->colorAttachments()->object(0);
 
-    // The glfw imgui implementation which window->newFrame() calls
-    // also updates the ImGuiIO for us.
-    ImGui_ImplMetal_NewFrame(imguiPass);
+    imguiColorAttachment->setLoadAction(MTL::LoadActionLoad);
+    imguiColorAttachment->setStoreAction(MTL::StoreActionStore);
+    imguiColorAttachment->setTexture(surface->texture());
 
+    ImGui_ImplMetal_NewFrame(imGuiPassDescriptor);
     ImGui::Render();
     ImDrawData* drawData = ImGui::GetDrawData();
-    id<MTLRenderCommandEncoder> imguiEncoder = [buffer renderCommandEncoderWithDescriptor:imguiPass];
-    [imguiEncoder pushDebugGroup:@"Dear ImGui rendering"];
+    MTL::RenderCommandEncoder* imguiEncoder = buffer->renderCommandEncoder(imGuiPassDescriptor);
     ImGui_ImplMetal_RenderDrawData(drawData, buffer, imguiEncoder);
-    [imguiEncoder popDebugGroup];
+    imguiEncoder->endEncoding();
 
     // Present
-    [imguiEncoder endEncoding];*/
     buffer->presentDrawable(surface);
     buffer->commit();
 
-    mainPass->release();
+    imguiEncoder->release();
     encoder->release();
     buffer->release();
     surface->release();
+    mainPass->release();
 }
 
 void krypton::rapi::MetalBackend::endFrame() {
-    // ImGui::EndFrame();
+    ZoneScoped;
+    ImGui::EndFrame();
 
     handlesForFrame.clear();
 }
@@ -208,6 +214,7 @@ std::shared_ptr<krypton::rapi::Window> krypton::rapi::MetalBackend::getWindow() 
 }
 
 void krypton::rapi::MetalBackend::init() {
+    ZoneScoped;
     // __autoreleasing NSError* error = nil;
     NS::Error* error = nullptr;
 
@@ -219,8 +226,8 @@ void krypton::rapi::MetalBackend::init() {
     // We have to set this because the window otherwise defaults to our
     // scaled size and not the actual wanted framebuffer size.
     CG::Size drawableSize = {
-        .height = (double)height,
         .width = (double)width,
+        .height = (double)height,
     };
 
     // Create the device, queue and metal layer
@@ -234,22 +241,18 @@ void krypton::rapi::MetalBackend::init() {
     krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
     IMGUI_CHECKVERSION();
-    // ImGui::CreateContext();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    window->initImgui();
+    ImGui_ImplMetal_Init(device);
 
-    // ImGui::StyleColorsDark();
-
-    // window->initImgui();
-
-    // ImGui_ImplMetal_Init(device);
-
-    // Get the NSWindow*
     GLFWwindow* pWindow = window->getWindowPointer();
     metal::setMetalLayerOnWindow(pWindow, swapchain);
 
     // Create the shaders
     defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
     NS::String* shaderSource = NS::String::string(defaultShader.content.c_str(), NS::StringEncoding::UTF8StringEncoding);
-    library = device->newLibrary(shaderSource, 0, &error);
+    library = device->newLibrary(shaderSource, nullptr, &error);
     if (!library) {
         // raise exception somehow else?
         // [NSException raise:@"Failed to compile shaders" format:@"%@", [error localizedDescription]];
@@ -270,9 +273,12 @@ void krypton::rapi::MetalBackend::init() {
         cameraData = std::make_shared<krypton::rapi::CameraData>();
 
     cameraBuffer = device->newBuffer(krypton::rapi::CAMERA_DATA_SIZE, MTL::ResourceStorageModeShared);
+
+    imGuiPassDescriptor = MTL::RenderPassDescriptor::renderPassDescriptor();
 }
 
 void krypton::rapi::MetalBackend::render(krypton::util::Handle<"RenderObject"> handle) {
+    ZoneScoped;
     if (objects.isHandleValid(handle))
         handlesForFrame.push_back(handle);
 }
@@ -286,7 +292,9 @@ void krypton::rapi::MetalBackend::setObjectName(krypton::util::Handle<"RenderObj
 void krypton::rapi::MetalBackend::setObjectTransform(krypton::util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {}
 
 void krypton::rapi::MetalBackend::shutdown() {
-    // ImGui_ImplMetal_DestroyDeviceObjects();
+    ZoneScoped;
+    imGuiPassDescriptor->release();
+    ImGui_ImplMetal_DestroyDeviceObjects();
     queue->release();
     library->release();
     device->release();

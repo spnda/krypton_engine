@@ -90,22 +90,3 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
   target_link_libraries(metal-cpp INTERFACE ${METAL_LIBRARY})
   target_link_libraries(metal-cpp INTERFACE ${QUARTZCORE_LIBRARY})
 endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/submodules/tracy")
-  message(STATUS "Found tracy")
-  find_package(Threads REQUIRED)
-
-  add_library(tracy_client "${CMAKE_SOURCE_DIR}/submodules/tracy/TracyClient.cpp")
-  add_library(Tracy::TracyClient ALIAS tracy_client)
-
-  target_compile_features(tracy_client PUBLIC cxx_std_11)
-  target_include_directories(tracy_client SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/submodules/tracy/")
-  target_link_libraries(tracy_client PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
-
-  if(KRYPTON_USE_TRACY)
-    message(STATUS "TRACY CALLSTACK: ${KRYPTON_TRACY_CALLSTACK_SIZE}")
-    target_compile_definitions(tracy_client PUBLIC TRACY_ENABLE=1 TRACY_CALLSTACK=${KRYPTON_TRACY_CALLSTACK_SIZE})
-  else()
-    # We have to remove the definition for tracy to not profile, simply setting it to 0 will not work as we might expect.
-  endif()
-endif()

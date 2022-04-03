@@ -11,7 +11,7 @@ import sys
 extensions = [".hpp", ".cpp", ".mm", ".m" ".c", ".h", ".cc", ".hh"]
 
 
-def find_clang_format():
+def find_clang_format() -> str:
     # We first search if there's a clang-format with no version number
     if shutil.which("clang-format") is not None:
         return "clang-format"
@@ -33,7 +33,7 @@ def call_and_check(args):
 
 
 # Formats a single C++, CMake or Python file
-def format_file(write, file):
+def format_file(write: bool, file: str):
     for ext in extensions:
         if file.endswith(ext):
             print(f"Formatting {file}")

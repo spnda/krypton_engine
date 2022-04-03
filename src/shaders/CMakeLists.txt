@@ -1,8 +1,6 @@
 add_library(krypton_shaders)
 add_library(krypton::shaders ALIAS krypton_shaders)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross" "${CMAKE_BINARY_DIR}/SPIRV-Cross")
-
 # Disable the SPIRV-Cross executable from being built.
 set_target_properties(spirv-cross PROPERTIES EXCLUDE_FROM_ALL 1)
 target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)

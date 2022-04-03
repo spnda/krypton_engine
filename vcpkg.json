@@ -7,16 +7,6 @@
         "fmt",
         "glfw3",
         "glm",
-        {
-            "name": "imgui",
-            "features": [ "glfw-binding", "vulkan-binding" ],
-            "platform": "!osx"
-        },
-        {
-            "name": "imgui",
-            "features": [ "glfw-binding", "metal-binding" ],
-            "platform": "osx"
-        },
         "tinygltf",
         {
             "name": "vk-bootstrap",

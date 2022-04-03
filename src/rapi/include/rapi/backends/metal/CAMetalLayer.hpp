@@ -8,9 +8,10 @@
 #include <QuartzCore/CAPrivate.hpp>
 
 namespace CG {
+    // https://developer.apple.com/documentation/coregraphics/cgsize
     struct Size {
-        double height;
         double width;
+        double height;
     };
 } // namespace CG
 
@@ -28,8 +29,6 @@ namespace CA {
 
         namespace Selector {
             _CA_PRIVATE_DEF_SEL(device, "device")
-            _CA_PRIVATE_DEF_SEL(init, "init")
-            // _CA_PRIVATE_DEF_SEL(layer, "layer")
             _CA_PRIVATE_DEF_SEL(nextDrawable, "nextDrawable")
             _CA_PRIVATE_DEF_SEL(setDevice, "setDevice:")
             _CA_PRIVATE_DEF_SEL(setDrawableSize, "setDrawableSize:")
@@ -37,7 +36,11 @@ namespace CA {
         } // namespace Selector
     }     // namespace Private
 
-    // The base CA::Layer interface
+    /*
+     * The base CA::Layer interface.
+     *
+     * https://developer.apple.com/documentation/quartzcore/calayer
+     */
     class Layer : public NS::Referencing<Layer> {
     public:
         [[nodiscard]] static class Layer* layer();
@@ -45,7 +48,7 @@ namespace CA {
     };
 
     /**
-     * The CA::MetalLayer class used for rendering Metal code.
+     * The CA::MetalLayer class used for rendering to some drawable.
      *
      * https://developer.apple.com/documentation/quartzcore/cametallayer
      */
@@ -66,7 +69,7 @@ inline CA::Layer* CA::Layer::layer() {
 }
 
 inline CA::Layer* CA::Layer::init() {
-    return Object::sendMessage<Layer*>(_CA_PRIVATE_CLS(CALayer), _CA_PRIVATE_SEL(init));
+    return Object::init<Layer>();
 }
 
 inline CA::MetalLayer* CA::MetalLayer::layer() {
