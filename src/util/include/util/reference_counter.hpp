@@ -11,6 +11,7 @@ namespace krypton::util {
      * is wrapped within an std::atomic to ensure atomic counting.
      */
     class ReferenceCounter final {
+        // I don't think we will ever need more than 2,4 billion references.
         std::atomic<uint32_t> refCount = 0;
 
     public:

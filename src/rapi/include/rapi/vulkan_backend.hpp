@@ -16,9 +16,9 @@
 #include <carbon/vulkan.hpp>
 
 #include <assets/mesh.hpp>
-#include <rapi/backends/vulkan/buffer_descriptions.hpp>
-#include <rapi/backends/vulkan/render_object.hpp>
 #include <rapi/rapi.hpp>
+#include <rapi/vulkan/buffer_descriptions.hpp>
+#include <rapi/vulkan/render_object.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
 #include <util/large_free_list.hpp>

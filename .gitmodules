@@ -10,3 +10,6 @@
 [submodule "submodules/imgui"]
 	path = submodules/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "submodules/asserts"]
+	path = submodules/asserts
+	url = https://github.com/jeremy-rifkin/asserts

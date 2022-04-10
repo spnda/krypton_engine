@@ -1,4 +1,3 @@
-#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -12,6 +11,8 @@
 #include <glslang/Include/ResourceLimits.h>
 #include <shaders/glslang_resource.hpp>
 #endif
+
+#include <util/assert.hpp>
 
 #include <shaders/shaders.hpp>
 #include <util/logging.hpp>
@@ -448,7 +449,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
         // Get the shader output code for this entry point.
         auto* data = spGetEntryPointCode(request, entryPointIndex, &compileResult.resultSize);
         if (shaderInput.targetType == ShaderTargetType::SPIRV) {
-            assert(compileResult.resultSize % 4 == 0);
+            VERIFY(compileResult.resultSize > 0 && compileResult.resultSize % 4 == 0);
         }
 
         // We have to reallocate the data as slang automatically deletes

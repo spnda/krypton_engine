@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 
 #include <assets/mesh.hpp>
-#include <rapi/backends/vulkan/buffer_descriptions.hpp>
+#include <rapi/vulkan/buffer_descriptions.hpp>
 #include <util/handle.hpp>
 
 namespace carbon {

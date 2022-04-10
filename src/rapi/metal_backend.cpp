@@ -13,9 +13,9 @@
 #include <imgui.h>
 #include <imgui_impl_metal.h>
 
-#include <rapi/backends/metal/CAMetalLayer.hpp>
-#include <rapi/backends/metal/metal_layer_bridge.hpp>
-#include <rapi/backends/metal_backend.hpp>
+#include <rapi/metal/CAMetalLayer.hpp>
+#include <rapi/metal/metal_layer_bridge.hpp>
+#include <rapi/metal_backend.hpp>
 #include <util/large_free_list.hpp>
 #include <util/logging.hpp>
 
@@ -34,6 +34,10 @@ namespace krypton::rapi::metal {
         std::vector<uint64_t> bufferVertexOffsets;
         std::vector<uint64_t> bufferIndexOffsets;
     };
+
+    NS::String* createString(const std::string& string) {
+        return NS::String::string(string.c_str(), NS::ASCIIStringEncoding);
+    }
 } // namespace krypton::rapi::metal
 
 krypton::util::LargeFreeList<krypton::rapi::metal::RenderObject, "RenderObject"> objects = {};
@@ -251,7 +255,7 @@ void krypton::rapi::MetalBackend::init() {
 
     // Create the shaders
     defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
-    NS::String* shaderSource = NS::String::string(defaultShader.content.c_str(), NS::StringEncoding::UTF8StringEncoding);
+    NS::String* shaderSource = metal::createString(defaultShader.content);
     library = device->newLibrary(shaderSource, nullptr, &error);
     if (!library) {
         // raise exception somehow else?
@@ -259,8 +263,10 @@ void krypton::rapi::MetalBackend::init() {
     }
 
     // Create the pipeline
-    MTL::Function* vertexProgram = library->newFunction(NS::String::string("basic_vertex", NS::StringEncoding::ASCIIStringEncoding));
-    MTL::Function* fragmentProgram = library->newFunction(NS::String::string("basic_fragment", NS::StringEncoding::ASCIIStringEncoding));
+    MTL::Function* vertexProgram = library->newFunction(metal::createString("basic_vertex"));
+    MTL::Function* fragmentProgram = library->newFunction(metal::createString("basic_fragment"));
+    vertexProgram->autorelease();
+    fragmentProgram->autorelease();
 
     MTL::RenderPipelineDescriptor* pipelineStateDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
     pipelineStateDescriptor->setVertexFunction(vertexProgram);
@@ -275,6 +281,8 @@ void krypton::rapi::MetalBackend::init() {
     cameraBuffer = device->newBuffer(krypton::rapi::CAMERA_DATA_SIZE, MTL::ResourceStorageModeShared);
 
     imGuiPassDescriptor = MTL::RenderPassDescriptor::renderPassDescriptor();
+
+    error->release();
 }
 
 void krypton::rapi::MetalBackend::render(krypton::util::Handle<"RenderObject"> handle) {

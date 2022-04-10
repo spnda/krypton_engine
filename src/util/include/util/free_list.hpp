@@ -2,12 +2,14 @@
 
 #include <vector>
 
+#include <util/assert.hpp>
 #include <util/handle.hpp>
 
 namespace krypton::util {
+    template <TemplateStringLiteral handleId>
     struct FreeListObject {
-        uint32_t next = 0;
-        uint32_t generation = 0;
+        typename Handle<handleId>::IndexSize next = 0;
+        typename Handle<handleId>::IndexSize generation = 0;
 
         explicit FreeListObject() = default;
     };
@@ -27,20 +29,20 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, typename Container = std::vector<Object>>
     class FreeList {
         Container container;
-        std::vector<FreeListObject> mappings;
+        std::vector<FreeListObject<handleId>> mappings;
 
-        [[nodiscard]] auto createSlot() -> uint32_t;
+        [[nodiscard]] auto createSlot() -> typename Handle<handleId>::IndexSize;
 
     public:
         FreeList();
 
-        [[nodiscard]] auto capacity() const noexcept -> uint32_t;
+        [[nodiscard]] auto capacity() const noexcept -> typename Handle<handleId>::IndexSize;
         [[nodiscard]] constexpr auto data() const noexcept -> const Object*;
         [[nodiscard]] auto getFromHandle(const Handle<handleId>& handle) -> Object&;
         [[nodiscard]] auto getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) -> Handle<handleId>;
         [[nodiscard]] bool isHandleValid(const Handle<handleId>& handle);
         void removeHandle(Handle<handleId>& handle);
-        [[nodiscard]] auto size() const noexcept -> uint32_t;
+        [[nodiscard]] auto size() const noexcept -> typename Handle<handleId>::IndexSize;
     };
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
@@ -50,14 +52,14 @@ namespace krypton::util {
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
-    uint32_t FreeList<Object, handleId, Container>::capacity() const noexcept {
-        return static_cast<uint32_t>(container.capacity());
+    typename Handle<handleId>::IndexSize FreeList<Object, handleId, Container>::capacity() const noexcept {
+        return static_cast<typename Handle<handleId>::IndexSize>(container.capacity());
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
-    uint32_t FreeList<Object, handleId, Container>::createSlot() {
+    typename Handle<handleId>::IndexSize FreeList<Object, handleId, Container>::createSlot() {
         // We check for the first free hole and use it.
-        const uint32_t slot = mappings[0].next;
+        const auto slot = mappings[0].next;
         mappings[0].next = mappings[slot].next;
         if (slot)
             return slot;
@@ -66,7 +68,7 @@ namespace krypton::util {
         auto size = container.size() + 1;
         container.resize(size);
         mappings.resize(size);
-        return static_cast<uint32_t>(size - 1);
+        return static_cast<typename Handle<handleId>::IndexSize>(size - 1);
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
@@ -77,7 +79,7 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     Object& FreeList<Object, handleId, Container>::getFromHandle(const Handle<handleId>& handle) {
         // Verify first that the handle is valid
-        assert(isHandleValid(handle));
+        VERIFY(isHandleValid(handle));
 
         return container[handle.getIndex()];
     }
@@ -97,7 +99,7 @@ namespace krypton::util {
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     void FreeList<Object, handleId, Container>::removeHandle(Handle<handleId>& handle) {
-        assert(isHandleValid(handle));
+        VERIFY(isHandleValid(handle));
 
         mappings[handle.getIndex()].next = mappings[0].next;
         mappings[0].next = handle.getIndex();
@@ -108,7 +110,7 @@ namespace krypton::util {
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
-    uint32_t FreeList<Object, handleId, Container>::size() const noexcept {
-        return static_cast<uint32_t>(container.size());
+    typename Handle<handleId>::IndexSize FreeList<Object, handleId, Container>::size() const noexcept {
+        return static_cast<typename Handle<handleId>::IndexSize>(container.size());
     }
 } // namespace krypton::util

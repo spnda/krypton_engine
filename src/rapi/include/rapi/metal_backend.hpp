@@ -8,7 +8,7 @@
 #include <Metal/Metal.hpp>
 
 #include <assets/mesh.hpp>
-#include <rapi/backends/metal/CAMetalLayer.hpp>
+#include <rapi/metal/CAMetalLayer.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>

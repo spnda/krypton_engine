@@ -9,7 +9,14 @@ endif()
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross" "${CMAKE_BINARY_DIR}/submodules/SPIRV-Cross")
 
-# Find and configure tracy manually
+if(WIN32
+   OR UNIX
+   AND NOT APPLE)
+  # Apple Clang's regex engine has bugs which break the asserts library.
+  add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/asserts" "${CMAKE_BINARY_DIR}/submodules/asserts")
+endif()
+
+# ↓ -------------------  TRACY  ------------------- ↓
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tracy")
   message(FATAL_ERROR "The tracy submodule does not exist.")
 endif()
@@ -27,8 +34,9 @@ if(KRYPTON_USE_TRACY)
 else()
   # We have to remove the definition for tracy to not profile, simply setting it to 0 will not work as we might expect.
 endif()
+# ↑ -------------------  TRACY  ------------------- ↑
 
-# Find and configure imgui manually
+# ↓ -------------------  IMGUI  ------------------- ↓
 set(IMGUI_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/imgui")
 if(NOT EXISTS "${IMGUI_DIRECTORY}")
   message(FATAL_ERROR "The imgui submodule does not exist.")
@@ -56,3 +64,4 @@ endif()
 
 target_link_libraries(imgui PUBLIC glfw)
 target_link_libraries(imgui PUBLIC metal-cpp)
+# ↑ -------------------  IMGUI  ------------------- ↑

@@ -4,10 +4,6 @@
 #include <iostream>
 #include <string>
 
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
-
 #include <fmt/chrono.h>
 #include <fmt/color.h>
 #include <fmt/core.h>

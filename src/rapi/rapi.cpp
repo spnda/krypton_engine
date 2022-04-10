@@ -1,7 +1,7 @@
 #include <rapi/rapi.hpp>
 
-#include <rapi/backends/metal_backend.hpp>
-#include <rapi/backends/vulkan_backend.hpp>
+#include <rapi/metal_backend.hpp>
+#include <rapi/vulkan_backend.hpp>
 
 std::unique_ptr<krypton::rapi::RenderAPI> krypton::rapi::getRenderApi() {
     // TODO: For now, we just switch the backend by platform.

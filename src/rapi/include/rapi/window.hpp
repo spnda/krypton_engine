@@ -30,7 +30,8 @@ namespace krypton::rapi {
         friend class RenderAPI;
 #ifdef RAPI_WITH_VULKAN
         friend class VulkanBackend;
-#elif RAPI_WITH_METAL
+#endif
+#ifdef RAPI_WITH_METAL
         friend class MetalBackend;
 #endif
 

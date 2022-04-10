@@ -7,7 +7,7 @@ namespace krypton::util {
     struct TemplateStringLiteral {
         char chars[N];
 
-        /* implicit */ constexpr TemplateStringLiteral(const char (&literal)[N]) { // NOLINT
+        consteval TemplateStringLiteral(const char (&literal)[N]) { // NOLINT
             std::copy_n(literal, N, chars);
         }
     };

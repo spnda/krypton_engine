@@ -28,7 +28,7 @@
 #include <carbon/shaders/shader.hpp>
 #include <carbon/utils.hpp>
 #include <carbon/vulkan.hpp>
-#include <rapi/backends/vulkan_backend.hpp>
+#include <rapi/vulkan_backend.hpp>
 #include <shaders/shaders.hpp>
 #include <threading/scheduler.hpp>
 #include <util/logging.hpp>
