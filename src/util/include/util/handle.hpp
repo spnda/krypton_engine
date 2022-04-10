@@ -80,9 +80,9 @@ namespace krypton::util {
             index = other.index;
             generation = other.generation;
 
-            // We first decrement our counter and then copy
-            // the other counter.
-            refCounter->decrement();
+            // We first decrement our counter, if it exists, and then copy the other counter.
+            if (refCounter)
+                refCounter->decrement();
             refCounter = other.refCounter;
             refCounter->increment();
         }
@@ -95,9 +95,9 @@ namespace krypton::util {
             index = other.index;
             generation = other.generation;
 
-            // We decrement our reference counter and then
-            // move the other counter over.
-            refCounter->decrement();
+            // We first decrement our counter, if it exists, and then move the other counter.
+            if (refCounter)
+                refCounter->decrement();
             refCounter = std::move(other.refCounter);
             other.refCounter = nullptr;
         }

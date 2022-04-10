@@ -1,7 +1,7 @@
 add_library(krypton_threading)
 add_library(krypton::threading ALIAS krypton_threading)
 
-target_compile_features(krypton_core PRIVATE cxx_std_20)
+target_compile_features(krypton_threading PRIVATE cxx_std_20)
 
 target_include_directories(krypton_threading PUBLIC "./include")
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -141,7 +142,7 @@ namespace krypton::util {
         if (size > (this->size() - data.back()->size() + blockSize)) {
             /* The new requested size is larger than a single block */
             float newBlocks = (float)size / (float)blockSize;
-            addNewBlocks(static_cast<size_t>(floor(newBlocks)));
+            addNewBlocks(static_cast<size_t>(std::floor(newBlocks)));
         } else {
             /* We can store the new requested size in the last block */
             data.back()->resize(size % blockSize);

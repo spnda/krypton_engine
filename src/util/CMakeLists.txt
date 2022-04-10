@@ -9,6 +9,8 @@ if(WIN32
   target_link_libraries(krypton_util PUBLIC assert)
 endif()
 
+target_compile_features(krypton_util PRIVATE cxx_std_20)
+
 target_include_directories(krypton_util PUBLIC "include")
 
 add_source_directory(TARGET krypton_util FOLDER "include/util/")

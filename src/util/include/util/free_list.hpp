@@ -78,8 +78,10 @@ namespace krypton::util {
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     Object& FreeList<Object, handleId, Container>::getFromHandle(const Handle<handleId>& handle) {
-        // Verify first that the handle is valid
-        VERIFY(isHandleValid(handle));
+        // Verify first that the handle is valid and that it is "allowed" to access the object.
+        if (!isHandleValid(handle)) {
+            throw std::invalid_argument("The passed handle is invalid!");
+        }
 
         return container[handle.getIndex()];
     }
@@ -87,6 +89,7 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     Handle<handleId> FreeList<Object, handleId, Container>::getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) {
         auto slot = createSlot();
+        container[slot] = {};
         return Handle<handleId> { std::move(refCounter), slot, mappings[slot].generation };
     }
 
@@ -99,7 +102,9 @@ namespace krypton::util {
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     void FreeList<Object, handleId, Container>::removeHandle(Handle<handleId>& handle) {
-        VERIFY(isHandleValid(handle));
+        if (!isHandleValid(handle)) {
+            throw std::invalid_argument("The passed handle is invalid!");
+        }
 
         mappings[handle.getIndex()].next = mappings[0].next;
         mappings[0].next = handle.getIndex();

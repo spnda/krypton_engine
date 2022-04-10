@@ -56,7 +56,7 @@ def main():
         default=False,
         action=argparse.BooleanOptionalAction,
     )
-    parser.add_argument("--directory", help="The directory to format")
+    parser.add_argument("--directory", nargs="*", help="The directories to format")
     parser.add_argument("filenames", nargs="*", help="A list of files to format")
     args = parser.parse_args()
 
@@ -70,8 +70,14 @@ def main():
 
     # Run clang-format on all files
     if args.directory is not None:
-        for file in glob.iglob(f"{args.directory}/**/*", recursive=True):
-            format_file(args.write, file)
+        for directory in args.directory:
+            if os.path.isdir(directory):
+                for file in glob.iglob(f"{directory}/**/*", recursive=True):
+                    format_file(args.write, file)
+            else:
+                # This purely exists as the order of arguments can make the parsing ambiguous if
+                # multiple directories are used.
+                format_file(args.write, directory)
 
     for file in args.filenames:
         format_file(args.write, file)
