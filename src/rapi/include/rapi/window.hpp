@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifdef RAPI_WITH_VULKAN
@@ -54,7 +55,8 @@ namespace krypton::rapi {
 #endif // #ifdef RAPI_WITH_VULKAN
 
     public:
-        Window(std::string title, uint32_t width, uint32_t height);
+        explicit Window(uint32_t width, uint32_t height);
+        explicit Window(std::string title, uint32_t width, uint32_t height);
 
         void create(krypton::rapi::Backend backend);
         void destroy();
@@ -62,6 +64,7 @@ namespace krypton::rapi {
         void getContentScale(float* xScale, float* yScale) const;
         void getFramebufferSize(int* width, int* height) const;
         void getWindowSize(int* width, int* height) const;
+        void setWindowTitle(std::string_view title) const;
         [[nodiscard]] bool shouldClose() const;
     };
 } // namespace krypton::rapi

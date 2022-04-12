@@ -15,10 +15,11 @@
 
 namespace krypton::rapi::window {
     void errorCallback(int error, const char* desc) {
-        krypton::log::err("{}", desc);
+        krypton::log::err("GLFW error {}: {}", error, desc);
     }
 
-    void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {}
+    void keyCallback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] int key, [[maybe_unused]] int scancode,
+                     [[maybe_unused]] int action, [[maybe_unused]] int mods) {}
 
     void resizeCallback(GLFWwindow* window, int width, int height) {
         if (width > 0 && height > 0) {
@@ -28,6 +29,8 @@ namespace krypton::rapi::window {
         }
     }
 } // namespace krypton::rapi::window
+
+krypton::rapi::Window::Window(uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
 
 krypton::rapi::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
 
@@ -43,15 +46,16 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
         case Backend::Vulkan:
             if (!glfwVulkanSupported())
                 throw std::runtime_error("Vulkan is not supported on this system!");
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             break;
         case Backend::Metal:
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
             break;
     }
 
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     window = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), title.c_str(), nullptr, nullptr);
 
     if (!window) {
@@ -109,6 +113,10 @@ void krypton::rapi::Window::pollEvents() {
 
 void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
     glfwSetWindowUserPointer(window, rapi);
+}
+
+void krypton::rapi::Window::setWindowTitle(std::string_view newTitle) const {
+    glfwSetWindowTitle(window, newTitle.data());
 }
 
 bool krypton::rapi::Window::shouldClose() const {

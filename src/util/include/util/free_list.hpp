@@ -28,6 +28,30 @@ namespace krypton::util {
      */
     template <typename Object, TemplateStringLiteral handleId, typename Container = std::vector<Object>>
     class FreeList {
+        // TODO: Implement iterator to get values from container and mappings at the same time.
+        class Iterator {
+            size_t pos = 0;
+            FreeList* list = nullptr;
+
+            explicit Iterator(FreeList* list, size_t pos);
+
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = Object;
+            using difference_type = std::ptrdiff_t;
+
+            Iterator& operator++();   /* prefix operator */
+            Iterator operator++(int); /* postfix operator */
+            Object& operator*() const;
+            Object* operator->() const;
+            bool operator==(const Iterator& other) const noexcept = default;
+        };
+
+// Apple Clang 13.1 still doesn't support std::forward_iterator...
+#ifndef __APPLE__
+        static_assert(std::forward_iterator<Iterator>); /* Make sure our iterator implementation is correct */
+#endif
+
         Container container;
         std::vector<FreeListObject<handleId>> mappings;
 
@@ -36,8 +60,10 @@ namespace krypton::util {
     public:
         FreeList();
 
+        [[nodiscard]] constexpr Iterator begin() noexcept;
         [[nodiscard]] auto capacity() const noexcept -> typename Handle<handleId>::IndexSize;
         [[nodiscard]] constexpr auto data() const noexcept -> const Object*;
+        [[nodiscard]] constexpr Iterator end() noexcept;
         [[nodiscard]] auto getFromHandle(const Handle<handleId>& handle) -> Object&;
         [[nodiscard]] auto getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) -> Handle<handleId>;
         [[nodiscard]] bool isHandleValid(const Handle<handleId>& handle);
@@ -46,9 +72,39 @@ namespace krypton::util {
     };
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
+    FreeList<Object, handleId, Container>::Iterator::Iterator(FreeList* list, size_t pos) : list(list), pos(pos) {}
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    auto FreeList<Object, handleId, Container>::Iterator::operator++() -> Iterator& {
+        return (++pos, *this);
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    auto FreeList<Object, handleId, Container>::Iterator::operator++(int) -> Iterator {
+        auto& old = *this;
+        ++*this;
+        return old;
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    Object& FreeList<Object, handleId, Container>::Iterator::operator*() const {
+        return (*list)[pos];
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    Object* FreeList<Object, handleId, Container>::Iterator::operator->() const {
+        return std::addressof(operator*());
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
     FreeList<Object, handleId, Container>::FreeList() {
         container.push_back(Object {});
         mappings.emplace_back();
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    constexpr auto FreeList<Object, handleId, Container>::begin() noexcept -> Iterator {
+        return { this, 0 };
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>
@@ -74,6 +130,11 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, typename Container>
     constexpr const Object* FreeList<Object, handleId, Container>::data() const noexcept {
         return container.data();
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, typename Container>
+    constexpr auto FreeList<Object, handleId, Container>::end() noexcept -> Iterator {
+        return { this, this->size() };
     }
 
     template <typename Object, TemplateStringLiteral handleId, typename Container>

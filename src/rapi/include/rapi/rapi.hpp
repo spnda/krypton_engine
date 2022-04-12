@@ -29,6 +29,8 @@ namespace krypton::rapi {
 
         virtual void beginFrame() = 0;
 
+        virtual void buildMaterial(util::Handle<"Material">& handle) = 0;
+
         /**
          * This finalizes the process of creating a render object. If a object has been built
          * previously, it has to be rebuilt after adding new primitives or changing the transform.
@@ -72,6 +74,8 @@ namespace krypton::rapi {
         virtual void render(util::Handle<"RenderObject"> handle) = 0;
 
         virtual void resize(int width, int height) = 0;
+
+        virtual void setMaterialBaseColor(util::Handle<"Material">& handle, glm::fvec4 baseColor) = 0;
 
         /**
          * Set the name of a RenderObject. This mainly helps for debugging

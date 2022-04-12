@@ -42,6 +42,7 @@ namespace krypton::util {
             bool operator==(const Iterator& other) const noexcept = default;
         };
 
+// Apple Clang 13.1 still doesn't support std::forward_iterator...
 #ifndef __APPLE__
         static_assert(std::forward_iterator<Iterator>); /* Make sure our iterator implementation is correct */
 #endif
@@ -109,8 +110,7 @@ namespace krypton::util {
 
     template <typename T, size_t blockSize>
     constexpr auto LargeVector<T, blockSize>::begin() noexcept -> Iterator {
-        LargeVector<T, blockSize>::Iterator it(this, 0);
-        return it;
+        return { this, 0 };
     }
 
     template <typename T, size_t blockSize>
@@ -120,8 +120,7 @@ namespace krypton::util {
 
     template <typename T, size_t blockSize>
     constexpr auto LargeVector<T, blockSize>::end() noexcept -> Iterator {
-        LargeVector<T, blockSize>::Iterator it(this, this->size());
-        return it;
+        return { this, this->size() };
     }
 
     template <typename T, size_t blockSize>

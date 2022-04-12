@@ -49,6 +49,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
             std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
             for (auto& mat : fileLoader->materials) {
                 localMaterialHandles.push_back(rapi->createMaterial(mat));
+                rapi->buildMaterial(localMaterialHandles.back());
             }
 
             for (auto& mesh : fileLoader->meshes) {
