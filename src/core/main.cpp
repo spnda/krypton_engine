@@ -1,5 +1,4 @@
 #include <filesystem>
-#include <iostream>
 #include <mutex>
 #include <vector>
 
@@ -46,10 +45,21 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
         if (!loaded) {
             krypton::log::err("Failed to load file!");
         } else {
+            std::vector<krypton::util::Handle<"Texture">> localTextureHandles;
+            for (auto& tex : fileLoader->textures) {
+                auto& handle = localTextureHandles.emplace_back(rapi->createTexture());
+                rapi->setTextureColorEncoding(handle, krypton::rapi::ColorEncoding::SRGB);
+                rapi->setTextureData(handle, tex.width, tex.height, { tex.pixels.data(), tex.pixels.size() },
+                                     krypton::rapi::TextureFormat::RGBA8);
+                rapi->setTextureName(handle, tex.name);
+                rapi->uploadTexture(handle);
+            }
+
             std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
             for (auto& mat : fileLoader->materials) {
-                localMaterialHandles.push_back(rapi->createMaterial(mat));
-                rapi->buildMaterial(localMaterialHandles.back());
+                auto& handle = localMaterialHandles.emplace_back(rapi->createMaterial());
+                rapi->setMaterialDiffuseTexture(handle, localTextureHandles[mat.baseTextureIndex]);
+                rapi->buildMaterial(handle);
             }
 
             for (auto& mesh : fileLoader->meshes) {

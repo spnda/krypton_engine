@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <Metal/MTLBuffer.hpp>
 
 #include <assets/primitive.hpp>
@@ -8,7 +10,7 @@
 namespace krypton::rapi::metal {
     struct Primitive final {
         krypton::assets::Primitive primitive = {};
-        krypton::util::Handle<"Material"> material;
+        std::optional<util::Handle<"Material">> material = {};
         size_t indexBufferOffset = 0;
         size_t indexCount = 0;
         int64_t baseVertex = 0;
@@ -18,11 +20,13 @@ namespace krypton::rapi::metal {
         std::vector<Primitive> primitives = {};
         glm::mat4x3 transform = glm::mat4x3(1.0f);
 
-        MTL::Buffer* vertexBuffer;
-        MTL::Buffer* indexBuffer;
-        MTL::Buffer* instanceBuffer;
+        MTL::Buffer* vertexBuffer = nullptr;
+        MTL::Buffer* indexBuffer = nullptr;
+        MTL::Buffer* instanceBuffer = nullptr;
         uint64_t totalVertexCount = 0, totalIndexCount = 0;
         std::vector<uint64_t> bufferVertexOffsets;
         std::vector<uint64_t> bufferIndexOffsets;
+
+        explicit RenderObject() = default;
     };
 } // namespace krypton::rapi::metal

@@ -90,6 +90,10 @@ void kt::Scheduler::start() {
 void kt::Scheduler::workerThreadLoop(uint32_t threadId) {
     tracy::SetThreadName(fmt::format("Worker Thread {}", threadId).c_str());
 
+#if defined(__APPLE__) || defined(__linux__)
+    pthread_setname_np(fmt::format("Worker thread {}", threadId).c_str());
+#endif
+
     // This thread is supposed to run infinitely.
     while (true) {
         kt::Scheduler::taskFunction job;

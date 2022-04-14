@@ -9,6 +9,10 @@
 
 namespace krypton::rapi::metal {
     void setMetalLayerOnWindow(GLFWwindow* window, CA::MetalLayer* layer);
-}
+
+    // Gets the MTLPixelFormat that is the best suitable for the screen that is currently
+    // displaying the window.
+    uint32_t getScreenPixelFormat(GLFWwindow* window);
+} // namespace krypton::rapi::metal
 
 #endif // #ifdef RAPI_WITH_METAL

@@ -185,8 +185,13 @@ bool ka::loader::FileLoader::loadGltfFile(const fs::path& path) {
     for (const auto& tex : model.textures) {
         auto& textureFile = textures.emplace_back();
         const auto& image = model.images[tex.source];
+        textureFile.name = tex.name;
         textureFile.width = image.width;
         textureFile.height = image.height;
+        textureFile.channels = image.component;
+        textureFile.bitsPerPixel =
+            // This is not the best solution, but should cover 99% of cases.
+            image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE ? 8 : 16;
         textureFile.pixels.resize(image.width * image.height * image.component);
         memcpy(textureFile.pixels.data(), image.image.data(), textureFile.pixels.size());
     }

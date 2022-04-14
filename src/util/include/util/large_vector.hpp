@@ -62,6 +62,7 @@ namespace krypton::util {
         [[nodiscard]] size_t capacity() const noexcept;
         constexpr Iterator end() noexcept;
         T& emplace_back(T&& value) noexcept;
+        constexpr void push_back(const T& value) noexcept;
         constexpr void push_back(T&& value) noexcept;
         void resize(size_t size);
         [[nodiscard]] size_t size() const noexcept;
@@ -129,6 +130,11 @@ namespace krypton::util {
             addNewBlocks(1);
 
         return data.back()->emplace_back(std::move(value));
+    }
+
+    template <typename T, size_t blockSize>
+    constexpr void LargeVector<T, blockSize>::push_back(const T& value) noexcept {
+        emplace_back(std::forward(value));
     }
 
     template <typename T, size_t blockSize>

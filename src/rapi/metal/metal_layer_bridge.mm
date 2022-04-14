@@ -16,6 +16,36 @@ namespace krypton::rapi::metal {
         nswindow.contentView.layer = (__bridge CALayer*)layer;
         nswindow.contentView.wantsLayer = YES;
     }
+
+    uint32_t getScreenPixelFormat(GLFWwindow* window) {
+        auto* monitor = glfwGetWindowMonitor(window);
+
+        NSScreen* nativeMonitor = nil;
+        if (monitor == nil) {
+            // We're not in fullscreen. Instead, we'll query the display gamut of the "main"
+            // monitor through [NSScreen main].
+            nativeMonitor = [NSScreen mainScreen];
+        } else {
+            // If we're fullscreen we can actually fetch the proper NSScreen for our window.
+            CGDirectDisplayID cocoaMonitor = glfwGetCocoaMonitor(monitor);
+            const auto unitNumber = CGDisplayUnitNumber(cocoaMonitor);
+
+            for (NSScreen* screen in [NSScreen screens]) {
+                NSNumber* screenNumber = [screen deviceDescription][@"NSScreenNumber"];
+
+                if (CGDisplayUnitNumber([screenNumber unsignedIntValue]) == unitNumber) {
+                    nativeMonitor = screen;
+                    break;
+                }
+            }
+        }
+
+        if (nativeMonitor == nil)
+            return MTLPixelFormatBGRA8Unorm_sRGB;
+
+        bool canDisplayP3 = [nativeMonitor canRepresentDisplayGamut:(NSDisplayGamutP3)];
+        return canDisplayP3 ? MTLPixelFormatBGRA10_XR_sRGB : MTLPixelFormatBGRA8Unorm_sRGB;
+    }
 }
 
 #endif // #ifdef RAPI_WITH_METAL
