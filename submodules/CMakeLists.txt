@@ -65,3 +65,12 @@ endif()
 target_link_libraries(imgui PUBLIC glfw)
 target_link_libraries(imgui PUBLIC metal-cpp)
 # ↑ -------------------  IMGUI  ------------------- ↑
+
+# ↓ -------------------   FSR   ------------------- ↓
+set(FSR_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fsr")
+if(EXISTS "${FSR_DIRECTORY}")
+  add_library(fsr_native INTERFACE)
+  add_library(fsr::fsr ALIAS fsr_native)
+  target_include_directories(fsr_native SYSTEM INTERFACE "${FSR_DIRECTORY}/ffx-fsr/")
+endif()
+# ↑ -------------------   FSR   ------------------- ↑

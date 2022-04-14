@@ -13,3 +13,6 @@
 [submodule "submodules/asserts"]
 	path = submodules/asserts
 	url = https://github.com/jeremy-rifkin/asserts
+[submodule "submodules/fsr"]
+	path = submodules/fsr
+	url = https://github.com/GPUOpen-Effects/FidelityFX-FSR/

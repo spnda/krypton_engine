@@ -9,6 +9,7 @@
 #include <Metal/Metal.hpp>
 
 #include <assets/mesh.hpp>
+#include <rapi/fsr_util.hpp>
 #include <rapi/metal/CAMetalLayer.hpp>
 #include <rapi/metal/material.hpp>
 #include <rapi/metal/render_object.hpp>
@@ -25,11 +26,17 @@ namespace krypton::rapi {
         MTL::Device* device = nullptr;
         MTL::Library* library = nullptr;
         MTL::CommandQueue* queue = nullptr;
+        MTL::Heap* textureHeap = nullptr;
+
+        glm::ivec2 currentRenderTargetDimensions;
+        glm::ivec2 currentFramebufferDimensions;
 
         // G-Buffer pipeline
         CA::MetalLayer* swapchain = nullptr;
         MTL::RenderPipelineState* pipelineState = nullptr;
         MTL::DepthStencilState* depthState = nullptr;
+        MTL::Texture* colorTexture = nullptr;
+        MTL::Texture* outputColorTexture = nullptr;
         MTL::Texture* depthTexture = nullptr;
         MTL::RenderPipelineState* colorPipelineState = nullptr;
         shaders::ShaderFile defaultShader;
@@ -61,9 +68,22 @@ namespace krypton::rapi {
         util::FreeList<metal::Texture, "Texture"> textures = {};
         std::mutex textureMutex;
 
+        // FSR specific
+        FsrProfile selectedProfile = fsrProfiles::quality;
+        MTL::Library* fsrLibrary = nullptr;
+        MTL::Function* fsrComputeFunction = nullptr;
+        MTL::ArgumentEncoder* fsrArgumentEncoder = nullptr;
+        MTL::Buffer* fsrEasuBuffer = nullptr;
+        MTL::Buffer* fsrArgumentBuffer = nullptr;
+        MTL::SamplerState* fsrColorSamplerState = nullptr;
+        MTL::ComputePipelineState* fsrComputePSO = nullptr;
+
         void createDepthTexture();
         void createGBufferTextures();
         void createDeferredPipeline();
+        void initFSR();
+        void triggerCapture();
+        void updateFSRBuffers();
 
     public:
         MetalBackend();

@@ -31,6 +31,7 @@ namespace CA {
             _CA_PRIVATE_DEF_SEL(device, "device")
             _CA_PRIVATE_DEF_SEL(nextDrawable, "nextDrawable")
             _CA_PRIVATE_DEF_SEL(setDevice, "setDevice:")
+            _CA_PRIVATE_DEF_SEL(setFramebufferOnly, "setFramebufferOnly:")
             _CA_PRIVATE_DEF_SEL(setDrawableSize, "setDrawableSize:")
             _CA_PRIVATE_DEF_SEL(setPixelFormat, "setPixelFormat:")
         } // namespace Selector
@@ -59,8 +60,9 @@ namespace CA {
 
         [[nodiscard]] MTL::Device* device();
         void setDevice(const MTL::Device* device);
-        void setPixelFormat(MTL::PixelFormat format);
         void setDrawableSize(CG::Size size);
+        void setFramebufferOnly(bool framebufferOnly);
+        void setPixelFormat(MTL::PixelFormat format);
     };
 } // namespace CA
 
@@ -88,12 +90,16 @@ inline void CA::MetalLayer::setDevice(const MTL::Device* device) {
     return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setDevice), device);
 }
 
-inline void CA::MetalLayer::setPixelFormat(MTL::PixelFormat format) {
-    return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setPixelFormat), format);
-}
-
 inline void CA::MetalLayer::setDrawableSize(CG::Size size) {
     return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setDrawableSize), size);
+}
+
+inline void CA::MetalLayer::setFramebufferOnly(bool framebufferOnly) {
+    return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setFramebufferOnly), framebufferOnly);
+}
+
+inline void CA::MetalLayer::setPixelFormat(MTL::PixelFormat format) {
+    return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setPixelFormat), format);
 }
 
 #endif // #ifdef RAPI_WITH_METAL

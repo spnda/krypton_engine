@@ -10,6 +10,10 @@ target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
 target_link_libraries(krypton_rapi PUBLIC krypton::threading)
 target_link_libraries(krypton_rapi PUBLIC krypton::util)
 
+if(TARGET fsr::fsr)
+  target_link_libraries(krypton_rapi PUBLIC fsr::fsr)
+endif()
+
 target_compile_features(krypton_rapi PRIVATE cxx_std_20)
 
 target_include_directories(krypton_rapi PUBLIC "include")
@@ -36,4 +40,4 @@ add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/metal/")
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/vulkan/")
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/")
 
-add_files(TARGET krypton_rapi "rapi.cpp" "window.cpp")
+add_files(TARGET krypton_rapi "fsr_util.cpp" "rapi.cpp" "window.cpp")

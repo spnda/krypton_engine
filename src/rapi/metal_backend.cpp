@@ -15,6 +15,7 @@
 #include <imgui.h>
 #include <imgui_impl_metal.h>
 
+#include <rapi/fsr_util.hpp>
 #include <rapi/metal/metal_layer_bridge.hpp>
 #include <rapi/metal/shader_types.hpp>
 #include <rapi/metal_backend.hpp>
@@ -166,10 +167,11 @@ void kr::MetalBackend::buildRenderObject(ku::Handle<"RenderObject">& handle) {
 
 void kr::MetalBackend::createDepthTexture() {
     ZoneScoped;
-    int width, height;
-    window->getFramebufferSize(&width, &height);
+    if (depthTexture != nullptr)
+        depthTexture->release();
 
-    auto depthTexDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float_Stencil8, width, height, false);
+    auto depthTexDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float_Stencil8, currentRenderTargetDimensions.x,
+                                                                    currentRenderTargetDimensions.y, false);
     depthTexDesc->setStorageMode(MTL::StorageModePrivate);
     depthTexDesc->setUsage(MTL::TextureUsageRenderTarget);
     depthTexture = device->newTexture(depthTexDesc);
@@ -183,6 +185,17 @@ void kr::MetalBackend::createDeferredPipeline() {
 
     // Create textures for our G-Buffer
     createGBufferTextures();
+
+    if (outputColorTexture == nullptr) {
+        // Output texture of the FSR pass and input texture for the imgui rendering.
+        auto* outputColorTextureDesc = MTL::TextureDescriptor::texture2DDescriptor(colorPixelFormat, currentFramebufferDimensions.x,
+                                                                                   currentFramebufferDimensions.y, false);
+        outputColorTextureDesc->setStorageMode(MTL::StorageModePrivate);
+        outputColorTextureDesc->setUsage(MTL::TextureUsageShaderWrite);
+        outputColorTexture = device->newTexture(outputColorTextureDesc);
+        outputColorTexture->setLabel(NS::String::string("Output color texture", NS::ASCIIStringEncoding));
+        outputColorTextureDesc->release();
+    }
 
     // Create our programs
     auto* vertexProgram = library->newFunction(metal::createString("gbuffer_vertex"));
@@ -203,7 +216,8 @@ void kr::MetalBackend::createDeferredPipeline() {
     NS::Error* error = nullptr;
     pipelineState = device->newRenderPipelineState(pipelineStateDescriptor, &error);
     pipelineStateDescriptor->release();
-    error->release();
+    if (error != nullptr)
+        error->release();
 
     // Create our depth stencil
     auto* depthDescriptor = MTL::DepthStencilDescriptor::alloc()->init();
@@ -233,20 +247,38 @@ void kr::MetalBackend::createDeferredPipeline() {
 
 void kr::MetalBackend::createGBufferTextures() {
     ZoneScoped;
-    int width, height;
-    window->getFramebufferSize(&width, &height);
 
-    auto* normalsDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA16Float, width, height, false);
+    if (normalsTexture != nullptr)
+        normalsTexture->release();
+    if (albedoTexture != nullptr)
+        albedoTexture->release();
+    if (colorTexture != nullptr)
+        colorTexture->release();
+
+    auto* normalsDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRG11B10Float, currentRenderTargetDimensions.x,
+                                                                    currentRenderTargetDimensions.y, false);
     normalsDesc->setStorageMode(MTL::StorageModePrivate);
     normalsDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
     normalsTexture = device->newTexture(normalsDesc);
     normalsTexture->setLabel(NS::String::string("G-Buffer Normals Texture", NS::ASCIIStringEncoding));
+    normalsDesc->release();
 
-    auto* albedoDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA8Unorm, width, height, false);
+    auto* albedoDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA8Unorm, currentRenderTargetDimensions.x,
+                                                                   currentRenderTargetDimensions.y, false);
     albedoDesc->setStorageMode(MTL::StorageModePrivate);
     albedoDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
     albedoTexture = device->newTexture(albedoDesc);
     albedoTexture->setLabel(NS::String::string("G-Buffer Albedo Texture", NS::ASCIIStringEncoding));
+    albedoDesc->release();
+
+    // The texture we write to after our G-Buffer lighting pass. We also use this in the FSR pass.
+    auto* colorTextureDesc = MTL::TextureDescriptor::texture2DDescriptor(colorPixelFormat, currentRenderTargetDimensions.x,
+                                                                         currentRenderTargetDimensions.y, false);
+    colorTextureDesc->setStorageMode(MTL::StorageModePrivate);
+    colorTextureDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+    colorTexture = device->newTexture(colorTextureDesc);
+    colorTexture->setLabel(NS::String::string("Color texture", NS::ASCIIStringEncoding));
+    colorTextureDesc->release();
 }
 
 ku::Handle<"RenderObject"> kr::MetalBackend::createRenderObject() {
@@ -328,6 +360,29 @@ bool kr::MetalBackend::destroyTexture(util::Handle<"Texture">& handle) {
 void kr::MetalBackend::drawFrame() {
     ZoneScoped;
 
+    // Render our own ImGui window for backend configuration
+    if (ImGui::Begin("Metal backend")) {
+        ImGui::Text("%s", fmt::format("Rendering on {}", device->name()->utf8String()).c_str());
+
+        if (ImGui::BeginCombo("AMD FSR 1.0 Profile", selectedProfile.name.c_str())) {
+            auto profiles = kr::getFsrProfiles();
+            for (auto& item : profiles) {
+                if (ImGui::Selectable(item.name.c_str(), item.factor == selectedProfile.factor)) {
+                    selectedProfile = item;
+                    currentRenderTargetDimensions = getScaledResolution(currentFramebufferDimensions, selectedProfile);
+
+                    // Re-create the render targets
+                    createDepthTexture();
+                    createGBufferTextures();
+                    updateFSRBuffers();
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        ImGui::End();
+    }
+
     auto* arPool = NS::AutoreleasePool::alloc()->init();
     auto* drawable = swapchain->nextDrawable();
 
@@ -392,7 +447,7 @@ void kr::MetalBackend::drawFrame() {
     colorAttachment->setClearColor(MTL::ClearColor::Make(0, 0, 0, 0.25));
     colorAttachment->setLoadAction(MTL::LoadActionClear);
     colorAttachment->setStoreAction(MTL::StoreActionStore);
-    colorAttachment->setTexture(drawable->texture());
+    colorAttachment->setTexture(colorTexture);
 
     auto* colorEncoder = commandBuffer->renderCommandEncoder(colorPass);
     colorEncoder->setRenderPipelineState(colorPipelineState);
@@ -401,6 +456,36 @@ void kr::MetalBackend::drawFrame() {
 
     colorEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, 3);
     colorEncoder->endEncoding();
+
+    // Now our FSR pass
+    auto* fsrPass = MTL::ComputePassDescriptor::computePassDescriptor();
+    fsrPass->setDispatchType(MTL::DispatchTypeConcurrent);
+    auto* fsrEncoder = commandBuffer->computeCommandEncoder(fsrPass);
+
+    static const int threadGroupWorkRegionDim = 16;
+    uint32_t fsrDispatchX = (currentFramebufferDimensions.x + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    uint32_t fsrDispatchY = (currentFramebufferDimensions.y + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    auto fsrDispatchSize = MTL::Size::Make(fsrDispatchX, fsrDispatchY, 1);
+
+    // We expect 64, 1, 1. While this is probably not the most optimal thing, this is required and
+    // will usually fulfill the rule of threadExecutionWidth() * x.
+    MTL::Size threadsPerThreadgroup = MTL::Size::Make(64, 1, 1);
+
+    fsrEncoder->setComputePipelineState(fsrComputePSO);
+    fsrEncoder->setBuffer(fsrArgumentBuffer, 0, 0);
+    fsrEncoder->useResource(colorTexture, MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+    fsrEncoder->useResource(outputColorTexture, MTL::ResourceUsageWrite);
+    fsrEncoder->useResource(fsrEasuBuffer, MTL::ResourceUsageRead);
+    fsrEncoder->dispatchThreadgroups(fsrDispatchSize, threadsPerThreadgroup);
+    fsrEncoder->endEncoding();
+
+    // We now need to copy our outputColorTexture to the drawable. I really hate this, and I hope
+    // there's a better way to do this.
+    auto* blitEncoder = commandBuffer->blitCommandEncoder();
+    blitEncoder->copyFromTexture(outputColorTexture, 0, 0, MTL::Origin::Make(0, 0, 0),
+                                 MTL::Size::Make(currentFramebufferDimensions.x, currentFramebufferDimensions.y, 1), drawable->texture(), 0,
+                                 0, MTL::Origin::Make(0, 0, 0));
+    blitEncoder->endEncoding();
 
     // Draw ImGui
     auto imguiColorAttachment = imGuiPassDescriptor->colorAttachments()->object(0);
@@ -450,6 +535,7 @@ void kr::MetalBackend::init() {
 
     int width, height;
     window->getFramebufferSize(&width, &height);
+    currentFramebufferDimensions = { width, height };
     krypton::log::log("Framebuffer size: {}x{}", width, height);
 
     // We have to set this because the window otherwise defaults to our
@@ -471,6 +557,7 @@ void kr::MetalBackend::init() {
     swapchain->setDevice(device);
     swapchain->setPixelFormat(colorPixelFormat);
     swapchain->setDrawableSize(drawableSize);
+    swapchain->setFramebufferOnly(false);
 
     krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
@@ -495,7 +582,15 @@ void kr::MetalBackend::init() {
     if (!library) {
         krypton::log::err(error->description()->utf8String());
     }
-    error->release();
+    if (error != nullptr)
+        error->release();
+
+    initFSR();
+    currentRenderTargetDimensions = getScaledResolution(currentFramebufferDimensions, selectedProfile);
+
+    krypton::log::log("Scale factor: {}", selectedProfile.factor);
+    krypton::log::log("Output resolution: {}x{}", width, height);
+    krypton::log::log("Scaled resolution: {}x{}", currentRenderTargetDimensions.x, currentRenderTargetDimensions.y);
 
     createDeferredPipeline();
 
@@ -505,6 +600,47 @@ void kr::MetalBackend::init() {
     cameraBuffer = device->newBuffer(kr::CAMERA_DATA_SIZE, MTL::ResourceStorageModeShared);
 
     imGuiPassDescriptor = MTL::RenderPassDescriptor::renderPassDescriptor();
+
+    updateFSRBuffers();
+}
+
+void kr::MetalBackend::initFSR() {
+    auto fsrShader = krypton::shaders::readShaderFile("shaders/fsr.metal");
+    NS::String* fsrShaderSource = NS::String::string(fsrShader.content.c_str(), NS::ASCIIStringEncoding);
+
+    auto* compileOptions = MTL::CompileOptions::alloc()->init();
+    compileOptions->setLanguageVersion(MTL::LanguageVersion2_4);
+
+    NS::Error* error = nullptr;
+    fsrLibrary = device->newLibrary(fsrShaderSource, compileOptions, &error);
+    if (!fsrLibrary) {
+        krypton::log::err(error->description()->utf8String());
+    }
+    if (error != nullptr)
+        error->release();
+
+    fsrComputeFunction = fsrLibrary->newFunction(metal::createString("main0"));
+    error = nullptr;
+    fsrComputePSO = device->newComputePipelineState(fsrComputeFunction, &error);
+    if (!fsrComputePSO) {
+        krypton::log::err(error->description()->utf8String());
+    }
+    if (error != nullptr)
+        error->release();
+
+    if (fsrArgumentEncoder == nullptr) {
+        fsrArgumentEncoder = fsrComputeFunction->newArgumentEncoder(0);
+        fsrArgumentBuffer = device->newBuffer(fsrArgumentEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+        fsrArgumentBuffer->setLabel(NS::String::string("FSR Argument buffer", NS::ASCIIStringEncoding));
+    }
+
+    std::vector<uint32_t> easu;
+    configureEasu(easu, currentRenderTargetDimensions, currentFramebufferDimensions);
+    if (fsrEasuBuffer == nullptr) {
+        fsrEasuBuffer = device->newBuffer(easu.size() * sizeof(uint32_t), MTL::ResourceStorageModeShared);
+        fsrEasuBuffer->setLabel(NS::String::string("FSR Constants buffer", NS::ASCIIStringEncoding));
+    }
+    std::memcpy(fsrEasuBuffer->contents(), easu.data(), fsrEasuBuffer->length());
 }
 
 void kr::MetalBackend::render(ku::Handle<"RenderObject"> handle) {
@@ -581,6 +717,50 @@ void kr::MetalBackend::shutdown() {
     queue->release();
     library->release();
     device->release();
+}
+
+void kr::MetalBackend::triggerCapture() {
+    bool success;
+
+    MTL::CaptureManager* pCaptureManager = MTL::CaptureManager::sharedCaptureManager();
+    success = pCaptureManager->supportsDestination(MTL::CaptureDestinationGPUTraceDocument);
+    if (!success) {
+        krypton::log::throwError("Capture support is not enabled");
+    }
+
+    char filename[NAME_MAX];
+    std::time_t now;
+    std::time(&now);
+    std::strftime(filename, NAME_MAX, "capture-%H-%M-%S_%m-%d-%y.gputrace", std::localtime(&now));
+
+    NS::URL* pURL = NS::URL::alloc()->initFileURLWithPath(NS::String::string(filename, NS::ASCIIStringEncoding));
+
+    MTL::CaptureDescriptor* pCaptureDescriptor = MTL::CaptureDescriptor::alloc()->init();
+    pCaptureDescriptor->setDestination(MTL::CaptureDestinationGPUTraceDocument);
+    pCaptureDescriptor->setOutputURL(pURL);
+    pCaptureDescriptor->setCaptureObject(device);
+
+    NS::Error* pError = nullptr;
+    success = pCaptureManager->startCapture(pCaptureDescriptor, &pError);
+    if (!success) {
+        krypton::log::throwError(R"(Failed to start capture: "{}" for file "{}")", pError->localizedDescription()->utf8String(), filename);
+    }
+
+    pURL->release();
+    pCaptureDescriptor->release();
+}
+
+void kr::MetalBackend::updateFSRBuffers() {
+    VERIFY(fsrEasuBuffer != nullptr);
+
+    fsrArgumentEncoder->setArgumentBuffer(fsrArgumentBuffer, 0, 0);
+    fsrArgumentEncoder->setTexture(colorTexture, 0);
+    fsrArgumentEncoder->setBuffer(fsrEasuBuffer, 0, 1);
+    fsrArgumentEncoder->setTexture(outputColorTexture, 2);
+
+    std::vector<uint32_t> easu;
+    configureEasu(easu, currentRenderTargetDimensions, currentFramebufferDimensions);
+    std::memcpy(fsrEasuBuffer->contents(), easu.data(), fsrEasuBuffer->length());
 }
 
 void kr::MetalBackend::uploadTexture(util::Handle<"Texture"> handle) {
