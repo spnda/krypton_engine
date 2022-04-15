@@ -73,7 +73,7 @@ else()
   # Clang, AppleClang, or GCC
   add_compile_options(-Wall -Wextra -pedantic -Og)
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-Og)
+    add_compile_options(-O0)
   else()
     add_compile_options(-O3)
   endif()

@@ -1,8 +1,7 @@
 #include <metal_stdlib>
 
 // Basic sampler
-constexpr metal::sampler textureSampler(metal::mag_filter::linear,
-                                        metal::min_filter::linear);
+constexpr metal::sampler textureSampler(metal::mip_filter::linear, metal::mag_filter::linear, metal::min_filter::linear, metal::s_address::repeat, metal::t_address::repeat);
 
 struct Vertex {
     float4 position [[position]];

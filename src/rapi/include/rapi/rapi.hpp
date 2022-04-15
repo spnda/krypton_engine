@@ -16,7 +16,12 @@
 namespace krypton::rapi {
     class RenderAPI;
 
-    std::unique_ptr<RenderAPI> getRenderApi();
+    [[nodiscard]] std::unique_ptr<RenderAPI> getRenderApi(Backend backend) noexcept(false);
+
+    [[nodiscard]] Backend getPlatformDefaultBackend() noexcept;
+
+    /* A list of backends that are supported on this platform. */
+    [[nodiscard]] std::vector<Backend> getPlatformSupportedBackends() noexcept;
 
     /**
      * The RenderAPI interface that can be extended to provide different

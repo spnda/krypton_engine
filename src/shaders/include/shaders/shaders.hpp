@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <span>
 #include <vector>
@@ -41,9 +42,8 @@ namespace krypton::shaders {
             case ShaderSourceType::SPIRV:
                 return b == ShaderTargetType::SPIRV;
             default:
-                /* Other inputs can only be slang, which we can't set
-                 * as a target or the target is Metal, which we cannot
-                 * take as a input. */
+                // Other inputs can only be slang, which we can't set as a target or the target is
+                // Metal, which we cannot take as an input.
                 return false;
         }
     }
@@ -77,7 +77,7 @@ namespace krypton::shaders {
     /** Represents input data for shader compilation */
     struct ShaderCompileInput {
         fs::path filePath;
-        std::string source;
+        std::vector<uint8_t> source;
 
         std::vector<std::string> entryPoints;
         std::vector<ShaderStage> shaderStages;
@@ -91,7 +91,7 @@ namespace krypton::shaders {
      * operation.
      */
     enum class CompileResultType {
-        Spirv,
+        SPIRV,
         String,
     };
 
@@ -107,7 +107,7 @@ namespace krypton::shaders {
          * The result type of the result. Usually SPIR-V, meaning
          * that the result points to a array of uint32_t's.
          */
-        CompileResultType resultType = CompileResultType::Spirv;
+        CompileResultType resultType = CompileResultType::SPIRV;
 
         /**
          * This is the actual size of the data in bytes. This is
@@ -122,7 +122,9 @@ namespace krypton::shaders {
      * just consists of the filesystem path and a string
      * of its contents.
      */
-    ShaderFile readShaderFile(const fs::path& path);
+    [[nodiscard]] ShaderFile readShaderFile(const fs::path& path);
+
+    [[nodiscard]] std::vector<uint8_t> readBinaryShaderFile(const fs::path& path);
 
     /**
      * Compiles a shader from [sourceType] to [targetType]. May use

@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <vector>
 
@@ -16,6 +17,7 @@
 #include <assets/scene.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
+#include <shaders/shaders.hpp>
 #include <threading/scheduler.hpp>
 #include <util/handle.hpp>
 #include <util/logging.hpp>
@@ -107,7 +109,8 @@ auto main(int argc, char* argv[]) -> int {
     try {
         kt::Scheduler::getInstance().start();
 
-        auto rapi = krypton::rapi::getRenderApi();
+        // We currently just use the default backend for the current platform.
+        auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
         rapi->init();
         cameraData = rapi->getCameraData();
 
