@@ -1,8 +1,15 @@
-#include <algorithm>
-#include <iostream>
+#ifdef RAPI_WITH_VULKAN
+#define GLFW_INCLUDE_VULKAN
+#endif // #ifdef RAPI_WITH_VULKAN
+
+#ifdef RAPI_WITH_METAL
+#define GLFW_INCLUDE_NONE
+#endif // #ifdef RAPI_WITH_METAL
+
 #include <stdexcept>
 #include <utility>
 
+#include <GLFW/glfw3.h>
 #include <Tracy.hpp>
 #include <fmt/core.h>
 #include <imgui.h>
@@ -12,6 +19,10 @@
 #include <rapi/rapi_backends.hpp>
 #include <rapi/window.hpp>
 #include <util/logging.hpp>
+
+#ifdef RAPI_WITH_METAL
+#include <rapi/metal/metal_layer_bridge.hpp>
+#endif
 
 namespace krypton::rapi::window {
     void errorCallback(int error, const char* desc) {
@@ -23,33 +34,46 @@ namespace krypton::rapi::window {
 
     void resizeCallback(GLFWwindow* window, int width, int height) {
         if (width > 0 && height > 0) {
-            auto* w = reinterpret_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
-            if (w != nullptr)
+            auto* w = static_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
+            if (w != nullptr) {
+                w->getWindow()->width = width;
+                w->getWindow()->height = height;
                 w->resize(width, height);
+            }
         }
     }
 } // namespace krypton::rapi::window
 
-krypton::rapi::Window::Window(uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
+krypton::rapi::Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {}
 
 krypton::rapi::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
 
-void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
+void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
     ZoneScoped;
-    using namespace krypton::rapi;
+    // This method has already been called and completed successfully.
+    if (window)
+        return;
+
+    backend = tBackend;
+    if (backend == Backend::None) {
+        krypton::log::throwError("Cannot create window with no rendering backend");
+    }
+
     if (!glfwInit())
-        throw std::runtime_error("glfwInit failed.");
+        krypton::log::throwError("glfwInit failed.");
 
     glfwSetErrorCallback(window::errorCallback);
 
     switch (backend) {
         case Backend::Vulkan:
             if (!glfwVulkanSupported())
-                throw std::runtime_error("Vulkan is not supported on this system!");
+                krypton::log::throwError("Vulkan is not supported on this system!");
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             break;
         case Backend::Metal:
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+            break;
+        case Backend::None:
             break;
     }
 
@@ -68,37 +92,54 @@ void krypton::rapi::Window::create(krypton::rapi::Backend backend) {
 }
 
 void krypton::rapi::Window::destroy() {
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    ZoneScoped;
+    if (window != nullptr) {
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
 }
 
 float krypton::rapi::Window::getAspectRatio() const {
     return (float)width / (float)height;
 }
 
-void krypton::rapi::Window::getContentScale(float* xScale, float* yScale) const {
-    glfwGetWindowContentScale(window, xScale, yScale);
+glm::fvec2 krypton::rapi::Window::getContentScale() const {
+    ZoneScoped;
+    float xScale, yScale;
+    glfwGetWindowContentScale(window, &xScale, &yScale);
+    return { xScale, yScale };
 }
 
-void krypton::rapi::Window::getFramebufferSize(int* tWidth, int* tHeight) const {
-    glfwGetFramebufferSize(window, tWidth, tHeight);
+glm::ivec2 krypton::rapi::Window::getFramebufferSize() const {
+    ZoneScoped;
+    int tWidth, tHeight;
+    glfwGetFramebufferSize(window, &tWidth, &tHeight);
+    return { tWidth, tHeight };
 }
 
 GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
     return window;
 }
 
-void krypton::rapi::Window::getWindowSize(int* tWidth, int* tHeight) const {
-    glfwGetWindowSize(window, tWidth, tHeight);
+glm::ivec2 krypton::rapi::Window::getWindowSize() const {
+    ZoneScoped;
+    int tWidth, tHeight;
+    glfwGetWindowSize(window, &tWidth, &tHeight);
+    return { tWidth, tHeight };
 }
 
 void krypton::rapi::Window::initImgui() const {
     ZoneScoped;
-#ifdef RAPI_WITH_VULKAN
-    ImGui_ImplGlfw_InitForVulkan(window, true);
-#elif RAPI_WITH_METAL
-    ImGui_ImplGlfw_InitForOther(window, true);
-#endif
+    switch (backend) {
+        case Backend::Vulkan:
+            ImGui_ImplGlfw_InitForVulkan(window, true);
+            break;
+        case Backend::Metal:
+            ImGui_ImplGlfw_InitForOther(window, true);
+            break;
+        case Backend::None:
+            break;
+    }
 }
 
 void krypton::rapi::Window::newFrame() {
@@ -111,11 +152,13 @@ void krypton::rapi::Window::pollEvents() {
     glfwPollEvents();
 }
 
-void krypton::rapi::Window::setRapiPointer(krypton::rapi::RenderAPI* rapi) {
+void krypton::rapi::Window::setRapiPointer(RenderAPI* rapi) {
+    ZoneScoped;
     glfwSetWindowUserPointer(window, rapi);
 }
 
 void krypton::rapi::Window::setWindowTitle(std::string_view newTitle) const {
+    ZoneScoped;
     glfwSetWindowTitle(window, newTitle.data());
 }
 
@@ -141,7 +184,7 @@ VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) c
     return surface;
 }
 
-std::vector<const char*> krypton::rapi::Window::getVulkanExtensions() {
+std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() const {
     ZoneScoped;
     uint32_t count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
@@ -151,3 +194,14 @@ std::vector<const char*> krypton::rapi::Window::getVulkanExtensions() {
     return exts;
 }
 #endif // #ifdef RAPI_WITH_VULKAN
+
+#ifdef RAPI_WITH_METAL
+CA::MetalLayer* krypton::rapi::Window::createMetalLayer(const MTL::Device* device, MTL::PixelFormat pixelFormat) const {
+    auto layer = CA::MetalLayer::layer();
+    layer->setDevice(device);
+    layer->setPixelFormat(pixelFormat);
+    layer->setContentsScale((CG::Float)getContentScale().x);
+    metal::setMetalLayerOnWindow(window, layer);
+    return layer;
+}
+#endif

@@ -114,10 +114,9 @@ auto main(int argc, char* argv[]) -> int {
         rapi->init();
         cameraData = rapi->getCameraData();
 
-        int width, height;
-        rapi->getWindow()->getWindowSize(&width, &height);
+        auto wSize = rapi->getWindow()->getWindowSize();
 
-        cameraData->projection = glm::perspective(glm::radians(70.0f), (float)width / (float)height, cameraData->near, cameraData->far);
+        cameraData->projection = glm::perspective(glm::radians(70.0f), (float)wSize.x / (float)wSize.y, cameraData->near, cameraData->far);
         cameraData->view = glm::lookAt(glm::vec3(10, 0, -1), // position in world
                                        glm::vec3(0, 0, 0),   // look at position; center of world
                                        glm::vec3(0, 1, 0));  // up vector - Y

@@ -166,10 +166,9 @@ void kr::MetalBackend::buildRenderObject(ku::Handle<"RenderObject">& handle) {
 
 void kr::MetalBackend::createDepthTexture() {
     ZoneScoped;
-    int width, height;
-    window->getFramebufferSize(&width, &height);
+    auto fbSize = window->getFramebufferSize();
 
-    auto depthTexDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float_Stencil8, width, height, false);
+    auto depthTexDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float_Stencil8, fbSize.x, fbSize.y, false);
     depthTexDesc->setStorageMode(MTL::StorageModePrivate);
     depthTexDesc->setUsage(MTL::TextureUsageRenderTarget);
     depthTexture = device->newTexture(depthTexDesc);
@@ -203,7 +202,8 @@ void kr::MetalBackend::createDeferredPipeline() {
     NS::Error* error = nullptr;
     pipelineState = device->newRenderPipelineState(pipelineStateDescriptor, &error);
     pipelineStateDescriptor->release();
-    error->release();
+    if (error)
+        error->release();
 
     // Create our depth stencil
     auto* depthDescriptor = MTL::DepthStencilDescriptor::alloc()->init();
@@ -233,16 +233,15 @@ void kr::MetalBackend::createDeferredPipeline() {
 
 void kr::MetalBackend::createGBufferTextures() {
     ZoneScoped;
-    int width, height;
-    window->getFramebufferSize(&width, &height);
+    auto fbSize = window->getFramebufferSize();
 
-    auto* normalsDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA16Float, width, height, false);
+    auto* normalsDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA16Float, fbSize.x, fbSize.y, false);
     normalsDesc->setStorageMode(MTL::StorageModePrivate);
     normalsDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
     normalsTexture = device->newTexture(normalsDesc);
     normalsTexture->setLabel(NS::String::string("G-Buffer Normals Texture", NS::ASCIIStringEncoding));
 
-    auto* albedoDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA8Unorm, width, height, false);
+    auto* albedoDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRGBA8Unorm, fbSize.x, fbSize.y, false);
     albedoDesc->setStorageMode(MTL::StorageModePrivate);
     albedoDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
     albedoTexture = device->newTexture(albedoDesc);
@@ -444,33 +443,22 @@ void kr::MetalBackend::init() {
 
     colorPixelFormat = static_cast<MTL::PixelFormat>(metal::getScreenPixelFormat(window->getWindowPointer()));
 
-    int w_width, w_height;
-    window->getWindowSize(&w_width, &w_height);
-    krypton::log::log("Window size: {}x{}", w_width, w_height);
+    auto wSize = window->getWindowSize();
+    krypton::log::log("Window size: {}x{}", wSize.x, wSize.y);
 
-    int width, height;
-    window->getFramebufferSize(&width, &height);
-    krypton::log::log("Framebuffer size: {}x{}", width, height);
+    auto fbSize = window->getFramebufferSize();
+    krypton::log::log("Framebuffer size: {}x{}", fbSize.x, fbSize.y);
 
-    // We have to set this because the window otherwise defaults to our
-    // scaled size and not the actual wanted framebuffer size.
-    CG::Size drawableSize = {
-        .width = (double)width,
-        .height = (double)height,
-    };
+    auto wcScale = window->getContentScale();
 
     // Create the device, queue and metal layer
     device = MTL::CreateSystemDefaultDevice();
     if (device->argumentBuffersSupport() < MTL::ArgumentBuffersTier2) {
         krypton::log::throwError("The Metal backend requires support at least ArgumentBuffersTier2.");
-        return;
     }
 
     queue = device->newCommandQueue();
-    swapchain = CA::MetalLayer::layer();
-    swapchain->setDevice(device);
-    swapchain->setPixelFormat(colorPixelFormat);
-    swapchain->setDrawableSize(drawableSize);
+    swapchain = window->createMetalLayer(device, colorPixelFormat);
 
     krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
@@ -479,9 +467,6 @@ void kr::MetalBackend::init() {
     ImGui::StyleColorsDark();
     window->initImgui();
     ImGui_ImplMetal_Init(device);
-
-    auto* pWindow = window->getWindowPointer();
-    metal::setMetalLayerOnWindow(pWindow, swapchain);
 
     // Create our Metal library
     defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
@@ -495,7 +480,8 @@ void kr::MetalBackend::init() {
     if (!library) {
         krypton::log::err(error->description()->utf8String());
     }
-    error->release();
+    if (error)
+        error->release();
 
     createDeferredPipeline();
 
