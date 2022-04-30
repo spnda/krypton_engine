@@ -51,5 +51,3 @@ namespace krypton::threading {
         void start();
     };
 } // namespace krypton::threading
-
-namespace kt = krypton::threading;

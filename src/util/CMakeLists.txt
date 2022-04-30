@@ -3,6 +3,8 @@ add_library(krypton::util ALIAS krypton_util)
 
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(krypton_util PUBLIC fmt::fmt)
+target_link_libraries(krypton_util PUBLIC Tracy::TracyClient)
+
 if(WIN32
    OR UNIX
    AND NOT APPLE)

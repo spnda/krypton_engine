@@ -7,7 +7,6 @@ target_link_libraries(krypton_rapi PRIVATE glfw)
 target_link_libraries(krypton_rapi PUBLIC imgui::imgui)
 target_link_libraries(krypton_rapi PUBLIC krypton::assets)
 target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
-target_link_libraries(krypton_rapi PUBLIC krypton::threading)
 target_link_libraries(krypton_rapi PUBLIC krypton::util)
 
 target_compile_features(krypton_rapi PRIVATE cxx_std_20)

@@ -18,15 +18,16 @@
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
-#include <threading/scheduler.hpp>
 #include <util/handle.hpp>
 #include <util/logging.hpp>
+#include <util/scheduler.hpp>
 
 // Fuck windows.h
 #undef near
 #undef far
 
 namespace fs = std::filesystem;
+namespace kt = krypton::threading;
 
 std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
 
@@ -54,6 +55,7 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
                 rapi->setTextureData(handle, tex.width, tex.height, { tex.pixels.data(), tex.pixels.size() },
                                      krypton::rapi::TextureFormat::RGBA8);
                 rapi->setTextureName(handle, tex.name);
+                rapi->setTextureUsage(handle, krypton::rapi::TextureUsage::SampledImage);
                 rapi->uploadTexture(handle);
             }
 

@@ -47,6 +47,8 @@ namespace carbon {
 
 namespace krypton::rapi {
     class VulkanBackend final : public RenderAPI {
+        friend std::shared_ptr<RenderAPI> krypton::rapi::getRenderApi(Backend backend) noexcept(false);
+
         struct RtShaderModule {
             std::unique_ptr<carbon::ShaderModule> shader = nullptr;
             VkStridedDeviceAddressRegionKHR region = {};
@@ -130,6 +132,8 @@ namespace krypton::rapi {
         std::mutex renderObjectMutex;
         std::mutex frameHandleMutex;
 
+        VulkanBackend();
+
         void buildRTPipeline();
         void buildSBT();
         void buildUIPipeline();
@@ -145,7 +149,6 @@ namespace krypton::rapi {
         auto waitForFrame() -> VkResult;
 
     public:
-        VulkanBackend();
         ~VulkanBackend() override;
 
         void addPrimitive(util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,

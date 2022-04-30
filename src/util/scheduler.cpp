@@ -9,8 +9,10 @@
 // clang-format on
 #endif
 
-#include <threading/scheduler.hpp>
 #include <util/logging.hpp>
+#include <util/scheduler.hpp>
+
+namespace kt = krypton::threading;
 
 kt::Scheduler::Scheduler() {
     // We may only have a single core processor or

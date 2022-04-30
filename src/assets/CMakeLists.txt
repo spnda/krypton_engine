@@ -17,7 +17,6 @@ target_include_directories(krypton_assets_loader PUBLIC "include")
 target_compile_features(krypton_assets_loader PRIVATE cxx_std_20)
 
 target_link_libraries(krypton_assets_loader PUBLIC krypton::assets)
-target_link_libraries(krypton_assets_loader PUBLIC krypton::threading)
 target_link_libraries(krypton_assets_loader PUBLIC krypton::util)
 target_link_libraries(krypton_assets_loader PUBLIC glm::glm)
 target_include_directories(krypton_assets_loader PRIVATE ${TINYGLTF_INCLUDE_DIRS})

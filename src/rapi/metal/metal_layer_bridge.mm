@@ -17,7 +17,7 @@ namespace krypton::rapi::metal {
         nswindow.contentView.wantsLayer = YES;
     }
 
-    uint32_t getScreenPixelFormat(GLFWwindow* window) {
+    uint32_t getScreenPixelFormat(GLFWwindow* window, bool srgb) {
         auto* monitor = glfwGetWindowMonitor(window);
 
         NSScreen* nativeMonitor = nil;
@@ -41,10 +41,11 @@ namespace krypton::rapi::metal {
         }
 
         if (nativeMonitor == nil)
-            return MTLPixelFormatBGRA8Unorm_sRGB;
+            return srgb ? MTLPixelFormatBGRA8Unorm_sRGB : MTLPixelFormatBGRA8Unorm;
 
         bool canDisplayP3 = [nativeMonitor canRepresentDisplayGamut:(NSDisplayGamutP3)];
-        return canDisplayP3 ? MTLPixelFormatBGRA10_XR_sRGB : MTLPixelFormatBGRA8Unorm_sRGB;
+        return canDisplayP3 ? (srgb ? MTLPixelFormatBGRA10_XR_sRGB : MTLPixelFormatBGRA10_XR)
+                            : (srgb ? MTLPixelFormatBGRA8Unorm_sRGB : MTLPixelFormatBGRA8Unorm);
     }
 }
 

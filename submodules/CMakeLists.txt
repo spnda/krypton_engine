@@ -1,19 +1,18 @@
 find_package(glfw3 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
-if(WIN32
-   OR UNIX
-   AND NOT APPLE)
-  add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/carbon" "${CMAKE_BINARY_DIR}/submodules/carbon")
-endif()
+set(KRYPTON_SUBMODULES ${CMAKE_CURRENT_SOURCE_DIR})
+set(KRYPTON_SUBMODULES_BIN ${CMAKE_BINARY_DIR}/submodules)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SPIRV-Cross" "${CMAKE_BINARY_DIR}/submodules/SPIRV-Cross")
+add_subdirectory("${KRYPTON_SUBMODULES}/SPIRV-Cross" "${KRYPTON_SUBMODULES_BIN}/SPIRV-Cross")
 
 if(WIN32
    OR UNIX
    AND NOT APPLE)
+  add_subdirectory("${KRYPTON_SUBMODULES}/carbon" "${KRYPTON_SUBMODULES_BIN}/carbon")
+
   # Apple Clang's regex engine has bugs which break the asserts library.
-  add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/asserts" "${CMAKE_BINARY_DIR}/submodules/asserts")
+  add_subdirectory("${KRYPTON_SUBMODULES}/asserts" "${KRYPTON_SUBMODULES_BIN}/asserts")
 endif()
 
 # ↓ -------------------  TRACY  ------------------- ↓

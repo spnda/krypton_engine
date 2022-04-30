@@ -30,7 +30,6 @@
 #include <carbon/vulkan.hpp>
 #include <rapi/vulkan_backend.hpp>
 #include <shaders/shaders.hpp>
-#include <threading/scheduler.hpp>
 #include <util/logging.hpp>
 
 static std::map<carbon::ShaderStage, krypton::shaders::ShaderStage> carbonShaderKinds = {

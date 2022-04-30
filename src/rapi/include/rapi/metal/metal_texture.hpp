@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rapi/color_encoding.hpp>
-#include <rapi/texture_format.hpp>
+#include <rapi/textures.hpp>
 
 namespace krypton::rapi::metal {
     struct Texture final {
@@ -16,6 +16,7 @@ namespace krypton::rapi::metal {
         std::string name;
         ColorEncoding encoding = ColorEncoding::LINEAR;
         TextureFormat format = TextureFormat::RGBA8;
+        TextureUsage usage = TextureUsage::SampledImage;
 
         explicit Texture() = default;
     };

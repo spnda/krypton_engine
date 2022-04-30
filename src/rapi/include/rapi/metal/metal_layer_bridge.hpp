@@ -12,7 +12,7 @@ namespace krypton::rapi::metal {
 
     // Gets the MTLPixelFormat that is the best suitable for the screen that is currently
     // displaying the window.
-    uint32_t getScreenPixelFormat(GLFWwindow* window);
+    uint32_t getScreenPixelFormat(GLFWwindow* window, bool srgb = true);
 } // namespace krypton::rapi::metal
 
 #endif // #ifdef RAPI_WITH_METAL

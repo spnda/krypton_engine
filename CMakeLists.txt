@@ -100,7 +100,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/src/assets")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/core")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/rapi")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/shaders")
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/threading")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/util")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/tests")

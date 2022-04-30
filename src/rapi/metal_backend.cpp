@@ -2,12 +2,6 @@
 
 #include <algorithm>
 
-// These definitions need to be at the top so that the objective-c classes
-// and selectors are properly created.
-#define NS_PRIVATE_IMPLEMENTATION
-#define MTL_PRIVATE_IMPLEMENTATION
-#define CA_PRIVATE_IMPLEMENTATION
-
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
@@ -65,8 +59,8 @@ kr::MetalBackend::MetalBackend() {
 
 kr::MetalBackend::~MetalBackend() = default;
 
-void kr::MetalBackend::addPrimitive(ku::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
-                                    ku::Handle<"Material">& material) {
+void kr::MetalBackend::addPrimitive(const util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
+                                    const util::Handle<"Material">& material) {
     ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     auto& object = objects.getFromHandle(handle);
@@ -85,7 +79,7 @@ void kr::MetalBackend::beginFrame() {
     memcpy(cameraBufferData, cameraData.get(), kr::CAMERA_DATA_SIZE);
 }
 
-void kr::MetalBackend::buildMaterial(util::Handle<"Material">& handle) {
+void kr::MetalBackend::buildMaterial(const util::Handle<"Material">& handle) {
     ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
     VERIFY(materials.isHandleValid(handle));
@@ -104,7 +98,7 @@ void kr::MetalBackend::buildMaterial(util::Handle<"Material">& handle) {
     }
 }
 
-void kr::MetalBackend::buildRenderObject(ku::Handle<"RenderObject">& handle) {
+void kr::MetalBackend::buildRenderObject(const util::Handle<"RenderObject">& handle) {
     ZoneScoped;
     if (objects.isHandleValid(handle)) {
         kr::metal::RenderObject& renderObject = objects.getFromHandle(handle);
@@ -273,7 +267,7 @@ ku::Handle<"Texture"> kr::MetalBackend::createTexture() {
     return handle;
 }
 
-bool kr::MetalBackend::destroyRenderObject(ku::Handle<"RenderObject">& handle) {
+bool kr::MetalBackend::destroyRenderObject(util::Handle<"RenderObject">& handle) {
     ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     auto valid = objects.isHandleValid(handle);
@@ -289,7 +283,7 @@ bool kr::MetalBackend::destroyRenderObject(ku::Handle<"RenderObject">& handle) {
     return valid;
 }
 
-bool kr::MetalBackend::destroyMaterial(ku::Handle<"Material">& handle) {
+bool kr::MetalBackend::destroyMaterial(util::Handle<"Material">& handle) {
     ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
     auto valid = materials.isHandleValid(handle);
@@ -493,7 +487,7 @@ void kr::MetalBackend::init() {
     imGuiPassDescriptor = MTL::RenderPassDescriptor::renderPassDescriptor();
 }
 
-void kr::MetalBackend::render(ku::Handle<"RenderObject"> handle) {
+void kr::MetalBackend::render(util::Handle<"RenderObject"> handle) {
     ZoneScoped;
     if (objects.isHandleValid(handle))
         handlesForFrame.push_back(handle);
@@ -509,26 +503,26 @@ void kr::MetalBackend::resize(int width, int height) {
     createDeferredPipeline();
 }
 
-void kr::MetalBackend::setMaterialBaseColor(util::Handle<"Material">& handle, glm::fvec4 baseColor) {
+void kr::MetalBackend::setMaterialBaseColor(const util::Handle<"Material">& handle, glm::fvec4 baseColor) {
     // todo
 }
 
-void kr::MetalBackend::setMaterialDiffuseTexture(util::Handle<"Material"> handle, util::Handle<"Texture"> textureHandle) {
+void kr::MetalBackend::setMaterialDiffuseTexture(const util::Handle<"Material">& handle, util::Handle<"Texture"> textureHandle) {
     ZoneScoped;
     auto lock = std::scoped_lock(materialMutex);
 
     materials.getFromHandle(handle).diffuseTexture = std::move(textureHandle);
 }
 
-void kr::MetalBackend::setObjectName(ku::Handle<"RenderObject">& handle, std::string name) {}
+void kr::MetalBackend::setObjectName(const util::Handle<"RenderObject">& handle, std::string name) {}
 
-void kr::MetalBackend::setObjectTransform(ku::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
+void kr::MetalBackend::setObjectTransform(const util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
     ZoneScoped;
     auto lock = std::scoped_lock(renderObjectMutex);
     objects.getFromHandle(handle).transform = transform;
 }
 
-void kr::MetalBackend::setTextureColorEncoding(util::Handle<"Texture"> handle, kr::ColorEncoding colorEncoding) {
+void kr::MetalBackend::setTextureColorEncoding(const util::Handle<"Texture">& handle, kr::ColorEncoding colorEncoding) {
     auto lock = std::scoped_lock(textureMutex);
     textures.getFromHandle(handle).encoding = colorEncoding;
 }
@@ -545,7 +539,12 @@ void kr::MetalBackend::setTextureData(const util::Handle<"Texture">& handle, uin
     std::memcpy(texture.textureData.data(), pixels.data(), pixels.size_bytes());
 }
 
-void kr::MetalBackend::setTextureName(util::Handle<"Texture"> handle, std::string name) {
+void kr::MetalBackend::setTextureUsage(const util::Handle<"Texture">& handle, TextureUsage usage) {
+    VERIFY(textures.isHandleValid(handle));
+    textures.getFromHandle(handle).usage = usage;
+}
+
+void kr::MetalBackend::setTextureName(const util::Handle<"Texture">& handle, std::string name) {
     auto lock = std::scoped_lock(textureMutex);
     auto& tex = textures.getFromHandle(handle);
     tex.name = name;
@@ -569,7 +568,7 @@ void kr::MetalBackend::shutdown() {
     device->release();
 }
 
-void kr::MetalBackend::uploadTexture(util::Handle<"Texture"> handle) {
+void kr::MetalBackend::uploadTexture(const util::Handle<"Texture">& handle) {
     ZoneScoped;
     auto lock = std::scoped_lock(textureMutex);
     auto& texture = textures.getFromHandle(handle);

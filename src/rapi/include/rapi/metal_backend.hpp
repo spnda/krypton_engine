@@ -11,8 +11,8 @@
 #include <assets/mesh.hpp>
 #include <rapi/metal/CAMetalLayer.hpp>
 #include <rapi/metal/material.hpp>
+#include <rapi/metal/metal_texture.hpp>
 #include <rapi/metal/render_object.hpp>
-#include <rapi/metal/texture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
@@ -21,6 +21,8 @@
 
 namespace krypton::rapi {
     class MetalBackend final : public RenderAPI {
+        friend std::shared_ptr<RenderAPI> krypton::rapi::getRenderApi(Backend backend) noexcept(false);
+
         std::shared_ptr<Window> window;
         MTL::Device* device = nullptr;
         MTL::Library* library = nullptr;
@@ -61,18 +63,20 @@ namespace krypton::rapi {
         util::FreeList<metal::Texture, "Texture"> textures = {};
         std::mutex textureMutex;
 
+        MetalBackend();
+
         void createDepthTexture();
         void createGBufferTextures();
         void createDeferredPipeline();
 
     public:
-        MetalBackend();
         ~MetalBackend() override;
 
-        void addPrimitive(util::Handle<"RenderObject">& handle, assets::Primitive& primitive, util::Handle<"Material">& material) override;
+        void addPrimitive(const util::Handle<"RenderObject">& handle, assets::Primitive& primitive,
+                          const util::Handle<"Material">& material) override;
         void beginFrame() override;
-        void buildMaterial(util::Handle<"Material">& handle) override;
-        void buildRenderObject(util::Handle<"RenderObject">& handle) override;
+        void buildMaterial(const util::Handle<"Material">& handle) override;
+        void buildRenderObject(const util::Handle<"RenderObject">& handle) override;
         auto createRenderObject() -> util::Handle<"RenderObject"> override;
         auto createMaterial() -> util::Handle<"Material"> override;
         auto createTexture() -> util::Handle<"Texture"> override;
@@ -86,16 +90,17 @@ namespace krypton::rapi {
         void init() override;
         void render(util::Handle<"RenderObject"> handle) override;
         void resize(int width, int height) override;
-        void setMaterialBaseColor(util::Handle<"Material">& handle, glm::fvec4 baseColor) override;
-        void setMaterialDiffuseTexture(util::Handle<"Material"> handle, util::Handle<"Texture"> textureHandle) override;
-        void setObjectName(util::Handle<"RenderObject">& handle, std::string name) override;
-        void setObjectTransform(util::Handle<"RenderObject">& handle, glm::mat4x3 transform) override;
-        void setTextureColorEncoding(util::Handle<"Texture"> handle, ColorEncoding colorEncoding) override;
+        void setMaterialBaseColor(const util::Handle<"Material">& handle, glm::fvec4 baseColor) override;
+        void setMaterialDiffuseTexture(const util::Handle<"Material">& handle, util::Handle<"Texture"> textureHandle) override;
+        void setObjectName(const util::Handle<"RenderObject">& handle, std::string name) override;
+        void setObjectTransform(const util::Handle<"RenderObject">& handle, glm::mat4x3 transform) override;
+        void setTextureColorEncoding(const util::Handle<"Texture">& handle, ColorEncoding colorEncoding) override;
         void setTextureData(const util::Handle<"Texture">& handle, uint32_t width, uint32_t height, std::span<std::byte> pixels,
                             TextureFormat format) override;
-        void setTextureName(util::Handle<"Texture"> handle, std::string name) override;
+        void setTextureName(const util::Handle<"Texture">& handle, std::string name) override;
+        void setTextureUsage(const util::Handle<"Texture">& handle, TextureUsage usage) override;
         void shutdown() override;
-        void uploadTexture(util::Handle<"Texture"> handle) override;
+        void uploadTexture(const util::Handle<"Texture">& handle) override;
     };
 } // namespace krypton::rapi
 
