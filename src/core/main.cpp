@@ -3,6 +3,7 @@
 #include <mutex>
 #include <vector>
 
+#include <Tracy.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -10,11 +11,11 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include <Tracy.hpp>
-
 #include <assets/loader/fileloader.hpp>
 #include <assets/mesh.hpp>
 #include <assets/scene.hpp>
+#include <core/imgui_renderer.hpp>
+#include <rapi/itexture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
@@ -29,40 +30,34 @@
 namespace fs = std::filesystem;
 namespace kt = krypton::threading;
 
-std::shared_ptr<krypton::rapi::CameraData> cameraData = nullptr;
-
 std::vector<krypton::util::Handle<"RenderObject">> renderObjectHandles = {};
 std::mutex renderObjectHandleMutex;
 
 std::string modelPathString;
 
-float cameraPos[3] = { 10, 0, -1 };
-float focus[3] = { 0, 0, 0 };
-
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
     ZoneScoped;
     kt::Scheduler::getInstance().run([rapi, path]() {
-        ZoneScopedN("Threaded loadModel") auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
+        ZoneScopedN("Threaded loadModel");
+        auto fileLoader = std::make_unique<krypton::assets::loader::FileLoader>();
         auto loaded = fileLoader->loadFile(path);
 
         if (!loaded) {
             krypton::log::err("Failed to load file!");
         } else {
-            std::vector<krypton::util::Handle<"Texture">> localTextureHandles;
+            std::vector<std::shared_ptr<krypton::rapi::ITexture>> localTextures;
             for (auto& tex : fileLoader->textures) {
-                auto& handle = localTextureHandles.emplace_back(rapi->createTexture());
-                rapi->setTextureColorEncoding(handle, krypton::rapi::ColorEncoding::SRGB);
-                rapi->setTextureData(handle, tex.width, tex.height, { tex.pixels.data(), tex.pixels.size() },
-                                     krypton::rapi::TextureFormat::RGBA8);
-                rapi->setTextureName(handle, tex.name);
-                rapi->setTextureUsage(handle, krypton::rapi::TextureUsage::SampledImage);
-                rapi->uploadTexture(handle);
+                auto& textures = localTextures.emplace_back(rapi->createTexture(krypton::rapi::TextureUsage::SampledImage));
+                textures->setColorEncoding(krypton::rapi::ColorEncoding::SRGB);
+                textures->setName(tex.name);
+                textures->uploadTexture(tex.width, tex.height, { tex.pixels.data(), tex.pixels.size() },
+                                        krypton::rapi::TextureFormat::RGBA8);
             }
 
             std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
             for (auto& mat : fileLoader->materials) {
                 auto& handle = localMaterialHandles.emplace_back(rapi->createMaterial());
-                rapi->setMaterialDiffuseTexture(handle, localTextureHandles[mat.baseTextureIndex]);
+                // rapi->setMaterialDiffuseTexture(handle, localTextureHandles[mat.baseTextureIndex]);
                 rapi->buildMaterial(handle);
             }
 
@@ -87,14 +82,9 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
 
 void drawUi(krypton::rapi::RenderAPI* rapi) {
     ZoneScoped;
-    ImGui::Begin("Main");
+    ImGui::ShowDemoWindow();
 
-    ImGui::SliderFloat3("Camera Position", cameraPos, -25.0, 25.0);
-    ImGui::SliderFloat3("Camera Focus", focus, -25.0, 25.0);
-    ImGui::SliderFloat("Camera Far", &cameraData->far, 1.0f, 1000.0f);
-    cameraData->view = glm::lookAt(glm::make_vec3(cameraPos), // position in world
-                                   glm::make_vec3(focus),     // look at position; center of world
-                                   glm::vec3(0, 1, 0));       // up vector - Y
+    ImGui::Begin("Main");
 
     ImGui::Separator();
 
@@ -114,38 +104,113 @@ auto main(int argc, char* argv[]) -> int {
         // We currently just use the default backend for the current platform.
         auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
         rapi->init();
-        cameraData = rapi->getCameraData();
 
-        auto wSize = rapi->getWindow()->getWindowSize();
+        auto window = rapi->getWindow();
 
-        cameraData->projection = glm::perspective(glm::radians(70.0f), (float)wSize.x / (float)wSize.y, cameraData->near, cameraData->far);
-        cameraData->view = glm::lookAt(glm::vec3(10, 0, -1), // position in world
-                                       glm::vec3(0, 0, 0),   // look at position; center of world
-                                       glm::vec3(0, 1, 0));  // up vector - Y
+        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(rapi);
+        imgui->init();
 
-        while (!rapi->getWindow()->shouldClose()) {
-            ZoneScoped;
+        auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
+        auto vertSpirv = krypton::shaders::readBinaryShaderFile("shaders/vert.spv");
+
+        auto defaultFragmentFunction =
+            rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(fragSpirv.data()), fragSpirv.size() },
+                                       krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Fragment);
+        auto defaultVertexFunction =
+            rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(vertSpirv.data()), vertSpirv.size() },
+                                       krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Vertex);
+
+        if (defaultFragmentFunction->needsTranspile())
+            defaultFragmentFunction->transpile("main0", krypton::shaders::ShaderStage::Fragment);
+        if (defaultVertexFunction->needsTranspile())
+            defaultVertexFunction->transpile("main0", krypton::shaders::ShaderStage::Vertex);
+
+        defaultFragmentFunction->createModule();
+        defaultVertexFunction->createModule();
+
+        auto defaultRenderPass = rapi->createRenderPass();
+        rapi->setRenderPassFragmentFunction(defaultRenderPass, defaultFragmentFunction.get());
+        rapi->setRenderPassVertexFunction(defaultRenderPass, defaultVertexFunction.get());
+        // clang-format off
+        rapi->setRenderPassVertexDescriptor(defaultRenderPass, {
+            .buffers = {
+               {
+                   .stride = sizeof(krypton::assets::Vertex),
+                   .inputRate = krypton::rapi::VertexInputRate::Vertex,
+               },
+           },
+            .attributes = {
+                {
+                    .offset = 0,
+                    .bufferIndex = 0,
+                    .format = krypton::rapi::VertexFormat::RGBA32_FLOAT,
+                }
+            }
+        });
+        rapi->addRenderPassAttachment(defaultRenderPass, 0, {
+              .attachment = rapi->getRenderTargetTextureHandle(),
+              .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
+              .storeAction = krypton::rapi::AttachmentStoreAction::Store,
+              .clearColor = glm::fvec4(0.0),
+        });
+        // clang-format on
+        rapi->buildRenderPass(defaultRenderPass);
+
+        auto imguiRenderPass = rapi->createRenderPass();
+
+        while (!window->shouldClose()) {
+            ZoneScopedN("frameloop");
             FrameMark;
+            if (window->isMinimised()) {
+                window->waitEvents();
+                continue;
+            }
+
+            if (window->isOccluded()) {
+                // This is currently specific to macOS, where the OS will not want us to render
+                // if the window is fully occluded. We can't use window->waitEvents here because
+                // we're not waiting for a GLFW event. Therefore, we'll artificially slow down
+                // the render loop to 1FPS.
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1000ms);
+            }
+
+            window->pollEvents();
             rapi->beginFrame();
+            imgui->newFrame();
+
+            auto buffer = rapi->getFrameCommandBuffer();
+            buffer->beginRenderPass(defaultRenderPass);
 
             renderObjectHandleMutex.lock();
             for (auto& handle : renderObjectHandles) {
-                rapi->render(handle);
+                buffer->draw(handle);
             }
             renderObjectHandleMutex.unlock();
 
-            drawUi(rapi.get());
+            buffer->endRenderPass();
 
-            rapi->drawFrame();
+            drawUi(rapi.get());
+            imgui->draw(buffer.get());
+
+            buffer->presentFrame();
+            buffer->submit();
+
+            imgui->endFrame();
             rapi->endFrame();
         }
+
+        rapi->destroyRenderPass(defaultRenderPass);
 
         for (auto& handle : renderObjectHandles) {
             if (!rapi->destroyRenderObject(handle))
                 krypton::log::err("Failed to destroy a render object handle");
         }
 
+        imgui->destroy();
         rapi->shutdown();
+
+        krypton::log::log("rapi reference count: {}", rapi.use_count());
 
         kt::Scheduler::getInstance().shutdown();
     } catch (const std::exception& e) {

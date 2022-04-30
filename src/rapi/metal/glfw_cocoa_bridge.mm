@@ -1,11 +1,12 @@
 #ifdef RAPI_WITH_METAL
 
 #define GLFW_EXPOSE_NATIVE_COCOA
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+#import <GLFW/glfw3.h>
+#import <GLFW/glfw3native.h>
+#import <QuartzCore/CAMetalLayer.h>
 
-#include <rapi/metal/CAMetalLayer.hpp>
-#include <rapi/metal/metal_layer_bridge.hpp>
+#import <rapi/metal/CAMetalLayer.hpp>
+#import <rapi/metal/glfw_cocoa_bridge.hpp>
 
 namespace krypton::rapi::metal {
     // I don't want to write a full wrapper for NSWindow for these three lines,
@@ -13,19 +14,25 @@ namespace krypton::rapi::metal {
     // this basic assignment.
     void setMetalLayerOnWindow(GLFWwindow* window, CA::MetalLayer* layer) {
         NSWindow* nswindow = glfwGetCocoaWindow(window);
-        nswindow.contentView.layer = (__bridge CALayer*)layer;
-        nswindow.contentView.wantsLayer = YES;
+        nswindow.contentView.layer = (__bridge CAMetalLayer*)layer;
+        nswindow.contentView.wantsLayer = TRUE;
     }
 
-    uint32_t getScreenPixelFormat(GLFWwindow* window, bool srgb) {
-        auto* monitor = glfwGetWindowMonitor(window);
-
+    MTL::PixelFormat getScreenPixelFormat(GLFWwindow* window, bool srgb) {
         NSScreen* nativeMonitor = nil;
-        if (monitor == nil) {
+
+        NSWindow* nsWindow = glfwGetCocoaWindow(window);
+        if ([nsWindow respondsToSelector:@selector(screen)]) {
+            auto screen = [nsWindow screen];
+            nativeMonitor = screen == nil ? [NSScreen mainScreen] : screen;
+        } else {
+            auto* monitor = glfwGetWindowMonitor(window);
+
             // We're not in fullscreen. Instead, we'll query the display gamut of the "main"
             // monitor through [NSScreen main].
-            nativeMonitor = [NSScreen mainScreen];
-        } else {
+            if (monitor == nil)
+                nativeMonitor = [NSScreen mainScreen];
+
             // If we're fullscreen we can actually fetch the proper NSScreen for our window.
             CGDirectDisplayID cocoaMonitor = glfwGetCocoaMonitor(monitor);
             const auto unitNumber = CGDisplayUnitNumber(cocoaMonitor);
@@ -41,11 +48,15 @@ namespace krypton::rapi::metal {
         }
 
         if (nativeMonitor == nil)
-            return srgb ? MTLPixelFormatBGRA8Unorm_sRGB : MTLPixelFormatBGRA8Unorm;
+            return srgb ? MTL::PixelFormatBGRA8Unorm_sRGB : MTL::PixelFormatBGRA8Unorm;
 
         bool canDisplayP3 = [nativeMonitor canRepresentDisplayGamut:(NSDisplayGamutP3)];
-        return canDisplayP3 ? (srgb ? MTLPixelFormatBGRA10_XR_sRGB : MTLPixelFormatBGRA10_XR)
-                            : (srgb ? MTLPixelFormatBGRA8Unorm_sRGB : MTLPixelFormatBGRA8Unorm);
+        return canDisplayP3 ? (srgb ? MTL::PixelFormatBGRA10_XR_sRGB : MTL::PixelFormatBGRA10_XR)
+                            : (srgb ? MTL::PixelFormatBGRA8Unorm_sRGB : MTL::PixelFormatBGRA8Unorm);
+    }
+
+    bool isWindowOccluded(GLFWwindow* window) {
+        return !([glfwGetCocoaWindow(window) occlusionState] & NSWindowOcclusionStateVisible);
     }
 }
 

@@ -6,10 +6,11 @@
 #define GLFW_INCLUDE_NONE
 #endif // #ifdef RAPI_WITH_METAL
 
+#include <GLFW/glfw3.h>
+
 #include <stdexcept>
 #include <utility>
 
-#include <GLFW/glfw3.h>
 #include <Tracy.hpp>
 #include <fmt/core.h>
 #include <imgui.h>
@@ -21,7 +22,9 @@
 #include <util/logging.hpp>
 
 #ifdef RAPI_WITH_METAL
-#include <rapi/metal/metal_layer_bridge.hpp>
+#include <Metal/MTLDevice.hpp>
+#include <rapi/metal/CAMetalLayer.hpp>
+#include <rapi/metal/glfw_cocoa_bridge.hpp>
 #endif
 
 namespace krypton::rapi::window {
@@ -34,12 +37,26 @@ namespace krypton::rapi::window {
 
     void resizeCallback(GLFWwindow* window, int width, int height) {
         if (width > 0 && height > 0) {
-            auto* w = static_cast<krypton::rapi::RenderAPI*>(glfwGetWindowUserPointer(window));
+            auto* w = static_cast<RenderAPI*>(glfwGetWindowUserPointer(window));
             if (w != nullptr) {
                 w->getWindow()->width = width;
                 w->getWindow()->height = height;
                 w->resize(width, height);
+            } else {
+                krypton::log::err("GLFW user pointer was nullptr!");
             }
+        }
+    }
+
+    void iconifyCallback(GLFWwindow* window, int iconified) {
+        auto* rapi = static_cast<RenderAPI*>(glfwGetWindowUserPointer(window));
+        if (rapi == nullptr)
+            krypton::log::err("GLFW user pointer was nullptr!");
+
+        if (iconified) {
+            rapi->getWindow()->minimised = true;
+        } else {
+            rapi->getWindow()->minimised = false;
         }
     }
 } // namespace krypton::rapi::window
@@ -55,12 +72,11 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
         return;
 
     backend = tBackend;
-    if (backend == Backend::None) {
+    if (backend == Backend::None) [[unlikely]]
         krypton::log::throwError("Cannot create window with no rendering backend");
-    }
 
-    if (!glfwInit())
-        krypton::log::throwError("glfwInit failed.");
+    if (!glfwInit()) [[unlikely]]
+        krypton::log::throwError("glfwInit failed");
 
     glfwSetErrorCallback(window::errorCallback);
 
@@ -77,6 +93,10 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
             break;
     }
 
+#ifdef __APPLE__
+    glfwWindowHintString(GLFW_COCOA_FRAME_NAME, title.c_str());
+#endif
+
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -84,11 +104,14 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
 
     if (!window) {
         glfwTerminate();
-        throw std::runtime_error("Failed to create window.");
+        krypton::log::throwError("Failed to create window");
     }
+
+    krypton::log::log("Successfully created window");
 
     glfwSetKeyCallback(window, window::keyCallback);
     glfwSetWindowSizeCallback(window, window::resizeCallback);
+    glfwSetWindowIconifyCallback(window, window::iconifyCallback);
 }
 
 void krypton::rapi::Window::destroy() {
@@ -100,7 +123,7 @@ void krypton::rapi::Window::destroy() {
 }
 
 float krypton::rapi::Window::getAspectRatio() const {
-    return (float)width / (float)height;
+    return static_cast<float>(width) / static_cast<float>(height);
 }
 
 glm::fvec2 krypton::rapi::Window::getContentScale() const {
@@ -142,8 +165,23 @@ void krypton::rapi::Window::initImgui() const {
     }
 }
 
+bool krypton::rapi::Window::isMinimised() const {
+    return minimised;
+}
+
+bool krypton::rapi::Window::isOccluded() const {
+#ifdef __APPLE__
+    ZoneScoped;
+    return metal::isWindowOccluded(window);
+#else
+    return false;
+#endif
+}
+
 void krypton::rapi::Window::newFrame() {
     ZoneScoped;
+    // TODO: Move this out of rapi. We can likely reimplement its functionality through what this
+    //       Window class will handle for us in the future.
     ImGui_ImplGlfw_NewFrame();
 }
 
@@ -200,7 +238,7 @@ CA::MetalLayer* krypton::rapi::Window::createMetalLayer(const MTL::Device* devic
     auto layer = CA::MetalLayer::layer();
     layer->setDevice(device);
     layer->setPixelFormat(pixelFormat);
-    layer->setContentsScale((CG::Float)getContentScale().x);
+    layer->setContentsScale(static_cast<CG::Float>(getContentScale().x));
     metal::setMetalLayerOnWindow(window, layer);
     return layer;
 }

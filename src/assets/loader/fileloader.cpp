@@ -76,7 +76,7 @@ void ka::loader::FileLoader::loadGltfMesh(tinygltf::Model& model, const tinygltf
 
         {
             // We require a position attribute.
-            if (primitive.attributes.find("POSITION") == primitive.attributes.end())
+            if (primitive.attributes.find("POSITION") == primitive.attributes.end()) [[unlikely]]
                 continue;
 
             // We will first load all the different buffers (possibly the same buffer at a different

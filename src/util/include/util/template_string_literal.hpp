@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm> // We need this just for std::copy_n
 #include <cstddef>
 
 namespace krypton::util {

@@ -47,12 +47,12 @@ namespace krypton::util {
             size_t pos = 0;
             FreeList* list = nullptr;
 
-            explicit Iterator(FreeList* list, size_t pos);
-
         public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = Object;
             using difference_type = std::ptrdiff_t;
+
+            explicit Iterator(FreeList* list, size_t pos);
 
             Iterator& operator++();   /* prefix operator */
             Iterator operator++(int); /* postfix operator */
@@ -72,14 +72,15 @@ namespace krypton::util {
         [[nodiscard]] auto createSlot() -> typename Handle<handleId>::IndexSize;
 
     public:
-        FreeList();
+        constexpr FreeList();
 
         [[nodiscard]] constexpr Iterator begin() noexcept;
         [[nodiscard]] auto capacity() const noexcept -> typename Handle<handleId>::IndexSize;
         [[nodiscard]] constexpr auto data() const noexcept -> const Object*;
         [[nodiscard]] constexpr Iterator end() noexcept;
         [[nodiscard]] auto getFromHandle(const Handle<handleId>& handle) -> Object&;
-        [[nodiscard]] auto getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) -> Handle<handleId>;
+        [[nodiscard]] auto getNewHandle(std::shared_ptr<ReferenceCounter>& refCounter) -> Handle<handleId>;
+        [[nodiscard]] auto getNewHandle(std::shared_ptr<ReferenceCounter>&& refCounter) -> Handle<handleId>;
         [[nodiscard]] bool isHandleValid(const Handle<handleId>& handle);
         void removeHandle(Handle<handleId>& handle);
         [[nodiscard]] auto size() const noexcept -> typename Handle<handleId>::IndexSize;
@@ -111,7 +112,7 @@ namespace krypton::util {
     }
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
-    FreeList<Object, handleId, Container>::FreeList() {
+    constexpr FreeList<Object, handleId, Container>::FreeList() {
         container.push_back(Object {});
         mappings.emplace_back();
     }
@@ -131,7 +132,10 @@ namespace krypton::util {
         // We check for the first free hole and use it.
         const auto slot = mappings[0].next;
         mappings[0].next = mappings[slot].next;
-        if (slot)
+
+        // We'll say that there is some free hole available and that it's more likely than having
+        // to resize because nothing was ever deleted.
+        if (slot) [[likely]]
             return slot;
 
         // There are no available holes, we extend the array.
@@ -154,7 +158,7 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
     Object& FreeList<Object, handleId, Container>::getFromHandle(const Handle<handleId>& handle) {
         // Verify first that the handle is valid and that it is "allowed" to access the object.
-        if (!isHandleValid(handle)) {
+        if (!isHandleValid(handle)) [[unlikely]] {
             throw std::invalid_argument("The passed handle is invalid!");
         }
 
@@ -162,7 +166,12 @@ namespace krypton::util {
     }
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
-    Handle<handleId> FreeList<Object, handleId, Container>::getNewHandle(std::shared_ptr<ReferenceCounter> refCounter) {
+    Handle<handleId> FreeList<Object, handleId, Container>::getNewHandle(std::shared_ptr<ReferenceCounter>& refCounter) {
+        return std::move(getNewHandle(static_cast<std::shared_ptr<ReferenceCounter>&&>(refCounter))); // This is just std::forward
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
+    Handle<handleId> FreeList<Object, handleId, Container>::getNewHandle(std::shared_ptr<ReferenceCounter>&& refCounter) {
         auto slot = createSlot();
         container[slot] = Object {};
         return Handle<handleId> { std::move(refCounter), slot, mappings[slot].generation };
@@ -177,9 +186,11 @@ namespace krypton::util {
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
     void FreeList<Object, handleId, Container>::removeHandle(Handle<handleId>& handle) {
-        if (!isHandleValid(handle)) {
+        if (!isHandleValid(handle)) [[unlikely]] {
             throw std::invalid_argument("The passed handle is invalid!");
         }
+
+        container[handle.getIndex()].~Object();
 
         mappings[handle.getIndex()].next = mappings[0].next;
         mappings[0].next = handle.getIndex();

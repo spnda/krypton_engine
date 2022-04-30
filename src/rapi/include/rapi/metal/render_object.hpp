@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef RAPI_WITH_METAL
+
 #include <optional>
 
 #include <Metal/MTLBuffer.hpp>
@@ -30,3 +32,5 @@ namespace krypton::rapi::metal {
         explicit RenderObject() = default;
     };
 } // namespace krypton::rapi::metal
+
+#endif

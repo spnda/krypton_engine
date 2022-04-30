@@ -6,13 +6,18 @@ set_target_properties(spirv-cross PROPERTIES EXCLUDE_FROM_ALL 1)
 target_link_libraries(krypton_shaders PUBLIC spirv-cross-core spirv-cross-c)
 
 if(TARGET slang::core)
-  add_compile_definitions(WITH_SLANG_SHADERS)
+  target_compile_definitions(krypton_shaders PRIVATE WITH_SLANG_SHADERS)
   target_link_libraries(krypton_shaders PUBLIC slang::core)
 endif()
 
 if(TARGET glslang::glslang)
-  add_compile_definitions(WITH_GLSLANG_SHADERS)
+  target_compile_definitions(krypton_shaders PRIVATE WITH_GLSLANG_SHADERS)
   target_link_libraries(krypton_shaders PUBLIC glslang::glslang)
+elseif(APPLE OR UNIX)
+  # We can't download glslang builds from GitHub on Linux and Mac, which is why we use glslang from vcpkg.
+  find_package(glslang CONFIG REQUIRED)
+  target_compile_definitions(krypton_shaders PRIVATE WITH_GLSLANG_SHADERS)
+  target_link_libraries(krypton_shaders PRIVATE HLSL SPIRV glslang OGLCompiler)
 endif()
 
 target_link_libraries(krypton_shaders PUBLIC krypton::util)
@@ -26,7 +31,7 @@ add_files(TARGET krypton_shaders "include/shaders/glslang_resource.hpp" "include
 # Copy shaders into binary directory
 
 file(GLOB_RECURSE ALL_SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/metal/*" "${CMAKE_CURRENT_SOURCE_DIR}/glsl/*"
-     "${CMAKE_CURRENT_SOURCE_DIR}/slang/*")
+     "${CMAKE_CURRENT_SOURCE_DIR}/slang/*" "${CMAKE_CURRENT_SOURCE_DIR}/spirv/*")
 
 # We copy each shader we find into the shader directory
 foreach(SHADER IN LISTS ALL_SHADERS)

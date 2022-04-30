@@ -9,6 +9,9 @@
 #include <fmt/core.h>
 
 namespace krypton::log {
+    // TODO: There's a possibility that any input string might include curly braces, which breaks
+    //       fmt. Probably best to sanitize/escape those characters.
+
     // ↓ -------------------  NO PARAMETERS  ------------------- ↓
     inline void log(const std::string& input) {
         std::time_t t = std::time(nullptr);

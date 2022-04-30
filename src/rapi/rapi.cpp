@@ -1,8 +1,8 @@
 #include <vector>
 
-#include <rapi/metal_backend.hpp>
+#include <rapi/backend_metal.hpp>
+#include <rapi/backend_vulkan.hpp>
 #include <rapi/rapi.hpp>
-#include <rapi/vulkan_backend.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
@@ -28,7 +28,7 @@ std::shared_ptr<kr::RenderAPI> kr::getRenderApi(Backend backend) noexcept(false)
         }
     }
 
-    kl::throwError("The requested backend is not supported: {}", (uint32_t)backend);
+    kl::throwError("The requested backend is not supported: {}", static_cast<uint32_t>(backend));
 }
 
 constexpr kr::Backend kr::getPlatformSupportedBackends() noexcept {

@@ -45,9 +45,8 @@ else()
   message(FATAL_ERROR "The CMAKE_BUILD_TYPE variable is not set to a valid value, options are: Debug Release RelWithDebInfo MinSizeRel.")
 endif()
 
-project("krypton_engine")
+project("krypton_engine" LANGUAGES CXX)
 
-enable_language(CXX)
 if(APPLE)
   enable_language(OBJCXX)
 endif()
@@ -71,7 +70,14 @@ if(MSVC) # cl.exe or clang-cl.exe
   endif()
 else()
   # Clang, AppleClang, or GCC
-  add_compile_options(-Wall -Wextra -pedantic -Og)
+  add_compile_options(
+    -Wall
+    -Wextra
+    -Wmicrosoft
+    -Wold-style-cast
+    -Wno-unused-parameter
+    -pedantic
+    -Og)
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-O0)
   else()

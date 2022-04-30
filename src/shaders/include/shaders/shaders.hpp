@@ -5,17 +5,6 @@
 #include <span>
 #include <vector>
 
-#ifdef WITH_SLANG_SHADERS
-#include <slang.h>
-#endif
-
-#ifdef WITH_GLSLANG_SHADERS
-#include <glslang/Include/glslang_c_interface.h>
-#include <glslang/Include/glslang_c_shader_types.h>
-#endif
-
-#include <spirv_cross_c.h> // We're using the C API from the submodule, as the C++ API is not 100% stable
-
 namespace fs = std::filesystem;
 
 namespace krypton::shaders {
@@ -24,6 +13,7 @@ namespace krypton::shaders {
         HLSL,
         SLANG,
         SPIRV,
+        METAL,
     };
 
     enum class ShaderTargetType {
@@ -48,19 +38,30 @@ namespace krypton::shaders {
         }
     }
 
-    enum class ShaderStage {
-        Vertex,
-        Fragment,
-        Geometry,
-        Compute,
-        Mesh,
-        RayGen,
-        ClosestHit,
-        Miss,
-        AnyHit,
-        Intersect,
-        Callable,
+    // clang-format off
+    enum class ShaderStage : uint16_t {
+        None        = 0,
+        Vertex      = 1 <<  0,
+        Fragment    = 1 <<  1,
+        Geometry    = 1 <<  2,
+        Compute     = 1 <<  3,
+        Mesh        = 1 <<  4,
+        RayGen      = 1 <<  5,
+        ClosestHit  = 1 <<  6,
+        Miss        = 1 <<  7,
+        AnyHit      = 1 <<  8,
+        Intersect   = 1 <<  9,
+        Callable    = 1 << 10,
     };
+    // clang-format on
+
+    inline constexpr ShaderStage operator|(ShaderStage a, ShaderStage b) {
+        return static_cast<ShaderStage>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+    }
+
+    inline constexpr ShaderStage operator&(ShaderStage a, ShaderStage b) {
+        return static_cast<ShaderStage>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+    }
 
     enum class TargetSpirv {
         /* slang compiler doesn't specify a SPIR-V Version, we default to 1.5 */
@@ -77,7 +78,7 @@ namespace krypton::shaders {
     /** Represents input data for shader compilation */
     struct ShaderCompileInput {
         fs::path filePath;
-        std::vector<uint8_t> source;
+        std::span<const std::byte> source;
 
         std::vector<std::string> entryPoints;
         std::vector<ShaderStage> shaderStages;

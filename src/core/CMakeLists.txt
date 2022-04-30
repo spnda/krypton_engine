@@ -4,6 +4,9 @@ add_compile_definitions(WIN32_LEAN_AND_MEAN)
 add_executable(krypton_core)
 add_executable(krypton::core ALIAS krypton_core)
 
+target_include_directories(krypton_core PRIVATE "include")
+
+target_link_libraries(krypton_core PRIVATE imgui::imgui)
 target_link_libraries(krypton_core PRIVATE krypton::assets krypton::assets::loader)
 target_link_libraries(krypton_core PRIVATE krypton::rapi)
 target_link_libraries(krypton_core PRIVATE krypton::util)
@@ -15,4 +18,4 @@ if(MSVC)
   set_target_properties(krypton_core PROPERTIES LINK_FLAGS "/ignore:4099")
 endif()
 
-add_files(TARGET krypton_core "main.cpp")
+add_files(TARGET krypton_core "main.cpp" "imgui_renderer.cpp")

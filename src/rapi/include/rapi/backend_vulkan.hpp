@@ -26,7 +26,7 @@
 
 namespace carbon {
     class Buffer;
-    class CommandBuffer;
+    class ICommandBuffer;
     class CommandPool;
     class DescriptorSet;
     class Device;
@@ -70,7 +70,7 @@ namespace krypton::rapi {
         // Graphics
         VkSurfaceKHR surface = nullptr;
         std::shared_ptr<carbon::CommandPool> commandPool;
-        std::shared_ptr<carbon::CommandBuffer> drawCommandBuffer;
+        std::shared_ptr<carbon::ICommandBuffer> drawCommandBuffer;
         std::shared_ptr<carbon::Queue> graphicsQueue;
         std::shared_ptr<carbon::Swapchain> swapchain;
 
@@ -138,13 +138,13 @@ namespace krypton::rapi {
         void buildSBT();
         void buildUIPipeline();
         /** If the TLAS already exists, this will only update it */
-        void buildTLAS(carbon::CommandBuffer* cmdBuffer);
+        void buildTLAS(carbon::ICommandBuffer* cmdBuffer);
         void createUiFontTexture();
         auto createShader(const std::string& name, carbon::ShaderStage stage, krypton::shaders::ShaderCompileResult& result)
             -> std::unique_ptr<carbon::ShaderModule>;
         void initUi();
         void oneTimeSubmit(carbon::Queue* queue, carbon::CommandPool* pool,
-                           const std::function<void(carbon::CommandBuffer*)>& callback) const;
+                           const std::function<void(carbon::ICommandBuffer*)>& callback) const;
         auto submitFrame() -> VkResult;
         auto waitForFrame() -> VkResult;
 

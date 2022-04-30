@@ -10,8 +10,17 @@
 #include <rapi/rapi_backends.hpp>
 
 #ifdef RAPI_WITH_METAL
-#include <Metal/MTLDevice.hpp>
-#include <rapi/metal/CAMetalLayer.hpp>
+// fwd instead of exposing actual Metal headers.
+namespace NS {
+    using UInteger = std::uintptr_t;
+}
+namespace MTL {
+    class Device;
+    enum PixelFormat : NS::UInteger;
+} // namespace MTL
+namespace CA {
+    class MetalLayer;
+}
 #endif
 
 namespace krypton::rapi {
@@ -21,7 +30,8 @@ namespace krypton::rapi {
 
     namespace window {
         void resizeCallback(GLFWwindow* window, int width, int height);
-    }
+        void iconifyCallback(GLFWwindow* window, int iconified);
+    } // namespace window
 
     /**
      * Abstraction over a GLFW3 window, including helper
@@ -38,6 +48,7 @@ namespace krypton::rapi {
         friend class MetalBackend;
 #endif
         friend void window::resizeCallback(GLFWwindow* window, int width, int height);
+        friend void window::iconifyCallback(GLFWwindow* window, int iconified);
 
         std::string title = {};
         uint32_t width = 0;
@@ -46,12 +57,11 @@ namespace krypton::rapi {
         GLFWwindow* window = nullptr;
         Backend backend = Backend::None;
 
+        bool minimised = false;
+
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
-        void initImgui() const;
         static void newFrame();
-        static void pollEvents();
         void setRapiPointer(krypton::rapi::RenderAPI* rapi);
-        static void waitEvents();
 
 #ifdef RAPI_WITH_VULKAN
         [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;
@@ -72,7 +82,12 @@ namespace krypton::rapi {
         [[nodiscard]] auto getContentScale() const -> glm::fvec2;
         [[nodiscard]] auto getFramebufferSize() const -> glm::ivec2;
         [[nodiscard]] auto getWindowSize() const -> glm::ivec2;
+        void initImgui() const;
+        bool isMinimised() const;
+        bool isOccluded() const;
+        static void pollEvents();
         void setWindowTitle(std::string_view title) const;
         [[nodiscard]] bool shouldClose() const;
+        static void waitEvents();
     };
 } // namespace krypton::rapi

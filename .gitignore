@@ -29,8 +29,12 @@ nsight/*
 *.lib
 *.a
 *.dylib
+!src/shaders/spirv/*.spv
 
 # Metal/Apple specific files
 **/.DS_Store
 *.metallib
 *.air
+
+# Some documents I have lying around
+TODO.md

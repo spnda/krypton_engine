@@ -39,6 +39,7 @@ kt::Scheduler& kt::Scheduler::getInstance() {
 }
 
 void kt::Scheduler::run(const kt::Scheduler::taskFunction& function) {
+    ZoneScoped;
     if (!running) {
         return;
     }
@@ -52,6 +53,7 @@ void kt::Scheduler::run(const kt::Scheduler::taskFunction& function) {
 }
 
 void kt::Scheduler::shutdown() {
+    ZoneScoped;
     terminate = true;
 
     // Wake up all threads
@@ -67,6 +69,7 @@ void kt::Scheduler::shutdown() {
 }
 
 void kt::Scheduler::start() {
+    ZoneScoped;
     auto lock = std::scoped_lock(threadPoolMutex);
 
     krypton::log::log("Launching thread pool with {} threads", maxThreadCount);
@@ -79,22 +82,23 @@ void kt::Scheduler::start() {
 
     for (uint32_t i = 0; i < maxThreadCount; ++i) {
         threadPool.emplace_back(&Scheduler::workerThreadLoop, this, i);
-#ifdef WIN32
-        auto threadName = fmt::format("Worker thread {}", i);
-        std::wstring wthreadName = std::wstring(threadName.begin(), threadName.end());
-        SetThreadDescription(threadPool.back().native_handle(), wthreadName.c_str());
-#endif
     }
 
     running = true;
 }
 
 void kt::Scheduler::workerThreadLoop(uint32_t threadId) {
-    tracy::SetThreadName(fmt::format("Worker Thread {}", threadId).c_str());
+    {
+        auto threadName = fmt::format("Worker Thread {}", threadId);
+        tracy::SetThreadName(threadName.c_str());
 
 #if defined(__APPLE__) || defined(__linux__)
-    pthread_setname_np(fmt::format("Worker thread {}", threadId).c_str());
+        pthread_setname_np(threadName.c_str());
+#elif WIN32
+        auto wthreadName = std::wstring(threadName.begin(), threadName.end());
+        SetThreadDescription(threadPool.back().native_handle(), wthreadName.c_str());
 #endif
+    }
 
     // This thread is supposed to run infinitely.
     while (true) {

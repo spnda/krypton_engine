@@ -9,13 +9,15 @@
 #endif
 
 #ifdef WITH_GLSLANG_SHADERS
-#include <glslang/Include/ResourceLimits.h>
+#include <glslang/Include/glslang_c_interface.h>
+#include <glslang/Include/glslang_c_shader_types.h>
 #include <shaders/glslang_resource.hpp>
 #endif
 
-#include <util/assert.hpp>
+#include <spirv_cross_c.h> // We're using the C API from the submodule, as the C++ API is not 100% stable
 
 #include <shaders/shaders.hpp>
+#include <util/assert.hpp>
 #include <util/logging.hpp>
 
 namespace krypton::shaders {
@@ -98,15 +100,11 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
 
 #ifdef WITH_GLSLANG_SHADERS
     // As we cannot use slang, but we use glslang and spirv-cross.
-    if (shaderInput.targetType == ShaderTargetType::SPIRV) {
+    if (shaderInput.sourceType == ShaderSourceType::GLSL && shaderInput.targetType == ShaderTargetType::SPIRV) {
         // We can simply use glslang to compile the given GLSL or HLSL to SPIR-V.
         // We'll also currently default to SPIR-V 1.5, as 1.6 is not officially supported
         // by Vulkan.
         return std::vector { glslangCompileShader(shaderInput) };
-    } else {
-        // Use SPIRV-Cross to compile GLSL -> SPIR-V -> HLSL or HLSL -> SPIR-V -> GLSL.
-        // TODO.
-        krypton::log::throwError("Cross compilation with SPIRV-Cross is not yet implemented");
     }
 #endif
 
@@ -116,13 +114,31 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
         return { spirvCrossCompile(spvData, shaderInput.targetType) };
     }
 
+    if (shaderInput.targetType == ShaderTargetType::METAL && shaderInput.sourceType != ShaderSourceType::SPIRV) {
+        // We'll need to use SPIRV-Cross to compile this shader to MSL.
+        ShaderCompileResult result;
+        if (shaderInput.sourceType == ShaderSourceType::GLSL) {
+            result = glslangCompileShader(shaderInput);
+#ifdef WITH_SLANG_SHADERS
+        } else if (shaderInput.sourceType == ShaderSourceType::SLANG) {
+            auto slangResult = slangCompileShader(shaderInput);
+            VERIFY(slangResult.size() == 1);
+        }
+#else
+        }
+#endif
+
+        std::span<const uint32_t> spv = { reinterpret_cast<const uint32_t*>(result.resultBytes.data()),
+                                          result.resultBytes.size() / sizeof(uint32_t) };
+        return { spirvCrossCompile(spv, shaderInput.targetType) };
+    }
+
     krypton::log::throwError("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
-    return {};
 }
 
 #ifdef WITH_GLSLANG_SHADERS
 krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(const krypton::shaders::ShaderCompileInput& shaderInput) {
-    glslang_source_t language = GLSLANG_SOURCE_NONE;
+    glslang_source_t language;
     switch (shaderInput.sourceType) {
         case ShaderSourceType::GLSL:
             language = GLSLANG_SOURCE_GLSL;
@@ -132,11 +148,9 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
             break;
         case ShaderSourceType::SLANG: {
             krypton::log::throwError("[glslang] Cannot use slang to compile from slang");
-            break;
         }
         case ShaderSourceType::SPIRV: {
             krypton::log::throwError("[glslang] Cannot use slang to compile from SPIR-V");
-            break;
         }
         default: {
             krypton::log::throwError("[glslang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
@@ -243,7 +257,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     size_t size = glslang_program_SPIRV_get_size(program);
 
     ShaderCompileResult compileResult = {};
-    compileResult.resultType = CompileResultType::Spirv;
+    compileResult.resultType = CompileResultType::SPIRV;
     compileResult.resultSize = size * sizeof(uint32_t);
 
     std::vector<uint8_t> newData(compileResult.resultSize);
@@ -256,7 +270,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
 
 krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(std::span<const uint32_t> spirv,
                                                                           krypton::shaders::ShaderTargetType target) {
-    spvc_backend backendTarget = SPVC_BACKEND_NONE;
+    spvc_backend backendTarget;
     switch (target) {
         using namespace krypton::shaders;
         case ShaderTargetType::GLSL:
@@ -316,7 +330,6 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(std::s
     const char* tempString;
     checkCall(spvc_compiler_compile(compiler, &tempString), "Failed to compile: {}");
 
-    krypton::log::log("Address of compilation result: {}", fmt::ptr(&(*tempString)));
     if (tempString == nullptr) {
         krypton::log::throwError("Failed to compile through SPIRV-Cross: Compilation result was nullptr.");
     }
@@ -528,7 +541,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::compileShad
 
     krypton::shaders::ShaderCompileInput input = {
         .filePath = shaderFileName,
-        .source = source,
+        .source = { reinterpret_cast<std::byte*>(source.data()), source.size() },
         .entryPoints = { "main" },
         .shaderStages = { shaderStage },
         .sourceType = sourceType,

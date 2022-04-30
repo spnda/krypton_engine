@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 
+#include <util/attributes.hpp>
 #include <util/reference_counter.hpp>
 #include <util/template_string_literal.hpp>
 
@@ -15,7 +16,7 @@ namespace krypton::util {
     template <TemplateStringLiteral id>
     class Handle {
     public:
-        using IndexSize = uint32_t;
+        using IndexSize = std::size_t;
 
     private:
         // Our handle values
@@ -26,6 +27,9 @@ namespace krypton::util {
         std::shared_ptr<krypton::util::ReferenceCounter> refCounter;
 
     public:
+        // Creates an invalid handle. Should not be used with containers and only as a placeholder.
+        explicit Handle() noexcept;
+
         // We require a reference counter to be passed in, as this should be created
         // by whatever is holding the resource; also being the only one interested
         // in the counter itself.
@@ -40,9 +44,17 @@ namespace krypton::util {
         Handle& operator=(const Handle& other);
         Handle& operator=(Handle&& other) noexcept;
 
-        [[nodiscard]] inline IndexSize getIndex() const noexcept;
-        [[nodiscard]] inline IndexSize getGeneration() const noexcept;
+        ALWAYS_INLINE [[nodiscard]] inline IndexSize getIndex() const noexcept;
+        ALWAYS_INLINE [[nodiscard]] inline IndexSize getGeneration() const noexcept;
+        ALWAYS_INLINE [[nodiscard]] inline bool invalid() const noexcept;
+
+        bool operator==(util::Handle<id> handle) const noexcept;
     };
+
+    template <TemplateStringLiteral id>
+    Handle<id>::Handle() noexcept : refCounter(nullptr) {
+        index = generation = std::numeric_limits<IndexSize>::max();
+    }
 
     template <TemplateStringLiteral id>
     Handle<id>::Handle(const std::shared_ptr<krypton::util::ReferenceCounter>& refCounter) : refCounter(refCounter) {
@@ -112,5 +124,15 @@ namespace krypton::util {
     template <TemplateStringLiteral id>
     inline typename Handle<id>::IndexSize Handle<id>::getGeneration() const noexcept {
         return generation;
+    }
+
+    template <TemplateStringLiteral id>
+    inline bool Handle<id>::invalid() const noexcept {
+        return index == std::numeric_limits<IndexSize>::max();
+    }
+
+    template <TemplateStringLiteral id>
+    inline bool Handle<id>::operator==(util::Handle<id> handle) const noexcept {
+        return handle.getIndex() == index && handle.getGeneration() == generation;
     }
 } // namespace krypton::util

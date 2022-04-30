@@ -7,6 +7,11 @@
         "fmt",
         "glfw3",
         "glm",
+        {
+            "name": "glslang",
+            "platform": "!windows"
+        },
+        "robin-hood-hashing",
         "tinygltf",
         {
             "name": "vk-bootstrap",

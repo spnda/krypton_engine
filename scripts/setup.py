@@ -66,6 +66,14 @@ def download_external(name: str, url_callback: Callable[[], str]):
         shutil.rmtree(dir_path)
 
 
+def find_vcpkg_toolchain_file() -> str | None:
+    vcpkg_dir = shutil.which("vcpkg")
+    if vcpkg_dir is None or vcpkg_dir == "":
+        return None
+    else:
+        return vcpkg_dir[:-5] + "scripts/buildsystems/vcpkg.cmake"
+
+
 def configure_cmake(generator: str | None = None):
     if shutil.which("cmake") is None:
         print(
@@ -77,13 +85,15 @@ def configure_cmake(generator: str | None = None):
     create_dir("build/release")
 
     gen = ["-G", generator] if generator is not None else []
+    toolchain_file = find_vcpkg_toolchain_file()
+    tcf_param = [f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}"] if toolchain_file is not None else []
     call(
-        ["cmake", *gen, "../.."],
+        ["cmake", *gen, *tcf_param, "../.."],
         "build/debug",
         platform.system() == "Windows",
     )
     call(
-        ["cmake", *gen, "../.."],
+        ["cmake", *gen, *tcf_param, "../.."],
         "build/release",
         platform.system() == "Windows",
     )
@@ -132,16 +142,16 @@ def main():
 
     download_external("slang", lambda: slang_zip_url)
 
-    # Download glslang
+    # Download glslang. glslang builds for MacOS and Linux are broken. On these platforms, we use
+    # brew, apt, or any other package manager to obtain builds.
     glslang_url = "https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-"
     match platform.system():
         case "Darwin":  # MacOS
-            # glslang builds on MacOS don't ship with the proper headers...
             glslang_url = ""
         case "Windows":  # Windows
             glslang_url += "windows-x64"
         case "Linux":  # Linux
-            glslang_url += "linux"
+            glslang_url = ""
 
     if len(glslang_url) > 0:
         download_external("glslang-debug", lambda: glslang_url + "-Debug.zip")
