@@ -78,7 +78,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}MachineIndependent${GLSLANG_LIB_POSTFIX}")
 endif()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
+if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp-beta" AND APPLE)
   message(STATUS "Found metal-cpp")
 
   find_library(METAL_LIBRARY Metal)
@@ -86,7 +86,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp" AND APPLE)
 
   # metal-cpp is a header only external dependency
   add_library(metal-cpp INTERFACE)
-  target_include_directories(metal-cpp SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp")
+  target_include_directories(metal-cpp SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp-beta")
   target_link_libraries(metal-cpp INTERFACE ${METAL_LIBRARY})
   target_link_libraries(metal-cpp INTERFACE ${QUARTZCORE_LIBRARY})
 endif()

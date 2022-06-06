@@ -7,4 +7,4 @@
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
-#include <rapi/metal/CAMetalLayer.hpp>
+#include <rapi/metal/metal_layer_wrapper.hpp>

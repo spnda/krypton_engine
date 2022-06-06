@@ -7,9 +7,9 @@
 #include <vector>
 
 #include <Metal/Metal.hpp>
+#include <QuartzCore/CAMetalLayer.hpp>
 
 #include <assets/mesh.hpp>
-#include <rapi/metal/CAMetalLayer.hpp>
 #include <rapi/metal/material.hpp>
 #include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_command_buffer.hpp>

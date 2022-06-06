@@ -157,7 +157,7 @@ def main():
         download_external("glslang-debug", lambda: glslang_url + "-Debug.zip")
         download_external("glslang-release", lambda: glslang_url + "-Release.zip")
 
-    metalcpp_url = "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+    metalcpp_url = "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS13_iOS16-beta.zip"
     if platform.system() == "Darwin":
         download_external("metal-cpp", lambda: metalcpp_url)
 

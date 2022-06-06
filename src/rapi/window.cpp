@@ -23,8 +23,8 @@
 
 #ifdef RAPI_WITH_METAL
 #include <Metal/MTLDevice.hpp>
-#include <rapi/metal/CAMetalLayer.hpp>
 #include <rapi/metal/glfw_cocoa_bridge.hpp>
+#include <rapi/metal/metal_layer_wrapper.hpp>
 #endif
 
 namespace krypton::rapi::window {
@@ -234,11 +234,11 @@ std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() co
 #endif // #ifdef RAPI_WITH_VULKAN
 
 #ifdef RAPI_WITH_METAL
-CA::MetalLayer* krypton::rapi::Window::createMetalLayer(const MTL::Device* device, MTL::PixelFormat pixelFormat) const {
-    auto layer = CA::MetalLayer::layer();
+CA::MetalLayer* krypton::rapi::Window::createMetalLayer(MTL::Device* device, MTL::PixelFormat pixelFormat) const {
+    auto layer = reinterpret_cast<CA::MetalLayerWrapper*>(CA::MetalLayer::layer());
     layer->setDevice(device);
     layer->setPixelFormat(pixelFormat);
-    layer->setContentsScale(static_cast<CG::Float>(getContentScale().x));
+    layer->setContentsScale(static_cast<CGFloat>(getContentScale().x));
     metal::setMetalLayerOnWindow(window, layer);
     return layer;
 }

@@ -4,8 +4,8 @@
 #import <GLFW/glfw3.h>
 #import <GLFW/glfw3native.h>
 #import <QuartzCore/CAMetalLayer.h>
+#import <QuartzCore/CAMetalLayer.hpp>
 
-#import <rapi/metal/CAMetalLayer.hpp>
 #import <rapi/metal/glfw_cocoa_bridge.hpp>
 
 namespace krypton::rapi::metal {

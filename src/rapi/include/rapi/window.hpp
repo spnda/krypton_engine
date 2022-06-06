@@ -20,7 +20,8 @@ namespace MTL {
 } // namespace MTL
 namespace CA {
     class MetalLayer;
-}
+    class MetalLayerWrapper;
+} // namespace CA
 #endif
 
 namespace krypton::rapi {
@@ -69,7 +70,7 @@ namespace krypton::rapi {
 #endif // #ifdef RAPI_WITH_VULKAN
 
 #ifdef RAPI_WITH_METAL
-        [[nodiscard]] CA::MetalLayer* createMetalLayer(const MTL::Device* device, MTL::PixelFormat pixelFormat) const;
+        [[nodiscard]] CA::MetalLayer* createMetalLayer(MTL::Device* device, MTL::PixelFormat pixelFormat) const;
 #endif
 
     public:
@@ -83,8 +84,8 @@ namespace krypton::rapi {
         [[nodiscard]] auto getFramebufferSize() const -> glm::ivec2;
         [[nodiscard]] auto getWindowSize() const -> glm::ivec2;
         void initImgui() const;
-        bool isMinimised() const;
-        bool isOccluded() const;
+        [[nodiscard]] bool isMinimised() const;
+        [[nodiscard]] bool isOccluded() const;
         static void pollEvents();
         void setWindowTitle(std::string_view title) const;
         [[nodiscard]] bool shouldClose() const;

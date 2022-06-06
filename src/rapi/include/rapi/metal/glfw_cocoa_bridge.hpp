@@ -6,8 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include <Metal/MTLPixelFormat.hpp>
-
-#include <rapi/metal/CAMetalLayer.hpp>
+#include <QuartzCore/CAMetalLayer.hpp>
 
 namespace krypton::rapi::metal {
     void setMetalLayerOnWindow(GLFWwindow* window, CA::MetalLayer* layer);
