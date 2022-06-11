@@ -33,7 +33,6 @@ namespace krypton::rapi::metal {
         void beginRenderPass(util::Handle<"RenderPass">& renderPass) override;
         void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) override;
         void bindVertexBuffer(IBuffer* buffer, std::size_t offset) override;
-        void draw(util::Handle<"RenderObject">& handle) override;
         void drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) override;
         void endRenderPass() override;
         void presentFrame() override;

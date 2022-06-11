@@ -56,13 +56,6 @@ kr::MetalBackend::~MetalBackend() noexcept {
     backendAutoreleasePool->drain();
 }
 
-void kr::MetalBackend::addPrimitive(const util::Handle<"RenderObject">& handle, krypton::assets::Primitive& primitive,
-                                    const util::Handle<"Material">& material) {
-    ZoneScoped;
-    auto& object = objects.getFromHandle(handle);
-    auto& prim = object.primitives.emplace_back(metal::Primitive { primitive, material, 0, 0, 0 });
-}
-
 void kr::MetalBackend::addRenderPassAttachment(const util::Handle<"RenderPass">& handle, uint32_t index, RenderPassAttachment attachment) {
     ZoneScoped;
     auto& pass = renderPasses.getFromHandle(handle);
@@ -76,84 +69,6 @@ void kr::MetalBackend::beginFrame() {
     // Every ObjC resource created within the frame with a function that does not begin with 'new',
     // or 'alloc', will automatically be freed at the end of the frame if retain() was not called.
     frameAutoreleasePool = NS::AutoreleasePool::alloc()->init();
-}
-
-void kr::MetalBackend::buildMaterial(const util::Handle<"Material">& handle) {
-    ZoneScoped;
-    VERIFY(materials.isHandleValid(handle));
-
-    auto& material = materials.getFromHandle(handle);
-
-    // According to https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf, a M1, part of
-    // the GPUFamilyApple7, can support up to 500.000 buffers and/or textures inside a single
-    // ArgumentBuffer.
-    materialEncoder->setArgumentBuffer(materialBuffer, 0, handle.getIndex());
-
-    if (material.diffuseTexture.has_value()) {
-        // auto& diffuseHandle = material.diffuseTexture.value();
-        // VERIFY(textures.isHandleValid(diffuseHandle));
-        // materialEncoder->setTexture(textures.getFromHandle(diffuseHandle).texture, 0);
-    }
-}
-
-void kr::MetalBackend::buildRenderObject(const util::Handle<"RenderObject">& handle) {
-    ZoneScoped;
-    if (objects.isHandleValid(handle)) {
-        kr::metal::RenderObject& renderObject = objects.getFromHandle(handle);
-
-        size_t accumulatedVertexBufferSize = 0, accumulatedIndexBufferSize = 0;
-
-        for (const auto& primitive : renderObject.primitives) {
-            const auto& prim = primitive.primitive;
-            renderObject.totalVertexCount += prim.vertices.size();
-            renderObject.totalIndexCount += prim.indices.size();
-
-            size_t vertexDataSize = prim.vertices.size() * krypton::assets::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::assets::Index);
-
-            renderObject.bufferVertexOffsets.push_back(accumulatedVertexBufferSize + vertexDataSize);
-            renderObject.bufferIndexOffsets.push_back(accumulatedIndexBufferSize + indexDataSize);
-
-            accumulatedVertexBufferSize += vertexDataSize;
-            accumulatedIndexBufferSize += indexDataSize;
-        }
-
-        renderObject.vertexBuffer = device->newBuffer(accumulatedVertexBufferSize, MTL::ResourceStorageModeManaged);
-        renderObject.indexBuffer = device->newBuffer(accumulatedIndexBufferSize, MTL::ResourceStorageModeManaged);
-        renderObject.instanceBuffer = device->newBuffer(sizeof(metal::InstanceData), MTL::ResourceStorageModeManaged);
-
-        // Copy the vertex data for each primitive into the shared buffer.
-        void* vertexData = renderObject.vertexBuffer->contents();
-        void* indexData = renderObject.indexBuffer->contents();
-        accumulatedVertexBufferSize = 0;
-        accumulatedIndexBufferSize = 0;
-        for (auto& primitive : renderObject.primitives) {
-            const auto& prim = primitive.primitive;
-            size_t vertexDataSize = prim.vertices.size() * krypton::assets::VERTEX_STRIDE;
-            size_t indexDataSize = prim.indices.size() * sizeof(krypton::assets::Index); // index size == 32
-
-            primitive.indexBufferOffset = accumulatedIndexBufferSize;
-            primitive.indexCount = prim.indices.size();
-            primitive.baseVertex = static_cast<int64_t>(accumulatedVertexBufferSize / krypton::assets::VERTEX_STRIDE);
-
-            memcpy(reinterpret_cast<std::byte*>(vertexData) + accumulatedVertexBufferSize, prim.vertices.data(), vertexDataSize);
-            memcpy(reinterpret_cast<std::byte*>(indexData) + accumulatedIndexBufferSize, prim.indices.data(), indexDataSize);
-
-            accumulatedVertexBufferSize += vertexDataSize;
-            accumulatedIndexBufferSize += indexDataSize;
-        }
-
-        metal::InstanceData instanceData;
-        instanceData.instanceTransform = renderObject.transform; // conversion from 4x3 to 4x4
-        memcpy(renderObject.instanceBuffer->contents(), &instanceData, renderObject.instanceBuffer->length());
-
-        // As our vertex and index buffers are managed resources between the CPU and GPU, we'll
-        // have to let Metal know to synchronize the contents of the buffers.
-        // See https://developer.apple.com/documentation/metal/resource_fundamentals/synchronizing_a_managed_resource?language=objc
-        renderObject.vertexBuffer->didModifyRange(NS::Range::Make(0, renderObject.vertexBuffer->length()));
-        renderObject.indexBuffer->didModifyRange(NS::Range::Make(0, renderObject.indexBuffer->length()));
-        renderObject.instanceBuffer->didModifyRange(NS::Range::Make(0, renderObject.instanceBuffer->length()));
-    }
 }
 
 void kr::MetalBackend::buildRenderPass(util::Handle<"RenderPass">& handle) {
@@ -249,25 +164,10 @@ std::shared_ptr<kr::IBuffer> kr::MetalBackend::createBuffer() {
     return std::make_shared<metal::Buffer>(device);
 }
 
-ku::Handle<"RenderObject"> kr::MetalBackend::createRenderObject() {
-    ZoneScoped;
-    auto mutex = std::scoped_lock<std::mutex>(renderObjectMutex);
-    auto refCounter = std::make_shared<ku::ReferenceCounter>();
-    return objects.getNewHandle(refCounter);
-}
-
 ku::Handle<"RenderPass"> kr::MetalBackend::createRenderPass() {
     ZoneScoped;
     auto refCounter = std::make_shared<ku::ReferenceCounter>();
     return renderPasses.getNewHandle(std::move(refCounter));
-}
-
-ku::Handle<"Material"> kr::MetalBackend::createMaterial() {
-    ZoneScoped;
-    auto refCounter = std::make_shared<ku::ReferenceCounter>();
-    auto handle = materials.getNewHandle(refCounter);
-    materials.getFromHandle(handle).refCounter = refCounter;
-    return handle;
 }
 
 std::shared_ptr<kr::ISampler> kr::MetalBackend::createSampler() {
@@ -301,21 +201,6 @@ std::shared_ptr<kr::ITexture> kr::MetalBackend::createTexture(rapi::TextureUsage
     return std::make_shared<metal::Texture>(device, usage);
 }
 
-bool kr::MetalBackend::destroyRenderObject(util::Handle<"RenderObject">& handle) {
-    ZoneScoped;
-    auto valid = objects.isHandleValid(handle);
-    if (valid) {
-        auto& object = objects.getFromHandle(handle);
-        object.vertexBuffer->release();
-        object.indexBuffer->release();
-
-        objects.removeHandle(handle);
-    } else {
-        krypton::log::warn("Tried to destroy a invalid render object handle!");
-    }
-    return valid;
-}
-
 bool kr::MetalBackend::destroyRenderPass(util::Handle<"RenderPass">& handle) {
     auto valid = renderPasses.isHandleValid(handle);
     if (valid) {
@@ -326,22 +211,6 @@ bool kr::MetalBackend::destroyRenderPass(util::Handle<"RenderPass">& handle) {
         renderPasses.removeHandle(handle); // Calls destructor.
     } else {
         krypton::log::warn("Tried to destroy a invalid render pass handle");
-    }
-    return valid;
-}
-
-bool kr::MetalBackend::destroyMaterial(util::Handle<"Material">& handle) {
-    ZoneScoped;
-    auto valid = materials.isHandleValid(handle);
-    if (valid) {
-        auto& mat = materials.getFromHandle(handle);
-
-        if (mat.refCounter->count() == 1) {
-            mat.refCounter->decrement();
-            materials.removeHandle(handle);
-        }
-    } else {
-        krypton::log::warn("Tried to destroy a invalid material handle!");
     }
     return valid;
 }
@@ -417,22 +286,6 @@ void kr::MetalBackend::init() {
 
 void kr::MetalBackend::resize(int width, int height) {
     ZoneScoped;
-}
-
-void kr::MetalBackend::setMaterialBaseColor(const util::Handle<"Material">& handle, glm::fvec4 baseColor) {
-    // TODO
-}
-
-void kr::MetalBackend::setMaterialDiffuseTexture(const util::Handle<"Material">& handle, util::Handle<"Texture"> textureHandle) {
-    ZoneScoped;
-    materials.getFromHandle(handle).diffuseTexture = std::move(textureHandle);
-}
-
-void kr::MetalBackend::setObjectName(const util::Handle<"RenderObject">& handle, std::string name) {}
-
-void kr::MetalBackend::setObjectTransform(const util::Handle<"RenderObject">& handle, glm::mat4x3 transform) {
-    ZoneScoped;
-    objects.getFromHandle(handle).transform = transform;
 }
 
 void kr::MetalBackend::setRenderPassFragmentFunction(const util::Handle<"RenderPass">& handle, const IShader* const shader) {

@@ -153,7 +153,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
             krypton::log::throwError("[glslang] Cannot use slang to compile from SPIR-V");
         }
         default: {
-            krypton::log::throwError("[glslang] Unrecognized shader source type: {}", (uint32_t)shaderInput.sourceType);
+            krypton::log::throwError("[glslang] Unrecognized shader source type: {}", static_cast<uint32_t>(shaderInput.sourceType));
         }
     }
 
@@ -287,7 +287,7 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(std::s
             krypton::log::throwError("[spirv-cross] Cannot use SPIRV-Cross to generate SPIR-V.");
         }
         default: {
-            krypton::log::throwError("[spirv-cross] Unrecognized shader target type: {}", (uint32_t)target);
+            krypton::log::throwError("[spirv-cross] Unrecognized shader target type: {}", static_cast<uint32_t>(target));
         }
     }
 

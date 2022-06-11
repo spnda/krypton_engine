@@ -1,7 +1,12 @@
 #include <vector>
 
+#ifdef RAPI_WITH_METAL
 #include <rapi/backend_metal.hpp>
+#endif
+#ifdef RAPI_WITH_VULKAN
 #include <rapi/backend_vulkan.hpp>
+#endif
+
 #include <rapi/rapi.hpp>
 #include <util/logging.hpp>
 

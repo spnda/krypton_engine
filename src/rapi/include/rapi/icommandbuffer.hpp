@@ -22,7 +22,6 @@ namespace krypton::rapi {
         virtual void beginRenderPass(util::Handle<"RenderPass">& renderPass) = 0;
         virtual void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) = 0;
         virtual void bindVertexBuffer(IBuffer* buffer, std::size_t offset) = 0;
-        virtual void draw(util::Handle<"RenderObject">& handle) = 0;
         virtual void drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) = 0;
         virtual void endRenderPass() = 0;
         virtual void presentFrame() = 0;

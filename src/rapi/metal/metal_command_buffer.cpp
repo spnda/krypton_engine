@@ -55,33 +55,6 @@ void kr::metal::CommandBuffer::bindVertexBuffer(IBuffer* vertexBuffer, std::size
     curRenderEncoder->setVertexBuffer(mtlBuffer->buffer, offset, 0);
 }
 
-void kr::metal::CommandBuffer::draw(util::Handle<"RenderObject">& handle) {
-    if (!curRenderEncoder)
-        return;
-
-    const auto& object = rapi->objects.getFromHandle(handle);
-
-    curRenderEncoder->setVertexBuffer(object.vertexBuffer, 0, 0); /* Vertex buffer is at 0 */
-    curRenderEncoder->setVertexBuffer(object.instanceBuffer, 0, 1);
-
-    for (const auto& primitive : object.primitives) {
-        VERIFY(primitive.material.has_value());
-
-        curRenderEncoder->setFragmentBufferOffset(primitive.material->getIndex() * rapi->materialEncoder->encodedLength(), 0);
-
-        // We need these two lines so that Metal knows that the texture is now being used.
-        // Otherwise, we might encounter a page fault or something similar. I know, this is
-        // hideous code.
-        // auto& diffuseTexture = getMetalBackend()->materials.getFromHandle(primitive.material.value()).diffuseTexture.value();
-        // curRenderEncoder->useResource(getMetalBackend()->textures.getFromHandle(diffuseTexture).texture, MTL::ResourceUsageSample,
-        //                               MTL::RenderStageFragment);
-
-        /* Dispatch draw calls */
-        curRenderEncoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, primitive.indexCount, MTL::IndexTypeUInt32, object.indexBuffer,
-                                                primitive.indexBufferOffset, 1, primitive.baseVertex, 0);
-    }
-}
-
 void kr::metal::CommandBuffer::drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) {
     VERIFY(indexCount != 0);
 

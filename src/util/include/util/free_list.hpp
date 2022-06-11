@@ -52,17 +52,17 @@ namespace krypton::util {
             using value_type = Object;
             using difference_type = std::ptrdiff_t;
 
+            explicit Iterator() = default;
             explicit Iterator(FreeList* list, size_t pos);
 
-            Iterator& operator++();   /* prefix operator */
-            Iterator operator++(int); /* postfix operator */
+            Iterator& operator++();         /* prefix operator */
+            const Iterator operator++(int); /* postfix operator */
             Object& operator*() const;
             Object* operator->() const;
             bool operator==(const Iterator& other) const noexcept = default;
         };
 
-// Apple Clang 13.1 still doesn't support std::forward_iterator...
-#ifndef __APPLE__
+#if !defined(__APPLE) && !defined(__clang_major__)
         static_assert(std::forward_iterator<Iterator>); /* Make sure our iterator implementation is correct */
 #endif
 
@@ -95,7 +95,7 @@ namespace krypton::util {
     }
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
-    auto FreeList<Object, handleId, Container>::Iterator::operator++(int) -> Iterator {
+    auto FreeList<Object, handleId, Container>::Iterator::operator++(int) -> const Iterator {
         auto& old = *this;
         ++*this;
         return old;
@@ -103,7 +103,7 @@ namespace krypton::util {
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
     Object& FreeList<Object, handleId, Container>::Iterator::operator*() const {
-        return (*list)[pos];
+        return list->container[pos];
     }
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
@@ -135,7 +135,7 @@ namespace krypton::util {
 
         // We'll say that there is some free hole available and that it's more likely than having
         // to resize because nothing was ever deleted.
-        if (slot) [[likely]]
+        if (slot > 0) [[likely]]
             return slot;
 
         // There are no available holes, we extend the array.

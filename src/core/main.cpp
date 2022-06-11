@@ -30,9 +30,6 @@
 namespace fs = std::filesystem;
 namespace kt = krypton::threading;
 
-std::vector<krypton::util::Handle<"RenderObject">> renderObjectHandles = {};
-std::mutex renderObjectHandleMutex;
-
 std::string modelPathString;
 
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
@@ -44,39 +41,9 @@ void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
 
         if (!loaded) {
             krypton::log::err("Failed to load file!");
-        } else {
-            std::vector<std::shared_ptr<krypton::rapi::ITexture>> localTextures;
-            for (auto& tex : fileLoader->textures) {
-                auto& textures = localTextures.emplace_back(rapi->createTexture(krypton::rapi::TextureUsage::SampledImage));
-                textures->setColorEncoding(krypton::rapi::ColorEncoding::SRGB);
-                textures->setName(tex.name);
-                textures->uploadTexture(tex.width, tex.height, { tex.pixels.data(), tex.pixels.size() },
-                                        krypton::rapi::TextureFormat::RGBA8);
-            }
-
-            std::vector<krypton::util::Handle<"Material">> localMaterialHandles;
-            for (auto& mat : fileLoader->materials) {
-                auto& handle = localMaterialHandles.emplace_back(rapi->createMaterial());
-                // rapi->setMaterialDiffuseTexture(handle, localTextureHandles[mat.baseTextureIndex]);
-                rapi->buildMaterial(handle);
-            }
-
-            for (auto& mesh : fileLoader->meshes) {
-                // We lock here because the buildRenderObject can take a bit, and
-                // we'd otherwise be blocking our main thread.
-                renderObjectHandleMutex.lock();
-                auto& handle = renderObjectHandles.emplace_back(rapi->createRenderObject());
-
-                for (auto& primitive : mesh->primitives) {
-                    rapi->addPrimitive(handle, primitive, localMaterialHandles[primitive.materialIndex]);
-                }
-
-                rapi->setObjectTransform(handle, mesh->transform);
-                rapi->setObjectName(handle, mesh->name);
-                rapi->buildRenderObject(handle);
-                renderObjectHandleMutex.unlock();
-            }
         }
+
+        // TODO: Implement new model loading
     });
 }
 
@@ -182,12 +149,6 @@ auto main(int argc, char* argv[]) -> int {
             auto buffer = rapi->getFrameCommandBuffer();
             buffer->beginRenderPass(defaultRenderPass);
 
-            renderObjectHandleMutex.lock();
-            for (auto& handle : renderObjectHandles) {
-                buffer->draw(handle);
-            }
-            renderObjectHandleMutex.unlock();
-
             buffer->endRenderPass();
 
             drawUi(rapi.get());
@@ -201,11 +162,6 @@ auto main(int argc, char* argv[]) -> int {
         }
 
         rapi->destroyRenderPass(defaultRenderPass);
-
-        for (auto& handle : renderObjectHandles) {
-            if (!rapi->destroyRenderObject(handle))
-                krypton::log::err("Failed to destroy a render object handle");
-        }
 
         imgui->destroy();
         rapi->shutdown();

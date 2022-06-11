@@ -13,7 +13,6 @@
 
 #include <Tracy.hpp>
 #include <fmt/core.h>
-#include <imgui.h>
 #include <imgui_impl_glfw.h>
 
 #include <rapi/rapi.hpp>
