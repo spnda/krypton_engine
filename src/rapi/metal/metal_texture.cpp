@@ -5,7 +5,7 @@
 namespace kr = krypton::rapi;
 
 namespace krypton::rapi::metal {
-    MTL::PixelFormat getPixelFormat(krypton::rapi::TextureFormat textureFormat, krypton::rapi::ColorEncoding colorEncoding) {
+    MTL::PixelFormat getPixelFormat(TextureFormat textureFormat, ColorEncoding colorEncoding) noexcept {
         switch (textureFormat) {
             case TextureFormat::RGBA8: {
                 if (colorEncoding == ColorEncoding::LINEAR) {

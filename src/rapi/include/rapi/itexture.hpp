@@ -11,6 +11,9 @@ namespace krypton::rapi {
     enum class TextureFormat : size_t {
         RGBA8,
         RGBA16,
+        // These two are Metal specific and used for 10-bit colour depth.
+        BGRA10,
+        BGR10,
         A8,
         D32,
     };

@@ -21,6 +21,7 @@ namespace krypton::rapi {
 
 namespace krypton::rapi::metal {
     class CommandBuffer;
+    class RenderPass;
 
     class ShaderParameter : public IShaderParameter {
         friend class ::krypton::rapi::MetalBackend;
@@ -48,6 +49,7 @@ namespace krypton::rapi::metal {
 
     class FragmentShader : public IShader {
         friend class ::krypton::rapi::MetalBackend;
+        friend class ::krypton::rapi::metal::RenderPass;
 
     private:
         std::string msl;
@@ -71,6 +73,7 @@ namespace krypton::rapi::metal {
 
     class VertexShader : public IShader {
         friend class ::krypton::rapi::MetalBackend;
+        friend class ::krypton::rapi::metal::RenderPass;
 
     private:
         std::string msl;

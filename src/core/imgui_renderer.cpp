@@ -74,10 +74,10 @@ void kc::ImGuiRenderer::init() {
 
     // Create the render pass
     renderPass = rapi->createRenderPass();
-    rapi->setRenderPassFragmentFunction(renderPass, fragmentShader.get());
-    rapi->setRenderPassVertexFunction(renderPass, vertexShader.get());
+    renderPass->setFragmentFunction(fragmentShader.get());
+    renderPass->setVertexFunction(vertexShader.get());
     // clang-format off
-    rapi->setRenderPassVertexDescriptor(renderPass, {
+    renderPass->setVertexDescriptor({
         .buffers = {
             {
                 .stride = sizeof(ImDrawVert),
@@ -102,14 +102,14 @@ void kc::ImGuiRenderer::init() {
             },
         }
     });
-    rapi->addRenderPassAttachment(renderPass, 0, {
+    renderPass->addAttachment(0, {
         .attachment = rapi->getRenderTargetTextureHandle(),
         .loadAction = krypton::rapi::AttachmentLoadAction::Load,
         .storeAction = krypton::rapi::AttachmentStoreAction::Store,
         .clearColor = glm::fvec4(0.0),
     });
     // clang-format on
-    rapi->buildRenderPass(renderPass);
+    renderPass->build();
 
     // Build our uniform buffer
     uniformBuffer = rapi->createBuffer();
@@ -134,9 +134,6 @@ void kc::ImGuiRenderer::destroy() {
 
 void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
     ZoneScoped;
-    if (renderPass.invalid())
-        return;
-
     ImGui::Render();
     auto* drawData = ImGui::GetDrawData();
 
@@ -177,7 +174,7 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
             });
         });
 
-        commandBuffer->beginRenderPass(renderPass);
+        commandBuffer->beginRenderPass(renderPass.get());
         // The vertex buffer occupies index 0 in Metal.
         commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Vertex, uniformShaderParameter.get());
         commandBuffer->bindShaderParameter(2, shaders::ShaderStage::Fragment, textureShaderParameter.get());

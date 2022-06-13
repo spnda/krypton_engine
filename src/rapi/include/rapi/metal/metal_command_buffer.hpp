@@ -30,7 +30,7 @@ namespace krypton::rapi::metal {
     public:
         ~CommandBuffer() noexcept override;
 
-        void beginRenderPass(util::Handle<"RenderPass">& renderPass) override;
+        void beginRenderPass(const IRenderPass* renderPass) override;
         void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) override;
         void bindVertexBuffer(IBuffer* buffer, std::size_t offset) override;
         void drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) override;

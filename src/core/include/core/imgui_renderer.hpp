@@ -16,7 +16,7 @@ namespace krypton::core {
         } uniforms;
 
         std::shared_ptr<rapi::RenderAPI> rapi;
-        util::Handle<"RenderPass"> renderPass;
+        std::shared_ptr<rapi::IRenderPass> renderPass;
 
         std::shared_ptr<rapi::IBuffer> uniformBuffer;
         std::shared_ptr<rapi::ITexture> fontAtlas;

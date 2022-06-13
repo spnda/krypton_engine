@@ -15,11 +15,13 @@ namespace krypton::rapi {
         UINT32,
     };
 
+    class IRenderPass;
+
     class ICommandBuffer : public std::enable_shared_from_this<ICommandBuffer> {
     public:
         virtual ~ICommandBuffer() = default;
 
-        virtual void beginRenderPass(util::Handle<"RenderPass">& renderPass) = 0;
+        virtual void beginRenderPass(const IRenderPass* renderPass) = 0;
         virtual void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) = 0;
         virtual void bindVertexBuffer(IBuffer* buffer, std::size_t offset) = 0;
         virtual void drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) = 0;

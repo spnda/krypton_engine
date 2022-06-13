@@ -8,6 +8,7 @@
 #include <rapi/color_encoding.hpp>
 #include <rapi/ibuffer.hpp>
 #include <rapi/icommandbuffer.hpp>
+#include <rapi/irenderpass.hpp>
 #include <rapi/ishader.hpp>
 #include <rapi/itexture.hpp>
 #include <rapi/render_pass_attachments.hpp>
@@ -55,15 +56,11 @@ namespace krypton::rapi {
     public:
         virtual ~RenderAPI() = default;
 
-        virtual void addRenderPassAttachment(const util::Handle<"RenderPass">& handle, uint32_t index, RenderPassAttachment attachment) = 0;
-
         virtual void beginFrame() = 0;
-
-        virtual void buildRenderPass(util::Handle<"RenderPass">& handle) = 0;
 
         [[nodiscard]] virtual auto createBuffer() -> std::shared_ptr<IBuffer> = 0;
 
-        [[nodiscard]] virtual auto createRenderPass() -> util::Handle<"RenderPass"> = 0;
+        [[nodiscard]] virtual auto createRenderPass() -> std::shared_ptr<IRenderPass> = 0;
 
         [[nodiscard]] virtual auto createSampler() -> std::shared_ptr<ISampler> = 0;
 
@@ -74,13 +71,11 @@ namespace krypton::rapi {
 
         [[nodiscard]] virtual auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> = 0;
 
-        virtual bool destroyRenderPass(util::Handle<"RenderPass">& handle) = 0;
-
         virtual void endFrame() = 0;
 
         /**
          * Returns the command buffer associated with this new frame. Can be used for rendering and
-         * presenting to a screen.
+         * presenting to a screen. Only call this once per frame.
          */
         [[nodiscard]] virtual auto getFrameCommandBuffer() -> std::unique_ptr<ICommandBuffer> = 0;
 
@@ -101,12 +96,6 @@ namespace krypton::rapi {
         virtual void init() = 0;
 
         virtual void resize(int width, int height) = 0;
-
-        virtual void setRenderPassFragmentFunction(const util::Handle<"RenderPass">& handle, const IShader* shader) = 0;
-
-        virtual void setRenderPassVertexDescriptor(const util::Handle<"RenderPass">& handle, VertexDescriptor descriptor) = 0;
-
-        virtual void setRenderPassVertexFunction(const util::Handle<"RenderPass">& handle, const IShader* shader) = 0;
 
         /**
          * Shutdowns the rendering backend and makes it useless for further rendering commands.

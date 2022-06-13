@@ -10,32 +10,11 @@
 #include <rapi/backend_metal.hpp>
 #include <rapi/metal/glfw_cocoa_bridge.hpp>
 #include <rapi/metal/metal_cpp_util.hpp>
+#include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
 #include <rapi/metal/shader_types.hpp>
-#include <util/large_free_list.hpp>
 #include <util/logging.hpp>
-
-namespace krypton::rapi::metal {
-    MTL::VertexFormat getVertexFormat(VertexFormat vertexFormat) {
-        switch (vertexFormat) {
-            case VertexFormat::RGBA32_FLOAT: {
-                return MTL::VertexFormatFloat4;
-            }
-            case VertexFormat::RGB32_FLOAT: {
-                return MTL::VertexFormatFloat3;
-            }
-            case VertexFormat::RG32_FLOAT: {
-                return MTL::VertexFormatFloat2;
-            }
-            case VertexFormat::RGBA8_UNORM: {
-                return MTL::VertexFormatUChar4;
-            }
-        }
-
-        return MTL::VertexFormatInvalid;
-    }
-} // namespace krypton::rapi::metal
 
 namespace kr = krypton::rapi;
 namespace ku = krypton::util;
@@ -56,12 +35,6 @@ kr::MetalBackend::~MetalBackend() noexcept {
     backendAutoreleasePool->drain();
 }
 
-void kr::MetalBackend::addRenderPassAttachment(const util::Handle<"RenderPass">& handle, uint32_t index, RenderPassAttachment attachment) {
-    ZoneScoped;
-    auto& pass = renderPasses.getFromHandle(handle);
-    pass.attachments[index] = attachment;
-}
-
 void kr::MetalBackend::beginFrame() {
     ZoneScoped;
     window->newFrame();
@@ -71,107 +44,15 @@ void kr::MetalBackend::beginFrame() {
     frameAutoreleasePool = NS::AutoreleasePool::alloc()->init();
 }
 
-void kr::MetalBackend::buildRenderPass(util::Handle<"RenderPass">& handle) {
-    auto& pass = renderPasses.getFromHandle(handle);
-
-    auto* psoDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
-    auto* depthDescriptor = MTL::DepthStencilDescriptor::alloc()->init();
-    pass.descriptor = MTL::RenderPassDescriptor::alloc()->init();
-
-    // Set pipeline functions
-    psoDescriptor->setVertexFunction(pass.vertexFunction);
-    psoDescriptor->setFragmentFunction(pass.fragmentFunction);
-
-    auto* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
-
-    // Setup vertex buffer layouts
-    for (auto i = 0ULL; i < pass.vertexDescriptor.buffers.size(); ++i) {
-        auto* layout = vertexDescriptor->layouts()->object(i);
-        layout->setStride(pass.vertexDescriptor.buffers[i].stride);
-        switch (pass.vertexDescriptor.buffers[i].inputRate) {
-            case VertexInputRate::Vertex: {
-                layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
-                break;
-            }
-            case VertexInputRate::Instance: {
-                layout->setStepFunction(MTL::VertexStepFunctionPerInstance);
-                break;
-            }
-        }
-    }
-
-    // Setup vertex attributes
-    for (auto i = 0ULL; i < pass.vertexDescriptor.attributes.size(); ++i) {
-        auto* attrib = vertexDescriptor->attributes()->object(i);
-        attrib->setBufferIndex(pass.vertexDescriptor.attributes[i].bufferIndex);
-        attrib->setOffset(pass.vertexDescriptor.attributes[i].offset);
-        attrib->setFormat(metal::getVertexFormat(pass.vertexDescriptor.attributes[i].format));
-    }
-
-    psoDescriptor->setVertexDescriptor(vertexDescriptor);
-
-    // Load attachments
-    for (auto& pair : pass.attachments) {
-        auto& cc = pair.second.clearColor;
-
-        // We had to make the attachment member a std::optional to avoid having to call a Handle's
-        // default ctor which doesn't exist.
-        auto* rAttachment = pass.descriptor->colorAttachments()->object(pair.first);
-        rAttachment->init();
-        rAttachment->setLoadAction(metal::loadActions[pair.second.loadAction]);
-        rAttachment->setStoreAction(metal::storeActions[pair.second.storeAction]);
-        rAttachment->setClearColor(MTL::ClearColor::Make(cc.r, cc.g, cc.b, cc.a));
-        // We don't bind textures here yet.
-
-        auto* pAttachment = psoDescriptor->colorAttachments()->object(pair.first);
-        pAttachment->init();
-        if (pair.second.attachment.get() == renderTargetTexture.get()) {
-            pAttachment->setPixelFormat(colorPixelFormat);
-        } else {
-            pAttachment->setPixelFormat(dynamic_cast<metal::Texture*>(pair.second.attachment.get())->texture->pixelFormat());
-        }
-    }
-
-    if (pass.depthAttachment.has_value()) {
-        auto depthTex = dynamic_cast<metal::Texture*>(pass.depthAttachment->attachment.get());
-
-        auto depth = pass.descriptor->depthAttachment();
-        depth->setClearDepth(pass.depthAttachment->clearDepth);
-        depth->setLoadAction(metal::loadActions[pass.depthAttachment->loadAction]);
-        depth->setStoreAction(metal::storeActions[pass.depthAttachment->storeAction]);
-        depth->setTexture(depthTex->texture);
-
-        psoDescriptor->setDepthAttachmentPixelFormat(depthTex->texture->pixelFormat());
-
-        depthDescriptor->init();
-        depthDescriptor->setDepthCompareFunction(MTL::CompareFunction::CompareFunctionLess);
-        depthDescriptor->setDepthWriteEnabled(true);
-    }
-
-    NS::Error* error = nullptr;
-    pass.pipelineState = device->newRenderPipelineState(psoDescriptor, &error);
-    if (!pass.pipelineState) {
-        krypton::log::err(error->localizedDescription()->utf8String());
-    }
-    psoDescriptor->release();
-    vertexDescriptor->release();
-
-    pass.depthState = device->newDepthStencilState(depthDescriptor);
-    depthDescriptor->release();
-}
-
 std::shared_ptr<kr::IBuffer> kr::MetalBackend::createBuffer() {
     return std::make_shared<metal::Buffer>(device);
 }
 
-ku::Handle<"RenderPass"> kr::MetalBackend::createRenderPass() {
-    ZoneScoped;
-    auto refCounter = std::make_shared<ku::ReferenceCounter>();
-    return renderPasses.getNewHandle(std::move(refCounter));
+std::shared_ptr<kr::IRenderPass> kr::MetalBackend::createRenderPass() {
+    return std::make_shared<metal::RenderPass>(device);
 }
 
 std::shared_ptr<kr::ISampler> kr::MetalBackend::createSampler() {
-    ZoneScoped;
     return std::make_shared<kr::metal::Sampler>(device);
 }
 
@@ -201,20 +82,6 @@ std::shared_ptr<kr::ITexture> kr::MetalBackend::createTexture(rapi::TextureUsage
     return std::make_shared<metal::Texture>(device, usage);
 }
 
-bool kr::MetalBackend::destroyRenderPass(util::Handle<"RenderPass">& handle) {
-    auto valid = renderPasses.isHandleValid(handle);
-    if (valid) {
-        auto& pass = renderPasses.getFromHandle(handle);
-        pass.descriptor->release();
-        pass.pipelineState->release();
-        pass.depthState->release();
-        renderPasses.removeHandle(handle); // Calls destructor.
-    } else {
-        krypton::log::warn("Tried to destroy a invalid render pass handle");
-    }
-    return valid;
-}
-
 void kr::MetalBackend::endFrame() {
     ZoneScoped;
     // Drains any resources created within the render loop. Also releases the pool itself.
@@ -228,7 +95,7 @@ std::unique_ptr<kr::ICommandBuffer> kr::MetalBackend::getFrameCommandBuffer() {
     cmdBuffer->drawable = swapchain->nextDrawable();
     cmdBuffer->buffer = queue->commandBuffer();
 
-    dynamic_cast<metal::Texture*>(renderTargetTexture.get())->texture = cmdBuffer->drawable->texture();
+    renderTargetTexture->texture = cmdBuffer->drawable->texture();
 
     return std::move(cmdBuffer);
 }
@@ -267,39 +134,13 @@ void kr::MetalBackend::init() {
 
     krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
-    // Create our Metal library
-    defaultShader = krypton::shaders::readShaderFile("shaders/shaders.metal");
-    const NS::String* shaderSource = NS::String::string(defaultShader.content.c_str(), NS::ASCIIStringEncoding);
-
-    auto* compileOptions = MTL::CompileOptions::alloc()->init();
-    compileOptions->setLanguageVersion(MTL::LanguageVersion2_4);
-
-    NS::Error* error = nullptr;
-    library = device->newLibrary(shaderSource, compileOptions, &error);
-    if (!library) {
-        krypton::log::err(error->description()->utf8String());
-    }
-    library->autorelease();
-
-    renderTargetTexture = createTexture(rapi::TextureUsage::ColorRenderTarget | rapi::TextureUsage::SampledImage);
+    // The texture usage here is not explicitly used anywhere.
+    renderTargetTexture =
+        std::make_shared<metal::Texture>(device, rapi::TextureUsage::ColorRenderTarget | rapi::TextureUsage::SampledImage);
 }
 
 void kr::MetalBackend::resize(int width, int height) {
     ZoneScoped;
-}
-
-void kr::MetalBackend::setRenderPassFragmentFunction(const util::Handle<"RenderPass">& handle, const IShader* const shader) {
-    auto& rp = renderPasses.getFromHandle(handle);
-    rp.fragmentFunction = dynamic_cast<const metal::FragmentShader*>(shader)->function;
-}
-
-void kr::MetalBackend::setRenderPassVertexDescriptor(const util::Handle<"RenderPass">& handle, VertexDescriptor descriptor) {
-    renderPasses.getFromHandle(handle).vertexDescriptor = descriptor;
-}
-
-void kr::MetalBackend::setRenderPassVertexFunction(const util::Handle<"RenderPass">& handle, const IShader* const shader) {
-    auto& rp = renderPasses.getFromHandle(handle);
-    rp.vertexFunction = dynamic_cast<const metal::VertexShader*>(shader)->function;
 }
 
 void kr::MetalBackend::shutdown() {

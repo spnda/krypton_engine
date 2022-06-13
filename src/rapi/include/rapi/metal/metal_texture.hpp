@@ -21,11 +21,15 @@ namespace krypton::rapi {
 
 namespace krypton::rapi::metal {
     class CommandBuffer;
+    class RenderPass;
     class ShaderParameter;
+
+    MTL::PixelFormat getPixelFormat(TextureFormat format, ColorEncoding colorEncoding) noexcept;
 
     class Texture : public ITexture {
         friend class ::krypton::rapi::MetalBackend;
         friend class ::krypton::rapi::metal::CommandBuffer;
+        friend class ::krypton::rapi::metal::RenderPass;
         friend class ::krypton::rapi::metal::ShaderParameter;
 
         MTL::Device* device = nullptr;

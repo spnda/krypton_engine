@@ -96,10 +96,10 @@ auto main(int argc, char* argv[]) -> int {
         defaultVertexFunction->createModule();
 
         auto defaultRenderPass = rapi->createRenderPass();
-        rapi->setRenderPassFragmentFunction(defaultRenderPass, defaultFragmentFunction.get());
-        rapi->setRenderPassVertexFunction(defaultRenderPass, defaultVertexFunction.get());
+        defaultRenderPass->setFragmentFunction(defaultFragmentFunction.get());
+        defaultRenderPass->setVertexFunction(defaultVertexFunction.get());
         // clang-format off
-        rapi->setRenderPassVertexDescriptor(defaultRenderPass, {
+        defaultRenderPass->setVertexDescriptor({
             .buffers = {
                {
                    .stride = sizeof(krypton::assets::Vertex),
@@ -114,14 +114,14 @@ auto main(int argc, char* argv[]) -> int {
                 }
             }
         });
-        rapi->addRenderPassAttachment(defaultRenderPass, 0, {
+        defaultRenderPass->addAttachment(0, {
               .attachment = rapi->getRenderTargetTextureHandle(),
               .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
               .storeAction = krypton::rapi::AttachmentStoreAction::Store,
               .clearColor = glm::fvec4(0.0),
         });
         // clang-format on
-        rapi->buildRenderPass(defaultRenderPass);
+        defaultRenderPass->build();
 
         auto imguiRenderPass = rapi->createRenderPass();
 
@@ -147,7 +147,7 @@ auto main(int argc, char* argv[]) -> int {
             imgui->newFrame();
 
             auto buffer = rapi->getFrameCommandBuffer();
-            buffer->beginRenderPass(defaultRenderPass);
+            buffer->beginRenderPass(defaultRenderPass.get());
 
             buffer->endRenderPass();
 
@@ -161,7 +161,7 @@ auto main(int argc, char* argv[]) -> int {
             rapi->endFrame();
         }
 
-        rapi->destroyRenderPass(defaultRenderPass);
+        defaultRenderPass->destroy();
 
         imgui->destroy();
         rapi->shutdown();
