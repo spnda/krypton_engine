@@ -47,6 +47,4 @@ namespace krypton::rapi {
          */
         virtual void uploadTexture(uint32_t width, uint32_t height, std::span<std::byte> data, TextureFormat textureFormat) = 0;
     };
-
-    static_assert(std::is_abstract_v<ITexture>);
 } // namespace krypton::rapi

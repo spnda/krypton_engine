@@ -6,19 +6,20 @@
 #include <string_view>
 #include <vector>
 
-#include <Metal/Metal.hpp>
+#include <Metal/MTLCommandQueue.hpp>
+#include <Metal/MTLDevice.hpp>
+#include <Metal/MTLLibrary.hpp>
+#include <Metal/MTLPixelFormat.hpp>
 #include <QuartzCore/CAMetalLayer.hpp>
 
-#include <assets/mesh.hpp>
-#include <rapi/metal/metal_buffer.hpp>
-#include <rapi/metal/metal_command_buffer.hpp>
-#include <rapi/metal/metal_renderpass.hpp>
-#include <rapi/metal/metal_texture.hpp>
 #include <rapi/rapi.hpp>
 #include <shaders/shaders.hpp>
 
 namespace krypton::rapi {
-    class Window;
+    namespace metal {
+        class CommandBuffer;
+        class Texture;
+    } // namespace metal
 
     class MetalBackend final : public RenderAPI {
         friend std::shared_ptr<RenderAPI> krypton::rapi::getRenderApi(Backend backend) noexcept(false);

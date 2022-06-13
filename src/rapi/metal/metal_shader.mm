@@ -3,8 +3,11 @@
 #import <Metal/Metal.h>
 #import <Tracy.hpp>
 
+#import <rapi/metal/metal_buffer.hpp>
 #import <rapi/metal/metal_cpp_util.hpp>
+#import <rapi/metal/metal_sampler.hpp>
 #import <rapi/metal/metal_shader.hpp>
+#import <rapi/metal/metal_texture.hpp>
 
 void krypton::rapi::metal::ShaderParameter::buildParameter() {
     ZoneScoped;

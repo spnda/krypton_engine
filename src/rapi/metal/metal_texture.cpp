@@ -21,6 +21,16 @@ namespace krypton::rapi::metal {
                 // There's no RGBA16Unorm_sRGB
                 break;
             }
+            case TextureFormat::BGRA10: {
+                if (colorEncoding == ColorEncoding::LINEAR)
+                    return MTL::PixelFormatBGRA10_XR;
+                return MTL::PixelFormatBGRA10_XR_sRGB;
+            }
+            case TextureFormat::BGR10: {
+                if (colorEncoding == ColorEncoding::LINEAR)
+                    return MTL::PixelFormatBGR10_XR;
+                return MTL::PixelFormatBGR10_XR_sRGB;
+            }
             case TextureFormat::A8: {
                 if (colorEncoding == ColorEncoding::LINEAR) {
                     return MTL::PixelFormatA8Unorm;

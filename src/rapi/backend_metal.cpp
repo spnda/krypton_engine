@@ -9,11 +9,15 @@
 
 #include <rapi/backend_metal.hpp>
 #include <rapi/metal/glfw_cocoa_bridge.hpp>
+#include <rapi/metal/metal_buffer.hpp>
+#include <rapi/metal/metal_command_buffer.hpp>
 #include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
+#include <rapi/metal/metal_texture.hpp>
 #include <rapi/metal/shader_types.hpp>
+#include <rapi/window.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;

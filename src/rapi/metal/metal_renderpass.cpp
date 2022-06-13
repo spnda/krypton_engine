@@ -1,3 +1,5 @@
+#include <Metal/MTLVertexDescriptor.hpp>
+
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_shader.hpp>
 #include <rapi/metal/metal_texture.hpp>
@@ -102,7 +104,7 @@ void kr::metal::RenderPass::build() {
 
         auto* pAttachment = psoDescriptor->colorAttachments()->object(pair.first);
         pAttachment->init();
-        pAttachment->setPixelFormat(getPixelFormat(pair.second.attachmentFormat, ColorEncoding::LINEAR));
+        pAttachment->setPixelFormat(getPixelFormat(pair.second.attachmentFormat, ColorEncoding::SRGB));
     }
 
     if (depthAttachment.has_value()) {

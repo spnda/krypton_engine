@@ -5,13 +5,11 @@
 #include <span>
 #include <vector>
 
+#include <Metal/MTLArgumentEncoder.hpp>
 #include <Metal/MTLLibrary.hpp>
 #include <robin_hood.h>
 
 #include <rapi/ishader.hpp>
-#include <rapi/metal/metal_buffer.hpp>
-#include <rapi/metal/metal_sampler.hpp>
-#include <rapi/metal/metal_texture.hpp>
 #include <rapi/rapi.hpp>
 #include <util/reference_counter.hpp>
 
@@ -20,8 +18,11 @@ namespace krypton::rapi {
 }
 
 namespace krypton::rapi::metal {
+    class Buffer;
     class CommandBuffer;
     class RenderPass;
+    class Sampler;
+    class Texture;
 
     class ShaderParameter : public IShaderParameter {
         friend class ::krypton::rapi::MetalBackend;
@@ -94,9 +95,6 @@ namespace krypton::rapi::metal {
         void createModule() override;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
     };
-
-    static_assert(!std::is_abstract_v<FragmentShader>);
-    static_assert(!std::is_abstract_v<VertexShader>);
 } // namespace krypton::rapi::metal
 
 #endif

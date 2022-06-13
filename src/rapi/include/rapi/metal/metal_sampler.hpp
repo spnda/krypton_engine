@@ -32,8 +32,6 @@ namespace krypton::rapi::metal {
         void setAddressModeV(SamplerAddressMode mode) override;
         void setAddressModeW(SamplerAddressMode mode) override;
     };
-
-    static_assert(!std::is_abstract_v<Sampler>);
 } // namespace krypton::rapi::metal
 
 #endif

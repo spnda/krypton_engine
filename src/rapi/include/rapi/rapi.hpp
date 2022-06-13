@@ -4,16 +4,11 @@
 #include <span>
 #include <version>
 
-#include <assets/mesh.hpp>
 #include <rapi/color_encoding.hpp>
-#include <rapi/ibuffer.hpp>
-#include <rapi/icommandbuffer.hpp>
-#include <rapi/irenderpass.hpp>
-#include <rapi/ishader.hpp>
-#include <rapi/itexture.hpp>
+#include <rapi/rapi_backends.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
-#include <rapi/window.hpp>
+#include <shaders/shaders.hpp>
 #include <util/consteval_pow.hpp>
 #include <util/handle.hpp>
 
@@ -22,7 +17,14 @@
 #endif
 
 namespace krypton::rapi {
+    class IBuffer;
+    class ICommandBuffer;
+    class IRenderPass;
+    class ISampler;
+    class IShader;
+    class IShaderParameter;
     class RenderAPI;
+    class Window;
 
     [[nodiscard]] std::shared_ptr<RenderAPI> getRenderApi(Backend backend) noexcept(false);
 

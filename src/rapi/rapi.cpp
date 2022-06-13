@@ -1,5 +1,3 @@
-#include <vector>
-
 #ifdef RAPI_WITH_METAL
 #include <rapi/backend_metal.hpp>
 #endif

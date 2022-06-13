@@ -4,6 +4,9 @@
 #include <Tracy.hpp>
 
 #include <core/imgui_renderer.hpp>
+#include <rapi/icommandbuffer.hpp>
+#include <rapi/irenderpass.hpp>
+#include <rapi/window.hpp>
 
 namespace kc = krypton::core;
 
@@ -104,6 +107,7 @@ void kc::ImGuiRenderer::init() {
     });
     renderPass->addAttachment(0, {
         .attachment = rapi->getRenderTargetTextureHandle(),
+        .attachmentFormat = rapi::TextureFormat::BGRA10,
         .loadAction = krypton::rapi::AttachmentLoadAction::Load,
         .storeAction = krypton::rapi::AttachmentStoreAction::Store,
         .clearColor = glm::fvec4(0.0),

@@ -2,9 +2,7 @@
 
 #ifdef RAPI_WITH_METAL
 
-#include <memory>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -48,8 +46,6 @@ namespace krypton::rapi::metal {
         void setName(std::string_view name) override;
         void uploadTexture(uint32_t width, uint32_t height, std::span<std::byte> data, TextureFormat textureFormat) override;
     };
-
-    static_assert(!std::is_abstract_v<Texture>);
 } // namespace krypton::rapi::metal
 
 #endif

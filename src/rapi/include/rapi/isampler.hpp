@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>
+#include <cstdint>
 
 namespace krypton::rapi {
     enum class SamplerAddressMode : uint16_t {
@@ -19,6 +19,4 @@ namespace krypton::rapi {
         virtual void setAddressModeV(SamplerAddressMode mode) = 0;
         virtual void setAddressModeW(SamplerAddressMode mode) = 0;
     };
-
-    static_assert(std::is_abstract_v<ISampler>);
 } // namespace krypton::rapi

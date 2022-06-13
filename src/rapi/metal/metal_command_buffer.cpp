@@ -1,10 +1,12 @@
 #include <Tracy.hpp>
 
 #include <rapi/backend_metal.hpp>
+#include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_command_buffer.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
+#include <rapi/metal/metal_texture.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
 #include <util/assert.hpp>

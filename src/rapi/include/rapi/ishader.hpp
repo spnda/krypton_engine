@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -90,6 +89,4 @@ namespace krypton::rapi {
         // compiled shader.
         virtual void transpile(std::string_view entryPoint, krypton::shaders::ShaderStage stage);
     };
-
-    static_assert(std::is_abstract_v<IShader>);
 } // namespace krypton::rapi

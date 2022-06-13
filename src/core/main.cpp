@@ -15,6 +15,8 @@
 #include <assets/mesh.hpp>
 #include <assets/scene.hpp>
 #include <core/imgui_renderer.hpp>
+#include <rapi/icommandbuffer.hpp>
+#include <rapi/irenderpass.hpp>
 #include <rapi/itexture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
@@ -115,10 +117,11 @@ auto main(int argc, char* argv[]) -> int {
             }
         });
         defaultRenderPass->addAttachment(0, {
-              .attachment = rapi->getRenderTargetTextureHandle(),
-              .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
-              .storeAction = krypton::rapi::AttachmentStoreAction::Store,
-              .clearColor = glm::fvec4(0.0),
+            .attachment = rapi->getRenderTargetTextureHandle(),
+            .attachmentFormat = krypton::rapi::TextureFormat::BGRA10,
+            .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
+            .storeAction = krypton::rapi::AttachmentStoreAction::Store,
+            .clearColor = glm::fvec4(0.0),
         });
         // clang-format on
         defaultRenderPass->build();

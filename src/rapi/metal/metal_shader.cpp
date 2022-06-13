@@ -1,9 +1,11 @@
 #include <Metal/MTLDevice.hpp>
 #include <Tracy.hpp>
 
-#include <rapi/ishader.hpp>
+#include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_cpp_util.hpp>
+#include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
+#include <rapi/metal/metal_texture.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;

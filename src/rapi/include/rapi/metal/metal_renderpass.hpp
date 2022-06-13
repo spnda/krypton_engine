@@ -41,6 +41,4 @@ namespace krypton::rapi::metal {
         void setVertexDescriptor(VertexDescriptor descriptor) override;
         void setVertexFunction(const IShader* shader) override;
     };
-
-    static_assert(!std::is_abstract_v<RenderPass>);
 } // namespace krypton::rapi::metal
