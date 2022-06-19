@@ -16,17 +16,19 @@ void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
     ZoneScoped;
     unsigned char* pixels;
     int width, height;
-    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     fontAtlas = rapi->createTexture(rapi::TextureUsage::SampledImage);
-    fontAtlas->setName("ImGui Font Texture");
+    fontAtlas->setName(u8"ImGui font texture");
     fontAtlas->setColorEncoding(rapi::ColorEncoding::LINEAR);
-    fontAtlas->uploadTexture(width, height, std::span { reinterpret_cast<std::byte*>(pixels), static_cast<std::size_t>(width * height) },
-                             rapi::TextureFormat::A8);
+    fontAtlas->uploadTexture(width, height,
+                             std::span { reinterpret_cast<std::byte*>(pixels), static_cast<std::size_t>(width * height * 4) },
+                             rapi::TextureFormat::RGBA8);
 
     if (fontAtlasSampler == nullptr) {
         // This likely won't change.
         fontAtlasSampler = rapi->createSampler();
+        fontAtlasSampler->setName(u8"ImGui font-atlas sampler");
         fontAtlasSampler->createSampler();
     }
 
@@ -51,8 +53,8 @@ void kc::ImGuiRenderer::init() {
     vertexBuffer = rapi->createBuffer();
     indexBuffer = rapi->createBuffer();
 
-    vertexBuffer->setName("ImGui Vertex Buffer");
-    indexBuffer->setName("ImGui Index Buffer");
+    vertexBuffer->setName(u8"ImGui Vertex Buffer");
+    indexBuffer->setName(u8"ImGui Index Buffer");
 
     vertexBuffer->create(sizeof(ImDrawVert), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
     indexBuffer->create(sizeof(ImDrawIdx), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
@@ -111,13 +113,23 @@ void kc::ImGuiRenderer::init() {
         .loadAction = krypton::rapi::AttachmentLoadAction::Load,
         .storeAction = krypton::rapi::AttachmentStoreAction::Store,
         .clearColor = glm::fvec4(0.0),
+        .blending = {
+            .enabled = true,
+            .rgbOperation = rapi::BlendOperation::Add,
+            .alphaOperation = rapi::BlendOperation::Add,
+
+            .rgbSourceFactor = rapi::BlendFactor::SourceAlpha,
+            .rgbDestinationFactor = rapi::BlendFactor::OneMinusSourceAlpha,
+            .alphaSourceFactor = rapi::BlendFactor::One,
+            .alphaDestinationFactor = rapi::BlendFactor::OneMinusSourceAlpha,
+        }
     });
     // clang-format on
     renderPass->build();
 
     // Build our uniform buffer
     uniformBuffer = rapi->createBuffer();
-    uniformBuffer->setName("ImGui Uniform Buffer");
+    uniformBuffer->setName(u8"ImGui Uniform Buffer");
     uniformBuffer->create(sizeof(ImGuiShaderUniforms), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
 
     updateUniformBuffer(io.DisplaySize, ImVec2(0, 0));
@@ -251,19 +263,6 @@ void kc::ImGuiRenderer::updateUniformBuffer(const ImVec2& displaySize, const ImV
     uniforms.scale.y = 2.0f / displaySize.y;
     uniforms.translate.x = -1.0f - displayPos.x * uniforms.scale.x;
     uniforms.translate.y = -1.0f - displayPos.y * uniforms.scale.y;
-
-    /*float L = displayPos.x;
-    float R = displayPos.x + displaySize.x;
-    float T = displayPos.y;
-    float B = displayPos.y + displaySize.y;
-    float N = 0.001f;
-    float F = 100.0f;
-    uniforms.transform = {
-        { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
-        { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
-        { 0.0f, 0.0f, 1 / (F - N), 0.0f },
-        { (R + L) / (L - R), (T + B) / (B - T), N / (F - N), 1.0f },
-    };*/
 
     uniformBuffer->mapMemory([this](void* data) { std::memcpy(data, &uniforms, sizeof(ImGuiShaderUniforms)); });
 }

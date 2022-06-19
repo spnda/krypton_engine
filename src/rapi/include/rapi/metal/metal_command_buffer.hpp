@@ -21,6 +21,8 @@ namespace krypton::rapi::metal {
         friend class ::krypton::rapi::MetalBackend;
 
         std::shared_ptr<MetalBackend> rapi = nullptr;
+
+        NS::String* name = nullptr;
         MTL::CommandBuffer* buffer = nullptr;
         CA::MetalDrawable* drawable = nullptr;
 
@@ -36,6 +38,7 @@ namespace krypton::rapi::metal {
         void drawIndexed(IBuffer* indexBuffer, uint32_t indexCount, IndexType type, uint32_t offset) override;
         void endRenderPass() override;
         void presentFrame() override;
+        void setName(std::u8string_view name) override;
         void scissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
         void submit() override;
         void viewport(float originX, float originY, float width, float height, float near, float far) override;

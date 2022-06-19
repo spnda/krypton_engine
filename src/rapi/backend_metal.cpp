@@ -3,7 +3,6 @@
 #include <algorithm>
 
 #include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
 
 #include <Tracy.hpp>
 
@@ -11,7 +10,6 @@
 #include <rapi/metal/glfw_cocoa_bridge.hpp>
 #include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_command_buffer.hpp>
-#include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>

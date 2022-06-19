@@ -2,10 +2,15 @@
 
 #ifdef RAPI_WITH_METAL
 
-#include <Foundation/Foundation.hpp>
+#include <Foundation/NSString.hpp>
 
 #ifdef __APPLE__
+// NSString by default is encoded as UTF-16.
 #define NSSTRING(str) reinterpret_cast<const NS::String*>(__builtin___CFStringMakeConstantString(str))
 #endif
+
+inline NS::String* getUTF8String(const char8_t* data) noexcept {
+    return NS::String::string(reinterpret_cast<const char*>(data), NS::UTF8StringEncoding);
+}
 
 #endif

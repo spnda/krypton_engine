@@ -5,8 +5,7 @@ layout(location = 1) in vec2 inUV;
 layout(location = 2) in vec4 inColor;
 
 // We specifically specify 'buffer' here to force SPIRV-Cross to use a device-scope pointer.
-layout(set = 1, binding = 0) uniform Uniforms {
-    // mat4 transform;
+layout(set = 1, binding = 0) buffer Uniforms {
     vec2 scale;
     vec2 translate;
 } uniforms;
@@ -19,6 +18,5 @@ layout(location = 0) out struct {
 void main() {
     outp.color = inColor;
     outp.uv = inUV;
-    // gl_Position = uniforms.transform * vec4(inPos, 0, 1);
-    gl_Position = vec4(inPos * uniforms.scale + uniforms.translate, 0, 1);
+    gl_Position = vec4(inPos * uniforms.scale + uniforms.translate, 0, 1) * vec4(1.0f, -1.0f, 1.0f, 1.0f);
 }

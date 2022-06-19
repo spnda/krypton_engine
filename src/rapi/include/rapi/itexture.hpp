@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include <rapi/color_encoding.hpp>
+#include <util/nameable.hpp>
 
 namespace krypton::rapi {
     enum class TextureFormat : size_t {
@@ -32,13 +33,12 @@ namespace krypton::rapi {
         return static_cast<TextureUsage>(static_cast<size_t>(a) & static_cast<size_t>(b));
     }
 
-    class ITexture {
+    class ITexture : public util::Nameable {
     protected:
     public:
         virtual ~ITexture() = default;
 
         virtual void setColorEncoding(ColorEncoding encoding) = 0;
-        virtual void setName(std::string_view name) = 0;
 
         /**
          * This finalizes the texture creation process by uploading the texture to the GPU. To be

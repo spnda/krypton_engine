@@ -6,6 +6,7 @@
 #include <rapi/ishader.hpp>
 #include <shaders/shaders.hpp>
 #include <util/handle.hpp>
+#include <util/nameable.hpp>
 
 namespace krypton::rapi {
     enum class IndexType {
@@ -17,9 +18,9 @@ namespace krypton::rapi {
 
     class IRenderPass;
 
-    class ICommandBuffer : public std::enable_shared_from_this<ICommandBuffer> {
+    class ICommandBuffer : public std::enable_shared_from_this<ICommandBuffer>, public util::Nameable {
     public:
-        virtual ~ICommandBuffer() = default;
+        ~ICommandBuffer() override = default;
 
         virtual void beginRenderPass(const IRenderPass* renderPass) = 0;
         virtual void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) = 0;

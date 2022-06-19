@@ -1,6 +1,7 @@
 #include <Tracy.hpp>
 
 #include <rapi/metal/metal_buffer.hpp>
+#include <rapi/metal/metal_cpp_util.hpp>
 #include <util/assert.hpp>
 
 namespace kr = krypton::rapi;
@@ -50,9 +51,10 @@ std::size_t kr::metal::Buffer::getSize() {
     return buffer->length();
 }
 
-void kr::metal::Buffer::setName(std::string_view newName) {
+void kr::metal::Buffer::setName(std::u8string_view newName) {
     ZoneScoped;
-    name = NS::String::string(newName.data(), NS::ASCIIStringEncoding);
+    name = getUTF8String(newName.data());
+
     if (buffer != nullptr)
         buffer->setLabel(name);
 }

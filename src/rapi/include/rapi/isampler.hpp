@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <util/nameable.hpp>
+
 namespace krypton::rapi {
     enum class SamplerAddressMode : uint16_t {
         Repeat = 0,
@@ -10,9 +12,9 @@ namespace krypton::rapi {
         ClampToBorder = 3,
     };
 
-    class ISampler {
+    class ISampler : public util::Nameable {
     public:
-        virtual ~ISampler() = default;
+        ~ISampler() override = default;
 
         virtual void createSampler() = 0;
         virtual void setAddressModeU(SamplerAddressMode mode) = 0;

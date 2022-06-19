@@ -11,5 +11,5 @@ layout(location = 0) in struct {
 } inp;
 
 void main() {
-    fragColor = inp.color * texture(sampler2D(sTexture, textureSampler), inp.uv.st);
+    fragColor = inp.color / 255.0f * texture(sampler2D(sTexture, textureSampler), inp.uv.st);
 }

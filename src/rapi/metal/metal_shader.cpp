@@ -78,6 +78,14 @@ void kr::metal::FragmentShader::createModule() {
 bool kr::metal::FragmentShader::isParameterObjectCompatible(IShaderParameter* parameter) {
     return true;
 }
+
+void kr::metal::FragmentShader::setName(std::u8string_view newName) {
+    ZoneScoped;
+    name = getUTF8String(newName.data());
+
+    if (function != nullptr)
+        function->setLabel(name);
+}
 #pragma endregion
 
 #pragma region VertexShader
@@ -125,5 +133,13 @@ void kr::metal::VertexShader::createModule() {
 
 bool kr::metal::VertexShader::isParameterObjectCompatible(IShaderParameter* parameter) {
     return true;
+}
+
+void kr::metal::VertexShader::setName(std::u8string_view newName) {
+    ZoneScoped;
+    name = getUTF8String(newName.data());
+
+    if (function != nullptr)
+        function->setLabel(name);
 }
 #pragma endregion

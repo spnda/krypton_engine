@@ -56,6 +56,7 @@ namespace krypton::rapi::metal {
         std::string msl;
         std::shared_ptr<krypton::util::ReferenceCounter> refCounter;
 
+        NS::String* name = nullptr;
         MTL::Device* device = nullptr;
         MTL::Library* library = nullptr;
         MTL::Function* function = nullptr;
@@ -70,6 +71,7 @@ namespace krypton::rapi::metal {
 
         void createModule() override;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
+        void setName(std::u8string_view name) override;
     };
 
     class VertexShader : public IShader {
@@ -80,6 +82,7 @@ namespace krypton::rapi::metal {
         std::string msl;
         std::shared_ptr<krypton::util::ReferenceCounter> refCounter;
 
+        NS::String* name = nullptr;
         MTL::Device* device = nullptr;
         MTL::Library* library = nullptr;
         MTL::Function* function = nullptr;
@@ -94,6 +97,7 @@ namespace krypton::rapi::metal {
 
         void createModule() override;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
+        void setName(std::u8string_view name) override;
     };
 } // namespace krypton::rapi::metal
 

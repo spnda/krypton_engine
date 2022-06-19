@@ -28,7 +28,7 @@ namespace krypton::rapi::metal {
         void destroy() override;
         void mapMemory(std::function<void(void*)> callback) override;
         [[nodiscard]] std::size_t getSize() override;
-        void setName(std::string_view name) override;
+        void setName(std::u8string_view name) override;
     };
 } // namespace krypton::rapi::metal
 

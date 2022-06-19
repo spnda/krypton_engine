@@ -20,6 +20,7 @@ namespace krypton::rapi::metal {
         friend class ::krypton::rapi::metal::ShaderParameter;
 
         MTL::Device* device;
+        NS::String* name = nullptr;
         MTL::SamplerState* samplerState;
         MTL::SamplerDescriptor* descriptor;
 
@@ -31,6 +32,7 @@ namespace krypton::rapi::metal {
         void setAddressModeU(SamplerAddressMode mode) override;
         void setAddressModeV(SamplerAddressMode mode) override;
         void setAddressModeW(SamplerAddressMode mode) override;
+        void setName(std::u8string_view name) override;
     };
 } // namespace krypton::rapi::metal
 

@@ -1,5 +1,6 @@
 #include <Metal/MTLVertexDescriptor.hpp>
 
+#include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_shader.hpp>
 #include <rapi/metal/metal_texture.hpp>
@@ -20,6 +21,16 @@ static constexpr std::array<MTL::StoreAction, 3> metalStoreActions = {
     MTL::StoreActionDontCare,           // AttachmentStoreAction::DontCare = 0,
     MTL::StoreActionStore,              // AttachmentStoreAction::Store = 1,
     MTL::StoreActionMultisampleResolve, // AttachmentStoreAction::Multisample = 2,
+};
+
+static constexpr std::array<MTL::BlendOperation, 1> metalBlendOperations = {
+    MTL::BlendOperationAdd, // BlendOperation::Add = 0,
+};
+
+static constexpr std::array<MTL::BlendFactor, 3> metalBlendFactors = {
+    MTL::BlendFactorOne,                    // BlendFactor::One = 0,
+    MTL::BlendFactorSourceAlpha,            // BlendFactor::SourceAlpha = 1,
+    MTL::BlendFactorOneMinusSourceAlpha,    // BlendFactor::OneMinusSourceAlpha = 2,
 };
 // clang-format on
 
@@ -105,6 +116,18 @@ void kr::metal::RenderPass::build() {
         auto* pAttachment = psoDescriptor->colorAttachments()->object(pair.first);
         pAttachment->init();
         pAttachment->setPixelFormat(getPixelFormat(pair.second.attachmentFormat, ColorEncoding::SRGB));
+        if (pair.second.blending.enabled) {
+            auto& blend = pair.second.blending;
+            pAttachment->setBlendingEnabled(true);
+
+            pAttachment->setRgbBlendOperation(metalBlendOperations[static_cast<uint8_t>(blend.rgbOperation)]);
+            pAttachment->setSourceRGBBlendFactor(metalBlendFactors[static_cast<uint8_t>(blend.rgbSourceFactor)]);
+            pAttachment->setDestinationRGBBlendFactor(metalBlendFactors[static_cast<uint8_t>(blend.rgbDestinationFactor)]);
+
+            pAttachment->setAlphaBlendOperation(metalBlendOperations[static_cast<uint8_t>(blend.alphaOperation)]);
+            pAttachment->setSourceAlphaBlendFactor(metalBlendFactors[static_cast<uint8_t>(blend.alphaSourceFactor)]);
+            pAttachment->setDestinationAlphaBlendFactor(metalBlendFactors[static_cast<uint8_t>(blend.alphaDestinationFactor)]);
+        }
     }
 
     if (depthAttachment.has_value()) {

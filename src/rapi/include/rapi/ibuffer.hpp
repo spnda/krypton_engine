@@ -5,6 +5,8 @@
 #include <functional>
 #include <string_view>
 
+#include <util/nameable.hpp>
+
 namespace krypton::rapi {
     enum class BufferMemoryLocation : uint32_t {
         // This usually means VRAM or some form of memory that is not accessible by the CPU.
@@ -36,10 +38,10 @@ namespace krypton::rapi {
         return static_cast<BufferUsage>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
     }
 
-    class IBuffer {
+    class IBuffer : public util::Nameable {
 
     public:
-        virtual ~IBuffer() = default;
+        ~IBuffer() override = default;
 
         virtual void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) = 0;
         virtual void destroy() = 0;
@@ -51,8 +53,6 @@ namespace krypton::rapi {
         virtual void mapMemory(std::function<void(void*)> callback) = 0;
 
         [[nodiscard]] virtual std::size_t getSize() = 0;
-
-        virtual void setName(std::string_view name) = 0;
     };
 
     static_assert(std::is_abstract_v<IBuffer>);

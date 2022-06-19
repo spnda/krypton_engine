@@ -43,7 +43,7 @@ namespace krypton::rapi::metal {
         ~Texture() override = default;
 
         void setColorEncoding(ColorEncoding encoding) override;
-        void setName(std::string_view name) override;
+        void setName(std::u8string_view name) override;
         void uploadTexture(uint32_t width, uint32_t height, std::span<std::byte> data, TextureFormat textureFormat) override;
     };
 } // namespace krypton::rapi::metal

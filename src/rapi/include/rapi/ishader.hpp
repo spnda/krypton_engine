@@ -10,6 +10,7 @@
 #include <rapi/itexture.hpp>
 #include <shaders/shaders.hpp>
 #include <util/handle.hpp>
+#include <util/nameable.hpp>
 
 namespace krypton::rapi {
     class IBuffer;
@@ -45,7 +46,7 @@ namespace krypton::rapi {
      * interface also stores a owning copy of the raw bytes of the shader input, which is usually
      * SPIR-V but can be in many other formats, depending on build and platform.
      */
-    class IShader : public std::enable_shared_from_this<IShader> {
+    class IShader : public std::enable_shared_from_this<IShader>, public util::Nameable {
     protected:
         // This is our owning copy of bytes. Ideally, this should never reallocate and should
         // always point to the same underlying data, as we use std::span to use these bytes with

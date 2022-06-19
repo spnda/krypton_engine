@@ -1,5 +1,6 @@
 #include <Tracy.hpp>
 
+#include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_texture.hpp>
 
 namespace kr = krypton::rapi;
@@ -56,9 +57,9 @@ void kr::metal::Texture::setColorEncoding(ColorEncoding newEncoding) {
     encoding = newEncoding;
 }
 
-void kr::metal::Texture::setName(std::string_view newName) {
+void kr::metal::Texture::setName(std::u8string_view newName) {
     ZoneScoped;
-    name = NS::String::string(newName.data(), NS::ASCIIStringEncoding);
+    name = getUTF8String(newName.data());
 
     if (texture != nullptr)
         texture->setLabel(name);
@@ -71,8 +72,9 @@ void kr::metal::Texture::uploadTexture(uint32_t width, uint32_t height, std::spa
     texDesc->setStorageMode(MTL::StorageModeShared);
 
     texture = device->newTexture(texDesc);
-    texture->setLabel(name);
+    if (name != nullptr)
+        texture->setLabel(name);
 
     MTL::Region imageRegion = MTL::Region::Make2D(0, 0, width, height);
-    texture->replaceRegion(imageRegion, 0, data.data(), data.size_bytes());
+    texture->replaceRegion(imageRegion, 0, data.data(), data.size_bytes() / height);
 }

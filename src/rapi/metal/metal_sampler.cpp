@@ -3,7 +3,9 @@
 #include <Metal/MTLDevice.hpp>
 #include <Tracy.hpp>
 
+#include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_sampler.hpp>
+#include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
 
@@ -37,4 +39,20 @@ void kr::metal::Sampler::setAddressModeV(SamplerAddressMode mode) {
 
 void kr::metal::Sampler::setAddressModeW(SamplerAddressMode mode) {
     descriptor->setRAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
+}
+
+void kr::metal::Sampler::setName(std::u8string_view newName) {
+    // For some strange reason MTLSamplerState's label property is readonly. So this therefore only
+    // works before creating the state.
+    // See https://developer.apple.com/documentation/metal/mtlsamplerstate/1516329-label?language=objc
+    ZoneScoped;
+    if (samplerState == nullptr) {
+        // We free the descriptor when building the sampler.
+        name = getUTF8String(newName.data());
+        descriptor->setLabel(name);
+    } else {
+#ifdef KRYPTON_DEBUG
+        krypton::log::warn("Invalid Usage: A Metal sampler cannot be named after it has been created.");
+#endif
+    }
 }

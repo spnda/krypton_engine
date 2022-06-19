@@ -39,7 +39,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   add_library(glslang STATIC IMPORTED GLOBAL)
   add_library(glslang::glslang ALIAS glslang)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
     set(GLSLANG_LIB_DIR "${CMAKE_SOURCE_DIR}/external/glslang-debug/lib")
     if(WIN32)
       set(GLSLANG_LIB_POSTFIX "d.lib")

@@ -19,9 +19,10 @@ namespace krypton::log {
     }
 
     inline void warn(const std::string& input) {
-        auto f = fmt::format(fmt::fg(fmt::color::yellow), input);
+        auto f = fmt::format(fmt::fg(fmt::color::orange), input);
         std::time_t t = std::time(nullptr);
-        fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), f);
+        // stderr usually colours itself red, so we'll have to format the whole string to be orange.
+        fmt::print(stderr, fmt::format(fmt::fg(fmt::color::orange), "{:%H:%M:%S} | {}\n", fmt::localtime(t), f));
     }
 
     inline void err(const std::string& input) {

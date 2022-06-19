@@ -33,17 +33,6 @@ endif()
 
 # Normalize the CMAKE_BUILD_TYPE variable to be in PascalCase.
 string(TOUPPER ${CMAKE_BUILD_TYPE} KRYPTON_BUILD_TYPE_UPPER)
-if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
-  set(CMAKE_BUILD_TYPE "Debug")
-elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "RELEASE")
-  set(CMAKE_BUILD_TYPE "Release")
-elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "RELWITHDEBINFO")
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-elseif(KRYPTON_BUILD_TYPE_UPPER STREQUAL "MINSIZEREL")
-  set(CMAKE_BUILD_TYPE "MinSizeRel")
-else()
-  message(FATAL_ERROR "The CMAKE_BUILD_TYPE variable is not set to a valid value, options are: Debug Release RelWithDebInfo MinSizeRel.")
-endif()
 
 project("krypton_engine" LANGUAGES CXX)
 
@@ -62,7 +51,7 @@ if(MSVC) # cl.exe or clang-cl.exe
   add_compile_options(/Zc:__cplusplus /EHsc /W4 /Ob2 /MP /arch:AVX /external:anglebrackets)
   # cmake-format: on
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
     # CMake auto sets /RTC1 which is incompatible with /O1 and /O2.
     add_compile_options(/analyze /sdl)
   else()
@@ -78,11 +67,15 @@ else()
     -Wno-unused-parameter
     -pedantic
     -Og)
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
     add_compile_options(-O0)
   else()
     add_compile_options(-O3)
   endif()
+endif()
+
+if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
+  add_compile_definitions(KRYPTON_DEBUG)
 endif()
 
 set(EXTERNAL_DIRECTORY "${CMAKE_SOURCE_DIR}/external")

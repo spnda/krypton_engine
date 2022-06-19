@@ -16,9 +16,31 @@ namespace krypton::rapi {
     };
 
     enum class AttachmentStoreAction : uint8_t {
-        DontCare,
-        Store,
-        Multisample,
+        DontCare = 0,
+        Store = 1,
+        Multisample = 2,
+    };
+
+    enum class BlendOperation : uint8_t {
+        Add = 0,
+    };
+
+    enum class BlendFactor : uint8_t {
+        One = 0,
+        SourceAlpha = 1,
+        OneMinusSourceAlpha = 2,
+    };
+
+    struct AttachmentBlending {
+        bool enabled = false;
+        BlendOperation rgbOperation;
+        BlendOperation alphaOperation;
+
+        BlendFactor rgbSourceFactor;
+        BlendFactor rgbDestinationFactor;
+
+        BlendFactor alphaSourceFactor;
+        BlendFactor alphaDestinationFactor;
     };
 
     struct RenderPassAttachment {
@@ -29,6 +51,7 @@ namespace krypton::rapi {
         AttachmentLoadAction loadAction;
         AttachmentStoreAction storeAction;
         glm::fvec4 clearColor = glm::fvec4(0.0f);
+        AttachmentBlending blending;
     };
 
     struct RenderPassDepthAttachment {

@@ -3,6 +3,7 @@
 #include <rapi/backend_metal.hpp>
 #include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_command_buffer.hpp>
+#include <rapi/metal/metal_cpp_util.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
@@ -86,6 +87,14 @@ void kr::metal::CommandBuffer::presentFrame() {
     ZoneScoped;
     if (drawable != nullptr)
         buffer->presentDrawable(drawable);
+}
+
+void kr::metal::CommandBuffer::setName(std::u8string_view newName) {
+    ZoneScoped;
+    name = getUTF8String(newName.data());
+
+    if (buffer != nullptr)
+        buffer->setLabel(name);
 }
 
 void kr::metal::CommandBuffer::scissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
