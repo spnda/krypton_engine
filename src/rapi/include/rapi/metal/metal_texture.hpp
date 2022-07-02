@@ -34,17 +34,21 @@ namespace krypton::rapi::metal {
         MTL::Texture* texture = nullptr;
 
         NS::String* name = nullptr;
+        uint32_t width = 0, height = 0;
         ColorEncoding encoding = ColorEncoding::LINEAR;
         TextureFormat format = TextureFormat::RGBA8;
         TextureUsage usage = TextureUsage::SampledImage;
+        MTL::TextureSwizzleChannels swizzleChannels = {};
 
     public:
         explicit Texture(MTL::Device* device, rapi::TextureUsage usage);
         ~Texture() override = default;
 
+        void create(TextureFormat format, uint32_t width, uint32_t height) override;
         void setColorEncoding(ColorEncoding encoding) override;
-        void setName(std::u8string_view name) override;
-        void uploadTexture(uint32_t width, uint32_t height, std::span<std::byte> data, TextureFormat textureFormat) override;
+        void setName(std::string_view name) override;
+        void setSwizzling(SwizzleChannels swizzle) override;
+        void uploadTexture(std::span<std::byte> data) override;
     };
 } // namespace krypton::rapi::metal
 

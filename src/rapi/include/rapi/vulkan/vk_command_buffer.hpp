@@ -1,36 +1,19 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
-#include <memory>
-
-#include <Metal/Metal.hpp>
-#include <QuartzCore/CAMetalDrawable.hpp>
-
 #include <rapi/icommandbuffer.hpp>
-#include <rapi/ishader.hpp>
-#include <rapi/rapi.hpp>
-#include <util/handle.hpp>
 
-namespace krypton::rapi {
-    class MetalBackend;
-}
+// fwd.
+typedef struct VkCommandBuffer_T* VkCommandBuffer;
 
-namespace krypton::rapi::metal {
-    class CommandBuffer final : public ICommandBuffer {
-        friend class ::krypton::rapi::MetalBackend;
+namespace krypton::rapi::vk {
+    class CommandBuffer : public ICommandBuffer {
+        class Device* device;
 
-        std::shared_ptr<MetalBackend> rapi = nullptr;
-
-        NS::String* name = nullptr;
-        MTL::CommandBuffer* buffer = nullptr;
-        CA::MetalDrawable* drawable = nullptr;
-
-        // This should be nullptr outside beginRenderPass and endRenderPass.
-        MTL::RenderCommandEncoder* curRenderEncoder = nullptr;
+        VkCommandBuffer cmdBuffer = nullptr;
 
     public:
-        ~CommandBuffer() noexcept override;
+        explicit CommandBuffer(Device* device);
+        ~CommandBuffer() override = default;
 
         void beginRenderPass(const IRenderPass* renderPass) override;
         void bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) override;
@@ -43,6 +26,4 @@ namespace krypton::rapi::metal {
         void submit() override;
         void viewport(float originX, float originY, float width, float height, float near, float far) override;
     };
-} // namespace krypton::rapi::metal
-
-#endif
+} // namespace krypton::rapi::vk

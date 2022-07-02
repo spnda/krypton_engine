@@ -79,7 +79,7 @@ bool kr::metal::FragmentShader::isParameterObjectCompatible(IShaderParameter* pa
     return true;
 }
 
-void kr::metal::FragmentShader::setName(std::u8string_view newName) {
+void kr::metal::FragmentShader::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());
 
@@ -135,7 +135,7 @@ bool kr::metal::VertexShader::isParameterObjectCompatible(IShaderParameter* para
     return true;
 }
 
-void kr::metal::VertexShader::setName(std::u8string_view newName) {
+void kr::metal::VertexShader::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());
 

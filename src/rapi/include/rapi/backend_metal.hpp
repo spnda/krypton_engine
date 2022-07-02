@@ -45,14 +45,8 @@ namespace krypton::rapi {
         ~MetalBackend() noexcept override;
 
         void beginFrame() override;
-        auto createBuffer() -> std::shared_ptr<IBuffer> override;
-        auto createRenderPass() -> std::shared_ptr<IRenderPass> override;
-        auto createSampler() -> std::shared_ptr<ISampler> override;
-        auto createShaderFunction(std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType type,
-                                  krypton::shaders::ShaderStage stage) -> std::shared_ptr<IShader> override;
-        auto createShaderParameter() -> std::shared_ptr<IShaderParameter> override;
-        auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> override;
         void endFrame() override;
+        auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> override;
         auto getFrameCommandBuffer() -> std::unique_ptr<ICommandBuffer> override;
         auto getRenderTargetTextureHandle() -> std::shared_ptr<ITexture> override;
         auto getWindow() -> std::shared_ptr<Window> override;

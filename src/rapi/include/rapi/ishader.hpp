@@ -63,7 +63,7 @@ namespace krypton::rapi {
 
         explicit IShader(std::vector<std::byte>&& bytes, krypton::shaders::ShaderSourceType source);
 
-        virtual ~IShader() = default;
+        ~IShader() override = default;
 
         virtual krypton::shaders::ShaderTargetType getTranspileTargetType() const = 0;
 

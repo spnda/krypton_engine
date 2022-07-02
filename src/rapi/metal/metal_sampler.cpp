@@ -41,7 +41,12 @@ void kr::metal::Sampler::setAddressModeW(SamplerAddressMode mode) {
     descriptor->setRAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
 }
 
-void kr::metal::Sampler::setName(std::u8string_view newName) {
+void kr::metal::Sampler::setFilters(SamplerFilter min, SamplerFilter max) {
+    descriptor->setMinFilter(static_cast<MTL::SamplerMinMagFilter>(min));
+    descriptor->setMagFilter(static_cast<MTL::SamplerMinMagFilter>(max));
+}
+
+void kr::metal::Sampler::setName(std::string_view newName) {
     // For some strange reason MTLSamplerState's label property is readonly. So this therefore only
     // works before creating the state.
     // See https://developer.apple.com/documentation/metal/mtlsamplerstate/1516329-label?language=objc

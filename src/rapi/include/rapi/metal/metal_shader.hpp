@@ -71,7 +71,7 @@ namespace krypton::rapi::metal {
 
         void createModule() override;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
-        void setName(std::u8string_view name) override;
+        void setName(std::string_view name) override;
     };
 
     class VertexShader : public IShader {
@@ -97,7 +97,7 @@ namespace krypton::rapi::metal {
 
         void createModule() override;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
-        void setName(std::u8string_view name) override;
+        void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::metal
 

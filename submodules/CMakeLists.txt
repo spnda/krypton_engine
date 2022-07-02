@@ -7,12 +7,23 @@ set(KRYPTON_SUBMODULES_BIN ${CMAKE_BINARY_DIR}/submodules)
 add_subdirectory("${KRYPTON_SUBMODULES}/SPIRV-Cross" "${KRYPTON_SUBMODULES_BIN}/SPIRV-Cross")
 add_subdirectory("${KRYPTON_SUBMODULES}/magic_enum")
 
-if(WIN32
-   OR UNIX
-   AND NOT APPLE)
-  add_subdirectory("${KRYPTON_SUBMODULES}/carbon" "${KRYPTON_SUBMODULES_BIN}/carbon")
+# Test if Vulkan is available and include it if so.
+find_package(Vulkan)
 
-  # Apple Clang's regex engine has bugs which break the asserts library.
+if(Vulkan_FOUND)
+  add_subdirectory("${KRYPTON_SUBMODULES}/volk")
+
+  # We don't want to link to the vk-mem-alloc library as it automatically
+  # defines VMA_IMPLEMENTATION for us and we can then not define custom
+  # macros to customise the library. Therefore, we'll just create a interface
+  # target that only exposes the header.
+  add_library(vk-mem-alloc INTERFACE)
+  target_include_directories(vk-mem-alloc SYSTEM INTERFACE
+          "${CMAKE_CURRENT_SOURCE_DIR}/vk-mem-alloc/include")
+endif()
+
+if (NOT APPLE)
+  # Apple Clang's libstdcpp has bugs which break the asserts library.
   add_subdirectory("${KRYPTON_SUBMODULES}/asserts" "${KRYPTON_SUBMODULES_BIN}/asserts")
 endif()
 

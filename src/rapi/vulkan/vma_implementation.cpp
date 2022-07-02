@@ -1,7 +1,7 @@
 #include <bit>
 #include <fmt/core.h>
-
-#include <util/debug.hpp>
+#include <fmt/printf.h>
+#include <rapi/vulkan/vk_fmt.hpp>
 
 // I created this standalone C++ file to host the implementation for VMA because I don't want the
 // whole VMA library to be recompiled every time I edit vulkan_backend.cpp, including the crazy
@@ -11,7 +11,14 @@
 #define VMA_COUNT_BITS_SET(v) std::popcount(v); // Essentially a __popcnt() call if AVX is enabled
 
 #if defined(KRYPTON_DEBUG)
-#define VMA_DEBUG_LOG(format, ...) fmt::printf(format, __VA_ARGS__)
+template <typename... Args>
+inline void vmaDebugPrint(const char* format, Args&&... args) {
+    fmt::printf(format, std::forward<Args>(args)...);
+    fmt::printf("\n");
+}
+
+// Some weird macro shenanigans
+#define VMA_DEBUG_LOG(...) ::vmaDebugPrint(__VA_ARGS__)
 #endif
 
-#include <carbon/vulkan.hpp>
+#include <rapi/vulkan/vma.hpp>

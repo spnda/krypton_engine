@@ -12,6 +12,11 @@ namespace krypton::rapi {
         ClampToBorder = 3,
     };
 
+    enum class SamplerFilter : uint8_t {
+        Nearest = 0,
+        Linear = 1,
+    };
+
     class ISampler : public util::Nameable {
     public:
         ~ISampler() override = default;
@@ -20,5 +25,6 @@ namespace krypton::rapi {
         virtual void setAddressModeU(SamplerAddressMode mode) = 0;
         virtual void setAddressModeV(SamplerAddressMode mode) = 0;
         virtual void setAddressModeW(SamplerAddressMode mode) = 0;
+        virtual void setFilters(SamplerFilter min, SamplerFilter max) = 0;
     };
 } // namespace krypton::rapi

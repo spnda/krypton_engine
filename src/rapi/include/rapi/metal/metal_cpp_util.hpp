@@ -9,7 +9,8 @@
 #define NSSTRING(str) reinterpret_cast<const NS::String*>(__builtin___CFStringMakeConstantString(str))
 #endif
 
-inline NS::String* getUTF8String(const char8_t* data) noexcept {
+// Requires char* to be encoded as UTF8.
+inline NS::String* getUTF8String(const char* data) noexcept {
     return NS::String::string(reinterpret_cast<const char*>(data), NS::UTF8StringEncoding);
 }
 

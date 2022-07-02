@@ -1,4 +1,4 @@
-# slang doesn't provide builds for MacOS.
+# slang's macOS builds are only for x86_64 and CMake is shit in detecting the target architecture.
 if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
   message(STATUS "Found slang")
 
@@ -21,6 +21,14 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64/release/slang-glslang.dll"
               "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/slang-glslang.dll")
     add_dependencies(slang-core slang-glslang-copy)
+  elseif(APPLE) # APPLE before UNIX!
+    set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib")
+
+    add_custom_target(
+            slang-core-copy ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib"
+            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libslang.dylib")
+    add_dependencies(slang-core slang-core-copy)
   elseif(UNIX)
     set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/linux-x64/release/libslang.so")
 

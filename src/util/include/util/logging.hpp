@@ -73,3 +73,5 @@ namespace krypton::log {
     }
     // ↑ ------------------- WITH PARAMETERS ------------------- ↑
 } // namespace krypton::log
+
+namespace kl = krypton::log;

@@ -32,7 +32,8 @@ namespace krypton::rapi::metal {
         void setAddressModeU(SamplerAddressMode mode) override;
         void setAddressModeV(SamplerAddressMode mode) override;
         void setAddressModeW(SamplerAddressMode mode) override;
-        void setName(std::u8string_view name) override;
+        void setFilters(SamplerFilter min, SamplerFilter max) override;
+        void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::metal
 

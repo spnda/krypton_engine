@@ -89,7 +89,7 @@ void kr::metal::CommandBuffer::presentFrame() {
         buffer->presentDrawable(drawable);
 }
 
-void kr::metal::CommandBuffer::setName(std::u8string_view newName) {
+void kr::metal::CommandBuffer::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());
 

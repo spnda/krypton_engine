@@ -127,14 +127,14 @@ def main():
     )
 
     # Download slang
-    slang_version = "0.23.4"
+    slang_version = "0.24.7"
     slang_zip_url = (
         f"https://github.com/shader-slang/slang/releases/download/v{slang_version}/"
     )
     match platform.system():
         case "Darwin":  # MacOS
-            print(f"{Colors.yellow}slang does not provide MacOS builds.{Colors.end}")
-            slang_zip_url = ""  # so that it doesn't try to download anything
+            # I think the zip being labeled with i386 is a bug.
+            slang_zip_url += f"slang-{slang_version}-macos-i386.zip"
         case "Windows":  # Windows
             slang_zip_url += f"slang-{slang_version}-win64.zip"
         case "Linux":  # Linux
@@ -176,8 +176,6 @@ def main():
             # the packages through e.g. brew
             call(["vcpkg", "install"])
 
-            # glslang uses behaviour which was deprecated with CMake 3.13,
-            # therefore we'll disable that warning using -Wno-dev
             print(f"{Colors.green}Configuring build files...{Colors.end}")
             configure_cmake("Xcode")
         case _:  # Windows / Linux

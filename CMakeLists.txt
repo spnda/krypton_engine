@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 
 option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
 
 # Using 'INTERNAL' allows us to use ints for cache variables... There seems to be no other way
 set(KRYPTON_TRACY_CALLSTACK_SIZE
-    10
+    15
     CACHE INTERNAL "Set the size of the callstack for tracy to capture")
 
 # This forces us to set variables explicitly in CACHE so that the option() command does not override the value.

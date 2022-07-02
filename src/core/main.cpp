@@ -71,23 +71,28 @@ auto main(int argc, char* argv[]) -> int {
         kt::Scheduler::getInstance().start();
 
         // We currently just use the default backend for the current platform.
+        // auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
         auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
         rapi->init();
 
-        auto window = rapi->getWindow();
+        auto device = rapi->getSuitableDevice({});
+        krypton::log::log("Launching on {}", device->getDeviceName());
 
-        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(rapi);
+        auto window = rapi->getWindow();
+        window->pollEvents(); // Let the window open instantly.
+
+        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(rapi, device);
         imgui->init();
 
         auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
         auto vertSpirv = krypton::shaders::readBinaryShaderFile("shaders/vert.spv");
 
         auto defaultFragmentFunction =
-            rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(fragSpirv.data()), fragSpirv.size() },
-                                       krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Fragment);
+            device->createShaderFunction({ reinterpret_cast<const std::byte*>(fragSpirv.data()), fragSpirv.size() },
+                                         krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Fragment);
         auto defaultVertexFunction =
-            rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(vertSpirv.data()), vertSpirv.size() },
-                                       krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Vertex);
+            device->createShaderFunction({ reinterpret_cast<const std::byte*>(vertSpirv.data()), vertSpirv.size() },
+                                         krypton::shaders::ShaderSourceType::SPIRV, krypton::shaders::ShaderStage::Vertex);
 
         if (defaultFragmentFunction->needsTranspile())
             defaultFragmentFunction->transpile("main0", krypton::shaders::ShaderStage::Fragment);
@@ -97,7 +102,7 @@ auto main(int argc, char* argv[]) -> int {
         defaultFragmentFunction->createModule();
         defaultVertexFunction->createModule();
 
-        auto defaultRenderPass = rapi->createRenderPass();
+        auto defaultRenderPass = device->createRenderPass();
         defaultRenderPass->setFragmentFunction(defaultFragmentFunction.get());
         defaultRenderPass->setVertexFunction(defaultVertexFunction.get());
         // clang-format off
@@ -125,8 +130,6 @@ auto main(int argc, char* argv[]) -> int {
         });
         // clang-format on
         defaultRenderPass->build();
-
-        auto imguiRenderPass = rapi->createRenderPass();
 
         while (!window->shouldClose()) {
             ZoneScopedN("frameloop");

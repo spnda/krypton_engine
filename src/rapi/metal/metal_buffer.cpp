@@ -51,7 +51,7 @@ std::size_t kr::metal::Buffer::getSize() {
     return buffer->length();
 }
 
-void kr::metal::Buffer::setName(std::u8string_view newName) {
+void kr::metal::Buffer::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());
 

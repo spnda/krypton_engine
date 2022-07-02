@@ -6,6 +6,10 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#ifdef RAPI_WITH_VULKAN
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan_core.h>
+#endif
 
 #include <rapi/rapi_backends.hpp>
 
@@ -28,6 +32,11 @@ namespace krypton::rapi {
     class RenderAPI;
     class MetalBackend;
     class VulkanBackend;
+#ifdef RAPI_WITH_VULKAN
+    namespace vk {
+        class Instance;
+    }
+#endif
 
     namespace window {
         void resizeCallback(GLFWwindow* window, int width, int height);
@@ -44,6 +53,7 @@ namespace krypton::rapi {
         friend class RenderAPI;
 #ifdef RAPI_WITH_VULKAN
         friend class VulkanBackend;
+        friend class vk::Instance;
 #endif
 #ifdef RAPI_WITH_METAL
         friend class MetalBackend;
@@ -66,7 +76,7 @@ namespace krypton::rapi {
 
 #ifdef RAPI_WITH_VULKAN
         [[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance vkInstance) const;
-        [[nodiscard]] static std::vector<const char*> getVulkanInstanceExtensions() const;
+        [[nodiscard]] static std::vector<const char*> getVulkanInstanceExtensions();
 #endif // #ifdef RAPI_WITH_VULKAN
 
 #ifdef RAPI_WITH_METAL

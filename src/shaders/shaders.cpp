@@ -202,13 +202,13 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     }
 
     // TODO: Make this a configurable setting.
-    glslang_target_language_version_t spvVersion = GLSLANG_TARGET_SPV_1_6;
+    glslang_target_language_version_t spvVersion = GLSLANG_TARGET_SPV_1_3;
 
     const glslang_input_t input = {
         .language = language,
         .stage = static_cast<glslang_stage_t>(stage),
         .client = GLSLANG_CLIENT_VULKAN,
-        .client_version = GLSLANG_TARGET_VULKAN_1_3,
+        .client_version = GLSLANG_TARGET_VULKAN_1_1,
         .target_language = GLSLANG_TARGET_SPV,
         .target_language_version = spvVersion,
         .code = reinterpret_cast<const char*>(shaderInput.source.data()),
@@ -253,16 +253,14 @@ krypton::shaders::ShaderCompileResult krypton::shaders::glslangCompileShader(con
     }
     glslang_shader_delete(shader);
 
-    auto* spvptr = glslang_program_SPIRV_get_ptr(program);
     size_t size = glslang_program_SPIRV_get_size(program);
 
     ShaderCompileResult compileResult = {};
     compileResult.resultType = CompileResultType::SPIRV;
     compileResult.resultSize = size * sizeof(uint32_t);
+    compileResult.resultBytes.resize(compileResult.resultSize);
 
-    std::vector<uint8_t> newData(compileResult.resultSize);
-    std::memcpy(newData.data(), reinterpret_cast<uint8_t*>(spvptr), compileResult.resultSize);
-    compileResult.resultBytes = std::move(newData);
+    glslang_program_SPIRV_get(program, reinterpret_cast<unsigned int*>(compileResult.resultBytes.data()));
 
     return compileResult;
 }
@@ -505,7 +503,7 @@ std::vector<krypton::shaders::ShaderCompileResult> krypton::shaders::slangCompil
                 break;
             }
             case ShaderTargetType::SPIRV: {
-                compileResult.resultType = CompileResultType::Spirv;
+                compileResult.resultType = CompileResultType::SPIRV;
                 break;
             }
             default: {

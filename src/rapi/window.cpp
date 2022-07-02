@@ -1,10 +1,11 @@
-#ifdef RAPI_WITH_VULKAN
-#define GLFW_INCLUDE_VULKAN
-#endif // #ifdef RAPI_WITH_VULKAN
-
-#ifdef RAPI_WITH_METAL
 #define GLFW_INCLUDE_NONE
-#endif // #ifdef RAPI_WITH_METAL
+
+#ifdef RAPI_WITH_VULKAN
+#if defined(__APPLE__)
+#define VK_USE_PLATFORM_METAL_EXT
+#endif
+#include <volk.h>
+#endif
 
 #include <GLFW/glfw3.h>
 
@@ -57,6 +58,15 @@ namespace krypton::rapi::window {
             rapi->getWindow()->minimised = false;
         }
     }
+
+    void glfwInit() {
+        ZoneScoped;
+        // This is purely to measure the cost of glfwInit with tracy.
+        if (!::glfwInit()) [[unlikely]]
+            kl::throwError("glfwInit failed. Probably an unsupported platform!");
+
+        glfwSetErrorCallback(errorCallback);
+    }
 } // namespace krypton::rapi::window
 
 krypton::rapi::Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {}
@@ -73,17 +83,10 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
     if (backend == Backend::None) [[unlikely]]
         krypton::log::throwError("Cannot create window with no rendering backend");
 
-    if (!glfwInit()) [[unlikely]]
-        krypton::log::throwError("glfwInit failed");
-
-    glfwSetErrorCallback(window::errorCallback);
+    window::glfwInit();
 
     switch (backend) {
         case Backend::Vulkan:
-            if (!glfwVulkanSupported())
-                krypton::log::throwError("Vulkan is not supported on this system!");
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-            break;
         case Backend::Metal:
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
             break;
@@ -211,16 +214,28 @@ void krypton::rapi::Window::waitEvents() {
 #ifdef RAPI_WITH_VULKAN
 VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) const {
     ZoneScoped;
+    // We're not using any GLFW Vulkan functionality, as they load the loader and driver again,
+    // wasting a considerable amount of time.
     VkSurfaceKHR surface = nullptr;
-    auto res = glfwCreateWindowSurface(vkInstance, window, nullptr, &surface);
-    if (res) {
+#if defined(__APPLE__) && defined(VK_EXT_metal_surface) && defined(RAPI_WITH_METAL)
+    // Device and pixelFormat are populated by MoltenVK.
+    // TODO: Conditionally use VK_MVK_macos_surface.
+    auto layer = createMetalLayer(nullptr, MTL::PixelFormatInvalid);
+
+    VkMetalSurfaceCreateInfoEXT createInfo = {
+        .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
+        .pLayer = layer,
+    };
+    vkCreateMetalSurfaceEXT(vkInstance, &createInfo, nullptr, &surface);
+#endif // TODO: Add support for Windows, Linux, ...
+    if (!surface) [[unlikely]] {
         std::cerr << "Failed to create window surface." << std::endl;
         return surface;
     }
     return surface;
 }
 
-std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() const {
+std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() {
     ZoneScoped;
     uint32_t count;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
@@ -234,8 +249,10 @@ std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() co
 #ifdef RAPI_WITH_METAL
 CA::MetalLayer* krypton::rapi::Window::createMetalLayer(MTL::Device* device, MTL::PixelFormat pixelFormat) const {
     auto layer = reinterpret_cast<CA::MetalLayerWrapper*>(CA::MetalLayer::layer());
-    layer->setDevice(device);
-    layer->setPixelFormat(pixelFormat);
+    if (device != nullptr)
+        layer->setDevice(device);
+    if (pixelFormat != MTL::PixelFormatInvalid)
+        layer->setPixelFormat(pixelFormat);
     layer->setContentsScale(static_cast<CGFloat>(getContentScale().x));
     metal::setMetalLayerOnWindow(window, layer);
     return layer;

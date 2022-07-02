@@ -10,25 +10,31 @@
 
 namespace kc = krypton::core;
 
-kc::ImGuiRenderer::ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi) : uniforms({}), rapi(std::move(rapi)) {}
+kc::ImGuiRenderer::ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi, std::shared_ptr<rapi::IDevice> device)
+    : uniforms({}), rapi(std::move(rapi)), device(std::move(device)) {}
 
 void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
     ZoneScoped;
     unsigned char* pixels;
     int width, height;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
 
-    fontAtlas = rapi->createTexture(rapi::TextureUsage::SampledImage);
-    fontAtlas->setName(u8"ImGui font texture");
-    fontAtlas->setColorEncoding(rapi::ColorEncoding::LINEAR);
-    fontAtlas->uploadTexture(width, height,
-                             std::span { reinterpret_cast<std::byte*>(pixels), static_cast<std::size_t>(width * height * 4) },
-                             rapi::TextureFormat::RGBA8);
+    fontAtlas = device->createTexture(rapi::TextureUsage::SampledImage);
+    fontAtlas->setName("ImGui font texture");
+    fontAtlas->setColorEncoding(rapi::ColorEncoding::SRGB);
+    fontAtlas->setSwizzling(rapi::SwizzleChannels {
+        .r = rapi::TextureSwizzle::One,
+        .g = rapi::TextureSwizzle::One,
+        .b = rapi::TextureSwizzle::One,
+        .a = rapi::TextureSwizzle::Red,
+    });
+    fontAtlas->create(rapi::TextureFormat::R8, width, height);
+    fontAtlas->uploadTexture(std::span { reinterpret_cast<std::byte*>(pixels), static_cast<std::size_t>(width * height) });
 
     if (fontAtlasSampler == nullptr) {
         // This likely won't change.
-        fontAtlasSampler = rapi->createSampler();
-        fontAtlasSampler->setName(u8"ImGui font-atlas sampler");
+        fontAtlasSampler = device->createSampler();
+        fontAtlasSampler->setName("ImGui font-atlas sampler");
         fontAtlasSampler->createSampler();
     }
 
@@ -50,11 +56,11 @@ void kc::ImGuiRenderer::init() {
     buildFontTexture(io);
 
     // Create the index/vertex buffers
-    vertexBuffer = rapi->createBuffer();
-    indexBuffer = rapi->createBuffer();
+    vertexBuffer = device->createBuffer();
+    indexBuffer = device->createBuffer();
 
-    vertexBuffer->setName(u8"ImGui Vertex Buffer");
-    indexBuffer->setName(u8"ImGui Index Buffer");
+    vertexBuffer->setName("ImGui Vertex Buffer");
+    indexBuffer->setName("ImGui Index Buffer");
 
     vertexBuffer->create(sizeof(ImDrawVert), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
     indexBuffer->create(sizeof(ImDrawIdx), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
@@ -64,10 +70,11 @@ void kc::ImGuiRenderer::init() {
     auto vertGlsl = krypton::shaders::readShaderFile("shaders/ui2.vert");
 
     fragmentShader =
-        rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(fragGlsl.content.data()), fragGlsl.content.size() + 1 },
-                                   krypton::shaders::ShaderSourceType::GLSL, krypton::shaders::ShaderStage::Fragment);
-    vertexShader = rapi->createShaderFunction({ reinterpret_cast<const std::byte*>(vertGlsl.content.data()), vertGlsl.content.size() + 1 },
-                                              krypton::shaders::ShaderSourceType::GLSL, krypton::shaders::ShaderStage::Vertex);
+        device->createShaderFunction({ reinterpret_cast<const std::byte*>(fragGlsl.content.data()), fragGlsl.content.size() + 1 },
+                                     krypton::shaders::ShaderSourceType::GLSL, krypton::shaders::ShaderStage::Fragment);
+    vertexShader =
+        device->createShaderFunction({ reinterpret_cast<const std::byte*>(vertGlsl.content.data()), vertGlsl.content.size() + 1 },
+                                     krypton::shaders::ShaderSourceType::GLSL, krypton::shaders::ShaderStage::Vertex);
 
     if (fragmentShader->needsTranspile())
         fragmentShader->transpile("main", krypton::shaders::ShaderStage::Fragment);
@@ -78,7 +85,7 @@ void kc::ImGuiRenderer::init() {
     vertexShader->createModule();
 
     // Create the render pass
-    renderPass = rapi->createRenderPass();
+    renderPass = device->createRenderPass();
     renderPass->setFragmentFunction(fragmentShader.get());
     renderPass->setVertexFunction(vertexShader.get());
     // clang-format off
@@ -128,17 +135,17 @@ void kc::ImGuiRenderer::init() {
     renderPass->build();
 
     // Build our uniform buffer
-    uniformBuffer = rapi->createBuffer();
-    uniformBuffer->setName(u8"ImGui Uniform Buffer");
+    uniformBuffer = device->createBuffer();
+    uniformBuffer->setName("ImGui Uniform Buffer");
     uniformBuffer->create(sizeof(ImGuiShaderUniforms), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
 
     updateUniformBuffer(io.DisplaySize, ImVec2(0, 0));
 
-    uniformShaderParameter = rapi->createShaderParameter();
+    uniformShaderParameter = device->createShaderParameter();
     uniformShaderParameter->addBuffer(0, uniformBuffer);
     uniformShaderParameter->buildParameter();
 
-    textureShaderParameter = rapi->createShaderParameter();
+    textureShaderParameter = device->createShaderParameter();
     textureShaderParameter->addTexture(0, fontAtlas);
     textureShaderParameter->addSampler(1, fontAtlasSampler);
     textureShaderParameter->buildParameter();

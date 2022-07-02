@@ -27,4 +27,5 @@ void krypton::rapi::IShader::transpile(std::string_view entryPoint, ks::ShaderSt
     auto results = krypton::shaders::compileShaders({ input });
     VERIFY(results.size() == 1);
     handleTranspileResult(results.front());
+    needs_transpile = false;
 }

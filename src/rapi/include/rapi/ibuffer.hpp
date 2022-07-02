@@ -21,13 +21,13 @@ namespace krypton::rapi {
     enum class BufferUsage : uint32_t {
         // Should only be used when checking for usage with binary AND.
         None = 0,
-        VertexBuffer,
-        IndexBuffer,
-        TransferSource,
-        TransferDestination,
+        VertexBuffer = 1 << 1,
+        IndexBuffer = 1 << 2,
+        TransferSource = 1 << 3,
+        TransferDestination = 1 << 4,
         // On Metal, there's no distinction between UBO and SSBOs.
-        UniformBuffer,
-        StorageBuffer,
+        UniformBuffer = 1 << 6,
+        StorageBuffer = 1 << 7,
     };
 
     static constexpr inline BufferUsage operator|(BufferUsage a, BufferUsage b) {

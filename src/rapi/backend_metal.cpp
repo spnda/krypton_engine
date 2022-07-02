@@ -10,6 +10,7 @@
 #include <rapi/metal/glfw_cocoa_bridge.hpp>
 #include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_command_buffer.hpp>
+#include <rapi/metal/metal_device.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
@@ -23,11 +24,13 @@ namespace ku = krypton::util;
 
 #pragma region MetalBackend
 kr::MetalBackend::MetalBackend() {
+    ZoneScoped;
     backendAutoreleasePool = NS::AutoreleasePool::alloc()->init();
     window = std::make_shared<kr::Window>("Krypton", 1920, 1080);
 }
 
 kr::MetalBackend::~MetalBackend() noexcept {
+    ZoneScoped;
     // Any ObjC objects allocated from an object from the MetalBackend will be cleaned up by this.
     // If the user should continue using any RAPI objects allocated for this backend, they will
     // break and likely cause some sort of crash. To release objects manually, call retain() on
@@ -46,48 +49,15 @@ void kr::MetalBackend::beginFrame() {
     frameAutoreleasePool = NS::AutoreleasePool::alloc()->init();
 }
 
-std::shared_ptr<kr::IBuffer> kr::MetalBackend::createBuffer() {
-    return std::make_shared<metal::Buffer>(device);
-}
-
-std::shared_ptr<kr::IRenderPass> kr::MetalBackend::createRenderPass() {
-    return std::make_shared<metal::RenderPass>(device);
-}
-
-std::shared_ptr<kr::ISampler> kr::MetalBackend::createSampler() {
-    return std::make_shared<kr::metal::Sampler>(device);
-}
-
-std::shared_ptr<kr::IShader> kr::MetalBackend::createShaderFunction(std::span<const std::byte> bytes,
-                                                                    krypton::shaders::ShaderSourceType type,
-                                                                    krypton::shaders::ShaderStage stage) {
-    ZoneScoped;
-    switch (stage) {
-        case krypton::shaders::ShaderStage::Fragment: {
-            return std::make_shared<metal::FragmentShader>(device, bytes, type);
-        }
-        case krypton::shaders::ShaderStage::Vertex: {
-            return std::make_shared<metal::VertexShader>(device, bytes, type);
-        }
-        default:
-            krypton::log::throwError("No support for given shader stage: {}", static_cast<uint32_t>(stage));
-    }
-}
-
-std::shared_ptr<kr::IShaderParameter> kr::MetalBackend::createShaderParameter() {
-    ZoneScoped;
-    return std::make_shared<metal::ShaderParameter>(device);
-}
-
-std::shared_ptr<kr::ITexture> kr::MetalBackend::createTexture(rapi::TextureUsage usage) {
-    ZoneScoped;
-    return std::make_shared<metal::Texture>(device, usage);
-}
-
 void kr::MetalBackend::endFrame() {
     ZoneScoped;
     // Drains any resources created within the render loop. Also releases the pool itself.
     frameAutoreleasePool->drain();
+}
+
+std::shared_ptr<kr::IDevice> kr::MetalBackend::getSuitableDevice(kr::DeviceFeatures features) {
+    ZoneScoped;
+    return std::make_shared<metal::Device>(MTL::CreateSystemDefaultDevice(), features);
 }
 
 std::unique_ptr<kr::ICommandBuffer> kr::MetalBackend::getFrameCommandBuffer() {
@@ -133,8 +103,6 @@ void kr::MetalBackend::init() {
     queue = device->newCommandQueue();
     queue->autorelease(); // Makes the Queue be released automatically by backendAutoreleasePool
     swapchain = window->createMetalLayer(device, colorPixelFormat);
-
-    krypton::log::log("Setting up Metal on {}", device->name()->utf8String());
 
     // The texture usage here is not explicitly used anywhere.
     renderTargetTexture =

@@ -5,6 +5,7 @@
 #include <version>
 
 #include <rapi/color_encoding.hpp>
+#include <rapi/idevice.hpp>
 #include <rapi/rapi_backends.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
@@ -17,12 +18,7 @@
 #endif
 
 namespace krypton::rapi {
-    class IBuffer;
-    class ICommandBuffer;
-    class IRenderPass;
-    class ISampler;
-    class IShader;
-    class IShaderParameter;
+    class ITexture;
     class RenderAPI;
     class Window;
 
@@ -60,20 +56,9 @@ namespace krypton::rapi {
 
         virtual void beginFrame() = 0;
 
-        [[nodiscard]] virtual auto createBuffer() -> std::shared_ptr<IBuffer> = 0;
-
-        [[nodiscard]] virtual auto createRenderPass() -> std::shared_ptr<IRenderPass> = 0;
-
-        [[nodiscard]] virtual auto createSampler() -> std::shared_ptr<ISampler> = 0;
-
-        [[nodiscard]] virtual auto createShaderFunction(std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType type,
-                                                        krypton::shaders::ShaderStage stage) -> std::shared_ptr<IShader> = 0;
-
-        [[nodiscard]] virtual auto createShaderParameter() -> std::shared_ptr<IShaderParameter> = 0;
-
-        [[nodiscard]] virtual auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> = 0;
-
         virtual void endFrame() = 0;
+
+        [[nodiscard]] virtual auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> = 0;
 
         /**
          * Returns the command buffer associated with this new frame. Can be used for rendering and

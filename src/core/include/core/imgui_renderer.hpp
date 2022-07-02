@@ -16,6 +16,7 @@ namespace krypton::core {
         } uniforms;
 
         std::shared_ptr<rapi::RenderAPI> rapi;
+        std::shared_ptr<rapi::IDevice> device;
         std::shared_ptr<rapi::IRenderPass> renderPass;
 
         std::shared_ptr<rapi::IBuffer> uniformBuffer;
@@ -34,7 +35,7 @@ namespace krypton::core {
         void updateUniformBuffer(const ImVec2& displaySize, const ImVec2& displayPos);
 
     public:
-        explicit ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi);
+        explicit ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi, std::shared_ptr<rapi::IDevice> device);
 
         void init();
         void destroy();
