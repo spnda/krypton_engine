@@ -6,9 +6,9 @@
 
 namespace kr = krypton::rapi;
 
-kr::metal::Buffer::Buffer(MTL::Device* device) : device(device) {}
+kr::mtl::Buffer::Buffer(MTL::Device* device) : device(device) {}
 
-void kr::metal::Buffer::create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) {
+void kr::mtl::Buffer::create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) {
     ZoneScoped;
     switch (location) {
         case BufferMemoryLocation::DEVICE_LOCAL: {
@@ -28,13 +28,13 @@ void kr::metal::Buffer::create(std::size_t sizeBytes, BufferUsage usage, BufferM
         buffer->setLabel(name);
 }
 
-void kr::metal::Buffer::destroy() {
+void kr::mtl::Buffer::destroy() {
     ZoneScoped;
     buffer->release();
     buffer = nullptr;
 }
 
-void kr::metal::Buffer::mapMemory(std::function<void(void*)> callback) {
+void kr::mtl::Buffer::mapMemory(std::function<void(void*)> callback) {
     ZoneScoped;
     // TODO: Is this actually correct?
     VERIFY((resourceOptions & MTL::ResourceStorageModePrivate) == 0);
@@ -46,12 +46,12 @@ void kr::metal::Buffer::mapMemory(std::function<void(void*)> callback) {
     }
 }
 
-std::size_t kr::metal::Buffer::getSize() {
+std::size_t kr::mtl::Buffer::getSize() {
     ZoneScoped;
     return buffer->length();
 }
 
-void kr::metal::Buffer::setName(std::string_view newName) {
+void kr::mtl::Buffer::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());
 

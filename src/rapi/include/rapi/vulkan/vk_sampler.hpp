@@ -3,7 +3,7 @@
 #include <rapi/isampler.hpp>
 
 namespace krypton::rapi::vk {
-    class Sampler : public ISampler {
+    class Sampler final : public ISampler {
         class Device* device;
 
         VkSampler sampler = nullptr;

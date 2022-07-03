@@ -6,12 +6,15 @@
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
 #include <rapi/irenderpass.hpp>
+#include <rapi/render_pass_attachments.hpp>
+#include <rapi/vertex_descriptor.hpp>
 #include <rapi/window.hpp>
+#include <shaders/shaders.hpp>
 
 namespace kc = krypton::core;
 
-kc::ImGuiRenderer::ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi, std::shared_ptr<rapi::IDevice> device)
-    : uniforms({}), rapi(std::move(rapi)), device(std::move(device)) {}
+kc::ImGuiRenderer::ImGuiRenderer(std::shared_ptr<rapi::IDevice> device, krypton::rapi::Window* window)
+    : uniforms({}), window(window), device(std::move(device)) {}
 
 void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
     ZoneScoped;
@@ -46,7 +49,7 @@ void kc::ImGuiRenderer::init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    rapi->getWindow()->initImgui();
+    window->initImgui();
 
     auto& io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
@@ -115,7 +118,7 @@ void kc::ImGuiRenderer::init() {
         }
     });
     renderPass->addAttachment(0, {
-        .attachment = rapi->getRenderTargetTextureHandle(),
+        // .attachment = rapi->getRenderTargetTextureHandle(),
         .attachmentFormat = rapi::TextureFormat::BGRA10,
         .loadAction = krypton::rapi::AttachmentLoadAction::Load,
         .storeAction = krypton::rapi::AttachmentStoreAction::Store,

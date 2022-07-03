@@ -1,10 +1,12 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include <imgui.h>
 
 #include <rapi/ibuffer.hpp>
+#include <rapi/idevice.hpp>
+#include <rapi/irenderpass.hpp>
 #include <rapi/ishader.hpp>
-#include <rapi/rapi.hpp>
 #include <util/handle.hpp>
 
 namespace krypton::core {
@@ -15,7 +17,7 @@ namespace krypton::core {
             glm::fvec2 translate = {};
         } uniforms;
 
-        std::shared_ptr<rapi::RenderAPI> rapi;
+        rapi::Window* window;
         std::shared_ptr<rapi::IDevice> device;
         std::shared_ptr<rapi::IRenderPass> renderPass;
 
@@ -35,7 +37,7 @@ namespace krypton::core {
         void updateUniformBuffer(const ImVec2& displaySize, const ImVec2& displayPos);
 
     public:
-        explicit ImGuiRenderer(std::shared_ptr<rapi::RenderAPI> rapi, std::shared_ptr<rapi::IDevice> device);
+        explicit ImGuiRenderer(std::shared_ptr<rapi::IDevice> device, rapi::Window* window);
 
         void init();
         void destroy();

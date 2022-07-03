@@ -16,7 +16,7 @@ namespace kt = krypton::threading;
 
 kt::Scheduler::Scheduler() {
     // We may only have a single core processor or
-    // the thread count was unable to be determined
+    // the thread count was unable to be determined,
     // and we have to have *at least* 1 worker thread.
     if (maxThreadCount <= 0) {
         maxThreadCount = 1;

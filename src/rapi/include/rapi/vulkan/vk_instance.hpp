@@ -15,7 +15,7 @@ namespace krypton::rapi::vk {
         uint32_t ver;
     };
 
-    class Instance {
+    class Instance final {
         VkInstance instance = nullptr;
         VkDebugUtilsMessengerEXT messenger = nullptr;
 

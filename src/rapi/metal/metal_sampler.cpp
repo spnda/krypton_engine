@@ -18,35 +18,35 @@ static constexpr std::array<MTL::SamplerAddressMode, 4> metalAddressModes = {
 };
 // clang-format on
 
-kr::metal::Sampler::Sampler(MTL::Device* device) : device(device), samplerState(nullptr) {
+kr::mtl::Sampler::Sampler(MTL::Device* device) : device(device), samplerState(nullptr) {
     descriptor = MTL::SamplerDescriptor::alloc()->init();
 }
 
-void kr::metal::Sampler::createSampler() {
+void kr::mtl::Sampler::createSampler() {
     ZoneScoped;
     descriptor->setSupportArgumentBuffers(true);
     samplerState = device->newSamplerState(descriptor);
     descriptor->release();
 }
 
-void kr::metal::Sampler::setAddressModeU(SamplerAddressMode mode) {
+void kr::mtl::Sampler::setAddressModeU(SamplerAddressMode mode) {
     descriptor->setSAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
 }
 
-void kr::metal::Sampler::setAddressModeV(SamplerAddressMode mode) {
+void kr::mtl::Sampler::setAddressModeV(SamplerAddressMode mode) {
     descriptor->setTAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
 }
 
-void kr::metal::Sampler::setAddressModeW(SamplerAddressMode mode) {
+void kr::mtl::Sampler::setAddressModeW(SamplerAddressMode mode) {
     descriptor->setRAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
 }
 
-void kr::metal::Sampler::setFilters(SamplerFilter min, SamplerFilter max) {
+void kr::mtl::Sampler::setFilters(SamplerFilter min, SamplerFilter max) {
     descriptor->setMinFilter(static_cast<MTL::SamplerMinMagFilter>(min));
     descriptor->setMagFilter(static_cast<MTL::SamplerMinMagFilter>(max));
 }
 
-void kr::metal::Sampler::setName(std::string_view newName) {
+void kr::mtl::Sampler::setName(std::string_view newName) {
     // For some strange reason MTLSamplerState's label property is readonly. So this therefore only
     // works before creating the state.
     // See https://developer.apple.com/documentation/metal/mtlsamplerstate/1516329-label?language=objc

@@ -57,6 +57,9 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
     };
 
     vmaCreateBuffer(allocator, &bufferInfo, &allocationInfo, &buffer, &allocation, nullptr);
+
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<const uint64_t&>(buffer), name.c_str());
 }
 
 void kr::vk::Buffer::destroy() {
@@ -86,14 +89,6 @@ void kr::vk::Buffer::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (buffer == nullptr || vkSetDebugUtilsObjectNameEXT == nullptr)
-        return;
-
-    VkDebugUtilsObjectNameInfoEXT info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .objectType = VK_OBJECT_TYPE_BUFFER,
-        .objectHandle = reinterpret_cast<const uint64_t&>(buffer),
-        .pObjectName = name.c_str(),
-    };
-    vkSetDebugUtilsObjectNameEXT(device->getHandle(), &info);
+    if (buffer != nullptr)
+        device->setDebugUtilsName(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<const uint64_t&>(buffer), name.c_str());
 }

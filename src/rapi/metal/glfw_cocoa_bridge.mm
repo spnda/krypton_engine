@@ -8,7 +8,7 @@
 
 #import <rapi/metal/glfw_cocoa_bridge.hpp>
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     // I don't want to write a full wrapper for NSWindow for these three lines,
     // therefore I will just leave this single Objective-C++ file here to handle
     // this basic assignment.

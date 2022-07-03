@@ -1,6 +1,7 @@
 #include <Tracy.hpp>
 
 #include <rapi/ishader.hpp>
+#include <shaders/shaders.hpp>
 #include <util/assert.hpp>
 
 namespace ks = krypton::shaders;

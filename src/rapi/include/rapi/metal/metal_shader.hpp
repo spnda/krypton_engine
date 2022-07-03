@@ -10,33 +10,32 @@
 #include <robin_hood.h>
 
 #include <rapi/ishader.hpp>
-#include <rapi/rapi.hpp>
+#include <shaders/shader_types.hpp>
 #include <util/reference_counter.hpp>
 
 namespace krypton::rapi {
     class MetalBackend;
 }
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     class Buffer;
     class CommandBuffer;
     class RenderPass;
     class Sampler;
     class Texture;
 
-    class ShaderParameter : public IShaderParameter {
+    class ShaderParameter final : public IShaderParameter {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::metal::CommandBuffer;
+        friend class ::krypton::rapi::mtl::CommandBuffer;
 
         MTL::Device* device = nullptr;
         MTL::ArgumentEncoder* encoder = nullptr;
         MTL::Buffer* argumentBuffer = nullptr;
+        NS::String* name = nullptr;
 
-        std::shared_ptr<RenderAPI> rapi = nullptr;
-
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<metal::Buffer>> buffers;
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<metal::Texture>> textures;
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<metal::Sampler>> samplers;
+        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Buffer>> buffers;
+        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Texture>> textures;
+        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Sampler>> samplers;
 
     public:
         explicit ShaderParameter(MTL::Device* device);
@@ -46,11 +45,12 @@ namespace krypton::rapi::metal {
         void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
         void buildParameter() override;
         void destroy() override;
+        void setName(std::string_view name) override;
     };
 
-    class FragmentShader : public IShader {
+    class FragmentShader final : public IShader {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::metal::RenderPass;
+        friend class ::krypton::rapi::mtl::RenderPass;
 
     private:
         std::string msl;
@@ -61,7 +61,7 @@ namespace krypton::rapi::metal {
         MTL::Library* library = nullptr;
         MTL::Function* function = nullptr;
 
-        constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
+        [[nodiscard]] constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
         void handleTranspileResult(krypton::shaders::ShaderCompileResult result) override;
 
     public:
@@ -76,7 +76,7 @@ namespace krypton::rapi::metal {
 
     class VertexShader : public IShader {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::metal::RenderPass;
+        friend class ::krypton::rapi::mtl::RenderPass;
 
     private:
         std::string msl;
@@ -87,7 +87,7 @@ namespace krypton::rapi::metal {
         MTL::Library* library = nullptr;
         MTL::Function* function = nullptr;
 
-        constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
+        [[nodiscard]] constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
         void handleTranspileResult(krypton::shaders::ShaderCompileResult result) override;
 
     public:
@@ -99,6 +99,6 @@ namespace krypton::rapi::metal {
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
     };
-} // namespace krypton::rapi::metal
+} // namespace krypton::rapi::mtl
 
 #endif

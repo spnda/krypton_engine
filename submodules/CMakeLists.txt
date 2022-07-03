@@ -66,13 +66,6 @@ target_include_directories(imgui SYSTEM PUBLIC "${IMGUI_DIRECTORY}/misc/cpp")
 # will be available.
 target_sources(imgui PUBLIC "${IMGUI_DIRECTORY}/backends/imgui_impl_glfw.h" "${IMGUI_DIRECTORY}/backends/imgui_impl_glfw.cpp")
 
-# We have a custom Vulkan backend, therefore no other backend is required.
-if(APPLE)
-  # We need this definition for imgui to accept metal-cpp objects.
-  target_compile_definitions(imgui PUBLIC IMGUI_IMPL_METAL_CPP)
-  target_sources(imgui PUBLIC "${IMGUI_DIRECTORY}/backends/imgui_impl_metal.h" "${IMGUI_DIRECTORY}/backends/imgui_impl_metal.mm")
-endif()
-
 target_link_libraries(imgui PUBLIC glfw)
 target_link_libraries(imgui PUBLIC metal-cpp)
 # ↑ -------------------  IMGUI  ------------------- ↑

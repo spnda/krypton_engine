@@ -1,5 +1,4 @@
 #include <bit>
-#include <fmt/core.h>
 #include <fmt/printf.h>
 #include <rapi/vulkan/vk_fmt.hpp>
 

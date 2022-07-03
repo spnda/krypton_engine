@@ -9,7 +9,6 @@
 #include <rapi/rapi_backends.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
-#include <shaders/shaders.hpp>
 #include <util/consteval_pow.hpp>
 #include <util/handle.hpp>
 
@@ -45,8 +44,6 @@ namespace krypton::rapi {
      */
     class RenderAPI : public std::enable_shared_from_this<RenderAPI> {
     protected:
-        constexpr static const auto maxNumOfMaterials = util::consteval_pow(2ULL, 15ULL); // 65k
-
         RenderAPI() = default;
 
         virtual std::shared_ptr<RenderAPI> getPointer() noexcept;
@@ -54,24 +51,7 @@ namespace krypton::rapi {
     public:
         virtual ~RenderAPI() = default;
 
-        virtual void beginFrame() = 0;
-
-        virtual void endFrame() = 0;
-
         [[nodiscard]] virtual auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> = 0;
-
-        /**
-         * Returns the command buffer associated with this new frame. Can be used for rendering and
-         * presenting to a screen. Only call this once per frame.
-         */
-        [[nodiscard]] virtual auto getFrameCommandBuffer() -> std::unique_ptr<ICommandBuffer> = 0;
-
-        /**
-         * This represents the screen's render target, also known as a "swapchain image" across the
-         * whole lifetime of the application. To render to the screen, this handle has to be used
-         * for the render-pass.
-         */
-        [[nodiscard]] virtual auto getRenderTargetTextureHandle() -> std::shared_ptr<ITexture> = 0;
 
         [[nodiscard]] virtual auto getWindow() -> std::shared_ptr<Window> = 0;
 
@@ -82,13 +62,9 @@ namespace krypton::rapi {
          */
         virtual void init() = 0;
 
-        virtual void resize(int width, int height) = 0;
-
         /**
          * Shutdowns the rendering backend and makes it useless for further rendering commands.
          */
         virtual void shutdown() = 0;
     };
-
-    static_assert(std::is_abstract_v<RenderAPI>);
 } // namespace krypton::rapi

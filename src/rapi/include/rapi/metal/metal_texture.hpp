@@ -8,6 +8,7 @@
 
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLTexture.hpp>
+#include <QuartzCore/CAMetalDrawable.hpp>
 
 #include <rapi/color_encoding.hpp>
 #include <rapi/itexture.hpp>
@@ -17,20 +18,21 @@ namespace krypton::rapi {
     class MetalBackend;
 }
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     class CommandBuffer;
     class RenderPass;
     class ShaderParameter;
+    class Swapchain;
 
     MTL::PixelFormat getPixelFormat(TextureFormat format, ColorEncoding colorEncoding) noexcept;
 
     class Texture : public ITexture {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::metal::CommandBuffer;
-        friend class ::krypton::rapi::metal::RenderPass;
-        friend class ::krypton::rapi::metal::ShaderParameter;
+        friend class ::krypton::rapi::mtl::CommandBuffer;
+        friend class ::krypton::rapi::mtl::RenderPass;
+        friend class ::krypton::rapi::mtl::ShaderParameter;
 
-        MTL::Device* device = nullptr;
+        MTL::Device* device;
         MTL::Texture* texture = nullptr;
 
         NS::String* name = nullptr;
@@ -39,6 +41,9 @@ namespace krypton::rapi::metal {
         TextureFormat format = TextureFormat::RGBA8;
         TextureUsage usage = TextureUsage::SampledImage;
         MTL::TextureSwizzleChannels swizzleChannels = {};
+
+    protected:
+        explicit Texture(MTL::Device* device, MTL::Texture* texture);
 
     public:
         explicit Texture(MTL::Device* device, rapi::TextureUsage usage);
@@ -50,6 +55,16 @@ namespace krypton::rapi::metal {
         void setSwizzling(SwizzleChannels swizzle) override;
         void uploadTexture(std::span<std::byte> data) override;
     };
-} // namespace krypton::rapi::metal
+
+    class Drawable final : public Texture {
+        friend class ::krypton::rapi::mtl::Swapchain;
+
+        CA::MetalDrawable* drawable;
+
+    public:
+        explicit Drawable(MTL::Device* device, CA::MetalDrawable* drawable);
+        ~Drawable() override = default;
+    };
+} // namespace krypton::rapi::mtl
 
 #endif

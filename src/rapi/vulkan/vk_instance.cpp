@@ -48,6 +48,8 @@ void kr::vk::Instance::create() {
         throw std::runtime_error("No compatible vulkan loader or driver found!");
 
     instanceVersion.ver = volkGetInstanceVersion();
+    if (instanceVersion.ver < VK_API_VERSION_1_1)
+        kl::throwError("The Vulkan instance version is lower than 1.1, yet we require at least 1.1. Cannot proceed.");
 
     availableLayers = getAvailableInstanceLayers();
     kl::log("The Vulkan loader reports following instance layers: {}", fmt::join(availableLayers, ", "));
@@ -62,11 +64,6 @@ void kr::vk::Instance::create() {
         VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
     };
 
-    // We always expect the physical_device_properties_2 extension, which is part of Vulkan 1.1
-    if (instanceVersion.ver < VK_API_VERSION_1_1) {
-        instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-    }
-
     // On macOS the Vulkan loader enforces the KHR_portability_enumeration instance extension to be
     // always requested if it is available.
     for (auto& extension : availableExtensions) {
@@ -74,8 +71,8 @@ void kr::vk::Instance::create() {
             instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         } else if (std::strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
 #ifdef KRYPTON_DEBUG
-            // hasDebugUtils = true;
-            // instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            hasDebugUtils = true;
+            instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
         }
     }

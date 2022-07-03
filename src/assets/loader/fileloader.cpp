@@ -4,7 +4,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
-// #include <tiny_gltf.h> // Include it again so the above defines do their job.
+#include <tiny_gltf.h>
 
 #include <Tracy.hpp>
 

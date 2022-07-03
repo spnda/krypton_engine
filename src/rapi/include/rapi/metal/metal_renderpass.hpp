@@ -11,11 +11,11 @@
 
 #include <robin_hood.h>
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     class CommandBuffer;
 
-    class RenderPass : public IRenderPass {
-        friend class ::krypton::rapi::metal::CommandBuffer;
+    class RenderPass final : public IRenderPass {
+        friend class ::krypton::rapi::mtl::CommandBuffer;
 
         robin_hood::unordered_flat_map<uint32_t, RenderPassAttachment> attachments = {};
         std::optional<RenderPassDepthAttachment> depthAttachment = {};
@@ -41,4 +41,4 @@ namespace krypton::rapi::metal {
         void setVertexDescriptor(VertexDescriptor descriptor) override;
         void setVertexFunction(const IShader* shader) override;
     };
-} // namespace krypton::rapi::metal
+} // namespace krypton::rapi::mtl

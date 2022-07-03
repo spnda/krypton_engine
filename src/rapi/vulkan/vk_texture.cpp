@@ -10,6 +10,7 @@ namespace kr = krypton::rapi;
 
 namespace krypton::rapi::vk {
     VkFormat getVulkanFormat(TextureFormat format, ColorEncoding encoding) {
+        ZoneScoped;
         switch (format) {
             case TextureFormat::RGBA8: {
                 if (encoding == ColorEncoding::LINEAR)
@@ -30,6 +31,21 @@ namespace krypton::rapi::vk {
                 return VK_FORMAT_UNDEFINED;
         }
     }
+
+    VkImageUsageFlags getVulkanImageUsage(TextureUsage usage) {
+        ZoneScoped;
+        VkImageUsageFlags usageFlags = 0;
+        if (util::hasBit(usage, TextureUsage::SampledImage)) {
+            usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        }
+        if (util::hasBit(usage, TextureUsage::ColorRenderTarget)) {
+            usageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        }
+        if (util::hasBit(usage, TextureUsage::DepthRenderTarget)) {
+            usageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        }
+        return usageFlags;
+    }
 } // namespace krypton::rapi::vk
 
 kr::vk::Texture::Texture(Device* device, VmaAllocator allocator, rapi::TextureUsage usage)
@@ -39,16 +55,7 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
     ZoneScoped;
     format = newFormat;
 
-    VkImageUsageFlags usageFlags = 0;
-    if (util::hasBit(usage, TextureUsage::SampledImage)) {
-        usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    }
-    if (util::hasBit(usage, TextureUsage::ColorRenderTarget)) {
-        usageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    }
-    if (util::hasBit(usage, TextureUsage::DepthRenderTarget)) {
-        usageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    }
+    VkImageUsageFlags usageFlags = getVulkanImageUsage(usage);
 
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -66,6 +73,9 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
     };
 
     vmaCreateImage(allocator, &imageInfo, &allocationInfo, &image, &allocation, nullptr);
+
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
 }
 
 void kr::vk::Texture::setColorEncoding(ColorEncoding newEncoding) {
@@ -76,16 +86,8 @@ void kr::vk::Texture::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (image == nullptr || vkSetDebugUtilsObjectNameEXT == nullptr)
-        return;
-
-    VkDebugUtilsObjectNameInfoEXT info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .objectType = VK_OBJECT_TYPE_IMAGE,
-        .objectHandle = reinterpret_cast<const uint64_t&>(image),
-        .pObjectName = name.c_str(),
-    };
-    vkSetDebugUtilsObjectNameEXT(device->getHandle(), &info);
+    if (image != nullptr && !name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
 }
 
 void kr::vk::Texture::setSwizzling(SwizzleChannels swizzle) {

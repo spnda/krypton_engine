@@ -3,7 +3,7 @@
 #include <rapi/irenderpass.hpp>
 
 namespace krypton::rapi::vk {
-    class RenderPass : public IRenderPass {
+    class RenderPass final : public IRenderPass {
         class Device* device;
 
         // TODO: Make pipelines their own object.

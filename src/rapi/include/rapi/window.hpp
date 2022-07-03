@@ -7,8 +7,8 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #ifdef RAPI_WITH_VULKAN
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan_core.h>
+typedef struct VkInstance_T* VkInstance;
+typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 #endif
 
 #include <rapi/rapi_backends.hpp>
@@ -24,7 +24,6 @@ namespace MTL {
 } // namespace MTL
 namespace CA {
     class MetalLayer;
-    class MetalLayerWrapper;
 } // namespace CA
 #endif
 
@@ -34,7 +33,13 @@ namespace krypton::rapi {
     class VulkanBackend;
 #ifdef RAPI_WITH_VULKAN
     namespace vk {
+        class Device;
         class Instance;
+    } // namespace vk
+#endif
+#ifdef RAPI_WITH_METAL
+    namespace mtl {
+        class Swapchain;
     }
 #endif
 
@@ -54,9 +59,11 @@ namespace krypton::rapi {
 #ifdef RAPI_WITH_VULKAN
         friend class VulkanBackend;
         friend class vk::Instance;
+        friend class vk::Device;
 #endif
 #ifdef RAPI_WITH_METAL
         friend class MetalBackend;
+        friend class mtl::Swapchain;
 #endif
         friend void window::resizeCallback(GLFWwindow* window, int width, int height);
         friend void window::iconifyCallback(GLFWwindow* window, int iconified);
@@ -71,7 +78,6 @@ namespace krypton::rapi {
         bool minimised = false;
 
         [[nodiscard]] GLFWwindow* getWindowPointer() const;
-        static void newFrame();
         void setRapiPointer(krypton::rapi::RenderAPI* rapi);
 
 #ifdef RAPI_WITH_VULKAN
@@ -96,6 +102,7 @@ namespace krypton::rapi {
         void initImgui() const;
         [[nodiscard]] bool isMinimised() const;
         [[nodiscard]] bool isOccluded() const;
+        static void newFrame();
         static void pollEvents();
         void setWindowTitle(std::string_view title) const;
         [[nodiscard]] bool shouldClose() const;

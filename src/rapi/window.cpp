@@ -40,7 +40,7 @@ namespace krypton::rapi::window {
             if (w != nullptr) {
                 w->getWindow()->width = width;
                 w->getWindow()->height = height;
-                w->resize(width, height);
+                // w->resize(width, height);
             } else {
                 krypton::log::err("GLFW user pointer was nullptr!");
             }
@@ -173,7 +173,7 @@ bool krypton::rapi::Window::isMinimised() const {
 bool krypton::rapi::Window::isOccluded() const {
 #ifdef __APPLE__
     ZoneScoped;
-    return metal::isWindowOccluded(window);
+    return mtl::isWindowOccluded(window);
 #else
     return false;
 #endif
@@ -238,6 +238,7 @@ VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) c
 std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() {
     ZoneScoped;
     uint32_t count;
+    // TODO: Get rid of this glfw vulkan call.
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
     std::vector<const char*> exts(count);
     for (uint32_t i = 0; i < count; ++i)
@@ -254,7 +255,7 @@ CA::MetalLayer* krypton::rapi::Window::createMetalLayer(MTL::Device* device, MTL
     if (pixelFormat != MTL::PixelFormatInvalid)
         layer->setPixelFormat(pixelFormat);
     layer->setContentsScale(static_cast<CGFloat>(getContentScale().x));
-    metal::setMetalLayerOnWindow(window, layer);
+    mtl::setMetalLayerOnWindow(window, layer);
     return layer;
 }
 #endif

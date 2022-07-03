@@ -10,14 +10,14 @@ namespace krypton::rapi {
     class MetalBackend;
 }
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     class CommandBuffer;
     class ShaderParameter;
 
-    class Sampler : public ISampler {
+    class Sampler final : public ISampler {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::metal::CommandBuffer;
-        friend class ::krypton::rapi::metal::ShaderParameter;
+        friend class ::krypton::rapi::mtl::CommandBuffer;
+        friend class ::krypton::rapi::mtl::ShaderParameter;
 
         MTL::Device* device;
         NS::String* name = nullptr;
@@ -35,6 +35,6 @@ namespace krypton::rapi::metal {
         void setFilters(SamplerFilter min, SamplerFilter max) override;
         void setName(std::string_view name) override;
     };
-} // namespace krypton::rapi::metal
+} // namespace krypton::rapi::mtl
 
 #endif

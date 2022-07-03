@@ -13,45 +13,30 @@
 #include <QuartzCore/CAMetalLayer.hpp>
 
 #include <rapi/rapi.hpp>
-#include <shaders/shaders.hpp>
 
 namespace krypton::rapi {
-    namespace metal {
+    namespace mtl {
         class CommandBuffer;
         class Texture;
-    } // namespace metal
+    } // namespace mtl
 
     class MetalBackend final : public RenderAPI {
         friend std::shared_ptr<RenderAPI> krypton::rapi::getRenderApi(Backend backend) noexcept(false);
-        friend class metal::CommandBuffer;
+        friend class mtl::CommandBuffer;
 
         std::shared_ptr<Window> window;
-        MTL::Device* device = nullptr;
-        MTL::Library* library = nullptr;
-        MTL::CommandQueue* queue = nullptr;
 
         NS::AutoreleasePool* backendAutoreleasePool = nullptr;
         NS::AutoreleasePool* frameAutoreleasePool = nullptr;
-
-        // Swapchain
-        CA::MetalLayer* swapchain = nullptr;
-        std::shared_ptr<metal::Texture> renderTargetTexture = {};
-
-        MTL::PixelFormat colorPixelFormat = MTL::PixelFormatBGRA8Unorm_sRGB;
 
         MetalBackend();
 
     public:
         ~MetalBackend() noexcept override;
 
-        void beginFrame() override;
-        void endFrame() override;
         auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> override;
-        auto getFrameCommandBuffer() -> std::unique_ptr<ICommandBuffer> override;
-        auto getRenderTargetTextureHandle() -> std::shared_ptr<ITexture> override;
         auto getWindow() -> std::shared_ptr<Window> override;
         void init() override;
-        void resize(int width, int height) override;
         void shutdown() override;
     };
 } // namespace krypton::rapi

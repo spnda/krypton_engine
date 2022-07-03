@@ -8,9 +8,16 @@
 
 #include <rapi/isampler.hpp>
 #include <rapi/itexture.hpp>
-#include <shaders/shaders.hpp>
 #include <util/handle.hpp>
 #include <util/nameable.hpp>
+
+// fwd
+namespace krypton::shaders {
+    enum class ShaderStage : uint16_t;
+    enum class ShaderSourceType : uint32_t;
+    enum class ShaderTargetType : uint32_t;
+    struct ShaderCompileResult;
+} // namespace krypton::shaders
 
 namespace krypton::rapi {
     class IBuffer;
@@ -22,11 +29,11 @@ namespace krypton::rapi {
      *
      * In Vulkan terminology, this would be known as a VkDescriptorSet.
      */
-    class IShaderParameter : public std::enable_shared_from_this<IShaderParameter> {
+    class IShaderParameter : public util::Nameable {
     protected:
         explicit IShaderParameter() = default;
 
-        virtual ~IShaderParameter() = default;
+        ~IShaderParameter() override = default;
 
     public:
         virtual void addBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) = 0;
@@ -46,7 +53,7 @@ namespace krypton::rapi {
      * interface also stores a owning copy of the raw bytes of the shader input, which is usually
      * SPIR-V but can be in many other formats, depending on build and platform.
      */
-    class IShader : public std::enable_shared_from_this<IShader>, public util::Nameable {
+    class IShader : public util::Nameable {
     protected:
         // This is our owning copy of bytes. Ideally, this should never reallocate and should
         // always point to the same underlying data, as we use std::span to use these bytes with
@@ -65,7 +72,7 @@ namespace krypton::rapi {
 
         ~IShader() override = default;
 
-        virtual krypton::shaders::ShaderTargetType getTranspileTargetType() const = 0;
+        [[nodiscard]] virtual krypton::shaders::ShaderTargetType getTranspileTargetType() const = 0;
 
         // This is a function for the implementation to save the transpilation result. Usually,
         // it will just be saved as a member of this object.
@@ -83,7 +90,7 @@ namespace krypton::rapi {
 
         // Returns true if the data is not in a shader language or IR that is supported by the RAPI
         // directly and would first require to be transpiled at runtime for it to be usable.
-        bool needsTranspile() const;
+        [[nodiscard]] bool needsTranspile() const;
 
         // This uses krypton::shaders::compileShaders if [needsTranspile] returned true and creates
         // a new allocation, without invalidating the already present bytes, with the newly

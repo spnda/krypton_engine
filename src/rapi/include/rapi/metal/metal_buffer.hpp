@@ -2,17 +2,18 @@
 
 #ifdef RAPI_WITH_METAL
 
-#include <Metal/Metal.hpp>
+#include <Metal/MTLBuffer.hpp>
+#include <Metal/MTLDevice.hpp>
 
 #include <rapi/ibuffer.hpp>
-#include <rapi/metal/metal_command_buffer.hpp>
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
+    class CommandBuffer;
     class ShaderParameter;
 
-    class Buffer : public IBuffer {
-        friend class ::krypton::rapi::metal::CommandBuffer;
-        friend class ::krypton::rapi::metal::ShaderParameter;
+    class Buffer final : public IBuffer {
+        friend class ::krypton::rapi::mtl::CommandBuffer;
+        friend class ::krypton::rapi::mtl::ShaderParameter;
 
         MTL::Device* device = nullptr;
         MTL::Buffer* buffer = nullptr;
@@ -30,6 +31,6 @@ namespace krypton::rapi::metal {
         [[nodiscard]] std::size_t getSize() override;
         void setName(std::string_view name) override;
     };
-} // namespace krypton::rapi::metal
+} // namespace krypton::rapi::mtl
 
 #endif

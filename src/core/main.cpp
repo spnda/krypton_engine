@@ -1,27 +1,25 @@
 #include <filesystem>
 #include <fstream>
-#include <mutex>
 #include <vector>
 
 #include <Tracy.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/transform.hpp>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
 #include <assets/loader/fileloader.hpp>
 #include <assets/mesh.hpp>
-#include <assets/scene.hpp>
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
+#include <rapi/iqueue.hpp>
 #include <rapi/irenderpass.hpp>
+#include <rapi/isemaphore.hpp>
+#include <rapi/iswapchain.hpp>
 #include <rapi/itexture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
-#include <util/handle.hpp>
 #include <util/logging.hpp>
 #include <util/scheduler.hpp>
 
@@ -31,8 +29,14 @@
 
 namespace fs = std::filesystem;
 namespace kt = krypton::threading;
+namespace kr = krypton::rapi;
 
 std::string modelPathString;
+
+struct FrameData {
+    std::shared_ptr<kr::ISemaphore> imageAcquireSemaphore;
+    std::shared_ptr<kr::ISemaphore> renderSemaphore;
+};
 
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
     ZoneScoped;
@@ -72,7 +76,7 @@ auto main(int argc, char* argv[]) -> int {
 
         // We currently just use the default backend for the current platform.
         // auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
-        auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
+        auto rapi = krypton::rapi::getRenderApi(krypton::rapi::Backend::Vulkan);
         rapi->init();
 
         auto device = rapi->getSuitableDevice({});
@@ -81,7 +85,19 @@ auto main(int argc, char* argv[]) -> int {
         auto window = rapi->getWindow();
         window->pollEvents(); // Let the window open instantly.
 
-        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(rapi, device);
+        auto swapchain = device->createSwapchain(window.get());
+        swapchain->create(krypton::rapi::TextureUsage::ColorRenderTarget);
+
+        bool needsResize = false;
+        std::vector<FrameData> frameData(swapchain->getImageCount());
+        for (auto& i : frameData) {
+            i.imageAcquireSemaphore = device->createSemaphore();
+            i.imageAcquireSemaphore->create();
+            i.renderSemaphore = device->createSemaphore();
+            i.renderSemaphore->create();
+        }
+
+        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device, window.get());
         imgui->init();
 
         auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
@@ -122,7 +138,7 @@ auto main(int argc, char* argv[]) -> int {
             }
         });
         defaultRenderPass->addAttachment(0, {
-            .attachment = rapi->getRenderTargetTextureHandle(),
+            // .attachment = rapi->getRenderTargetTextureHandle(),
             .attachmentFormat = krypton::rapi::TextureFormat::BGRA10,
             .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
             .storeAction = krypton::rapi::AttachmentStoreAction::Store,
@@ -131,6 +147,12 @@ auto main(int argc, char* argv[]) -> int {
         // clang-format on
         defaultRenderPass->build();
 
+        auto presentationQueue = device->getPresentationQueue();
+        presentationQueue->setName("PresentationQueue");
+
+        auto commandPool = presentationQueue->createCommandPool();
+
+        uint32_t currentFrame = 0;
         while (!window->shouldClose()) {
             ZoneScopedN("frameloop");
             FrameMark;
@@ -144,27 +166,46 @@ auto main(int argc, char* argv[]) -> int {
                 // if the window is fully occluded. We can't use window->waitEvents here because
                 // we're not waiting for a GLFW event. Therefore, we'll artificially slow down
                 // the render loop to 1FPS.
+                ZoneScopedN("isOccluded -> this_thread::sleep_for");
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(1000ms);
             }
 
-            window->pollEvents();
-            rapi->beginFrame();
+            auto commandBuffers = commandPool->allocateCommandBuffers(1);
+            auto& cmd = commandBuffers[0];
+
+            ++currentFrame %= swapchain->getImageCount();
+
+            uint32_t imageIndex;
+            std::unique_ptr<krypton::rapi::ITexture> drawable;
+            if (!needsResize) {
+                window->pollEvents();
+
+                drawable = swapchain->nextImage(frameData[currentFrame].imageAcquireSemaphore.get(), &imageIndex, &needsResize);
+            } else {
+                window->waitEvents();
+            }
+
+            if (needsResize)
+                continue;
+
+            window->newFrame();
             imgui->newFrame();
 
-            auto buffer = rapi->getFrameCommandBuffer();
-            buffer->beginRenderPass(defaultRenderPass.get());
+            cmd->begin();
+            cmd->beginRenderPass(defaultRenderPass.get());
 
-            buffer->endRenderPass();
+            cmd->endRenderPass();
 
             drawUi(rapi.get());
-            imgui->draw(buffer.get());
+            imgui->draw(cmd.get());
+            cmd->end();
 
-            buffer->presentFrame();
-            buffer->submit();
+            presentationQueue->submit(cmd.get(), frameData[currentFrame].imageAcquireSemaphore.get(),
+                                      frameData[currentFrame].renderSemaphore.get());
+            swapchain->present(presentationQueue.get(), frameData[currentFrame].renderSemaphore.get(), &imageIndex, &needsResize);
 
             imgui->endFrame();
-            rapi->endFrame();
         }
 
         defaultRenderPass->destroy();
@@ -172,11 +213,11 @@ auto main(int argc, char* argv[]) -> int {
         imgui->destroy();
         rapi->shutdown();
 
-        krypton::log::log("rapi reference count: {}", rapi.use_count());
+        kl::log("rapi reference count: {}", rapi.use_count());
 
         kt::Scheduler::getInstance().shutdown();
     } catch (const std::exception& e) {
-        krypton::log::err("Exception occured: {}", e.what());
+        kl::err("Exception occured: {}", e.what());
     }
     return 0;
 }

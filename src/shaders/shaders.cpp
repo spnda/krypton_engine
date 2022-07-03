@@ -312,11 +312,11 @@ krypton::shaders::ShaderCompileResult krypton::shaders::spirvCrossCompile(std::s
     switch (target) {
         case ShaderTargetType::GLSL:
             spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_GLSL_VERSION, 460);
-            spvc_compiler_options_set_bool(options, SPVC_COMPILER_OPTION_GLSL_ES, SPVC_FALSE);
+            spvc_compiler_options_set_bool(options, SPVC_COMPILER_OPTION_GLSL_ES, false);
             break;
         case ShaderTargetType::METAL:
             spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_MSL_VERSION, (2 << 16) + 4); /* MSL 2.4 */
-            spvc_compiler_options_set_bool(options, SPVC_COMPILER_OPTION_MSL_ARGUMENT_BUFFERS, SPVC_TRUE);
+            spvc_compiler_options_set_bool(options, SPVC_COMPILER_OPTION_MSL_ARGUMENT_BUFFERS, true);
             break;
         default: {
             break;

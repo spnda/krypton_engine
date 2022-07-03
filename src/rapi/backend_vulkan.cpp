@@ -1,13 +1,14 @@
 #ifdef RAPI_WITH_VULKAN
 
 #include <array>
+#include <string>
 
 #include <imgui.h>
 
 #include <Tracy.hpp>
 
-#include "rapi/vulkan/vk_command_buffer.hpp"
 #include <rapi/backend_vulkan.hpp>
+#include <rapi/vulkan/vk_command_buffer.hpp>
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_instance.hpp>
@@ -53,51 +54,10 @@ krypton::rapi::VulkanBackend::VulkanBackend() {
 
 krypton::rapi::VulkanBackend::~VulkanBackend() = default;
 
-void krypton::rapi::VulkanBackend::beginFrame() {
-    ZoneScoped;
-    if (!needsResize) {
-        window->pollEvents();
-
-        // auto result = waitForFrame();
-        // if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        //     needsResize = true;
-        // } else {
-        // TODO: Reimplement NVIDIA checkpoint extension
-        // checkResult(graphicsQueue.get(), result, "Failed to present queue!");
-        // }
-    } else {
-        window->waitEvents(); // We'd usually return, but we want imgui to still run
-    }
-
-    window->newFrame();
-}
-
-void krypton::rapi::VulkanBackend::endFrame() {
-    ZoneScoped;
-    if (needsResize)
-        return;
-
-    // auto result = submitFrame();
-    // if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-    //     needsResize = true;
-    // } else {
-    // TODO: Reimplement NVIDIA checkpoint extension
-    // checkResult(graphicsQueue.get(), result, "Failed to submit queue!");
-    // }
-}
-
 std::shared_ptr<kr::IDevice> kr::VulkanBackend::getSuitableDevice(krypton::rapi::DeviceFeatures features) {
-    auto device = std::make_shared<vk::Device>(instance.get(), features);
-    device->create(surface);
+    auto device = std::make_shared<vk::Device>(instance.get(), window.get(), features);
+    device->create();
     return device;
-}
-
-std::unique_ptr<kr::ICommandBuffer> kr::VulkanBackend::getFrameCommandBuffer() {
-    return std::make_unique<kr::vk::CommandBuffer>(nullptr);
-}
-
-std::shared_ptr<kr::ITexture> kr::VulkanBackend::getRenderTargetTextureHandle() {
-    return nullptr;
 }
 
 std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanBackend::getWindow() {
@@ -107,24 +67,10 @@ std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanBackend::getWindow()
 void krypton::rapi::VulkanBackend::init() {
     ZoneScoped;
     window->create(krypton::rapi::Backend::Vulkan);
-
-    auto size = window->getWindowSize();
-    frameBufferWidth = size.x;
-    frameBufferHeight = size.y;
-
     instance->create();
-    surface = window->createVulkanSurface(instance->getHandle());
-}
-
-void krypton::rapi::VulkanBackend::resize(int width, int height) {
-    ZoneScoped;
 }
 
 void krypton::rapi::VulkanBackend::shutdown() {
-    vkDestroySurfaceKHR(instance->getHandle(), surface, nullptr);
-
-    vmaDestroyAllocator(allocator);
-
     instance->destroy();
     window->destroy();
 }

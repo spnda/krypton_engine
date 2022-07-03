@@ -6,7 +6,10 @@
 #include <rapi/vulkan/vma.hpp>
 
 namespace krypton::rapi::vk {
-    class Texture : public ITexture {
+    VkFormat getVulkanFormat(TextureFormat format, ColorEncoding encoding);
+    VkImageUsageFlags getVulkanImageUsage(TextureUsage usage);
+
+    class Texture final : public ITexture {
         class Device* device;
         VmaAllocator allocator;
 

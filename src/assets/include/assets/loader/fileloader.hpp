@@ -5,13 +5,18 @@
 #include <vector>
 
 #include <glm/glm.hpp>
-#include <tiny_gltf.h>
 
 #include <assets/material.hpp>
 #include <assets/mesh.hpp>
 #include <assets/texture.hpp>
 
 namespace fs = std::filesystem;
+
+namespace tinygltf {
+    class Node;
+    class Mesh;
+    class Model;
+} // namespace tinygltf
 
 namespace krypton::assets::loader {
     class FileLoader final {

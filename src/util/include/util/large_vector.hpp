@@ -34,8 +34,8 @@ namespace krypton::util {
 
             explicit constexpr Iterator() = default;
 
-            constexpr Iterator& operator++();   /* prefix operator */
-            constexpr Iterator operator++(int); /* postfix operator */
+            constexpr Iterator& operator++();         /* prefix operator */
+            constexpr const Iterator operator++(int); /* postfix operator */
             constexpr T& operator*() const;
             constexpr T* operator->() const;
             constexpr bool operator==(const Iterator& other) const noexcept = default;
@@ -80,7 +80,7 @@ namespace krypton::util {
     }
 
     template <typename T, size_t blockSize>
-    constexpr auto LargeVector<T, blockSize>::Iterator::operator++(int) -> Iterator {
+    constexpr auto LargeVector<T, blockSize>::Iterator::operator++(int) -> const Iterator {
         auto& old = *this;
         ++*this;
         return old;

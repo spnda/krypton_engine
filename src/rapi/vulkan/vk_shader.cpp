@@ -4,6 +4,7 @@
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_shader.hpp>
+#include <shaders/shader_types.hpp>
 #include <util/assert.hpp>
 #include <util/logging.hpp>
 
@@ -21,6 +22,8 @@ void kr::vk::ShaderParameter::addTexture(uint32_t index, std::shared_ptr<rapi::I
 void kr::vk::ShaderParameter::buildParameter() {}
 
 void kr::vk::ShaderParameter::destroy() {}
+
+void kr::vk::ShaderParameter::setName(std::string_view newName) {}
 #pragma endregion
 
 #pragma region vk::Shader
@@ -28,6 +31,9 @@ kr::vk::Shader::Shader(Device* device, std::span<const std::byte> bytes, krypton
     : IShader(bytes, source), device(device) {
     if (source != shaders::ShaderSourceType::SPIRV) {
         needs_transpile = true;
+    } else {
+        spirv.resize(bytes.size() / sizeof(uint32_t));
+        std::memcpy(spirv.data(), bytes.data(), bytes.size());
     }
 }
 
@@ -35,6 +41,9 @@ kr::vk::Shader::Shader(Device* device, std::vector<std::byte>&& bytes, krypton::
     : IShader(bytes, source), device(device) {
     if (source != shaders::ShaderSourceType::SPIRV) {
         needs_transpile = true;
+    } else {
+        spirv.resize(bytes.size() / sizeof(uint32_t));
+        std::memcpy(spirv.data(), bytes.data(), bytes.size());
     }
 }
 
@@ -63,6 +72,9 @@ void kr::vk::Shader::createModule() {
     auto res = vkCreateShaderModule(device->getHandle(), &moduleInfo, nullptr, &shader);
     if (res != VK_SUCCESS)
         kl::err("Failed to create shader module: {}", res);
+
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<const uint64_t&>(shader), name.c_str());
 }
 
 bool kr::vk::Shader::isParameterObjectCompatible(IShaderParameter* parameter) {
@@ -72,5 +84,8 @@ bool kr::vk::Shader::isParameterObjectCompatible(IShaderParameter* parameter) {
 void kr::vk::Shader::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
+
+    if (shader != nullptr && !name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<const uint64_t&>(shader), name.c_str());
 }
 #pragma endregion

@@ -34,7 +34,7 @@ static constexpr std::array<MTL::BlendFactor, 3> metalBlendFactors = {
 };
 // clang-format on
 
-namespace krypton::rapi::metal {
+namespace krypton::rapi::mtl {
     MTL::VertexFormat getVertexFormat(VertexFormat vertexFormat) {
         switch (vertexFormat) {
             case VertexFormat::RGBA32_FLOAT: {
@@ -53,16 +53,16 @@ namespace krypton::rapi::metal {
 
         return MTL::VertexFormatInvalid;
     }
-} // namespace krypton::rapi::metal
+} // namespace krypton::rapi::mtl
 
-kr::metal::RenderPass::RenderPass(MTL::Device* device) : device(device) {}
+kr::mtl::RenderPass::RenderPass(MTL::Device* device) : device(device) {}
 
-void kr::metal::RenderPass::addAttachment(uint32_t index, RenderPassAttachment attachment) {
+void kr::mtl::RenderPass::addAttachment(uint32_t index, RenderPassAttachment attachment) {
     ZoneScoped;
     attachments[index] = attachment;
 }
 
-void kr::metal::RenderPass::build() {
+void kr::mtl::RenderPass::build() {
     ZoneScoped;
     auto* psoDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
     auto* depthDescriptor = MTL::DepthStencilDescriptor::alloc()->init();
@@ -95,7 +95,7 @@ void kr::metal::RenderPass::build() {
         auto* attrib = mtlVertexDescriptor->attributes()->object(i);
         attrib->setBufferIndex(vertexDescriptor.attributes[i].bufferIndex);
         attrib->setOffset(vertexDescriptor.attributes[i].offset);
-        attrib->setFormat(metal::getVertexFormat(vertexDescriptor.attributes[i].format));
+        attrib->setFormat(mtl::getVertexFormat(vertexDescriptor.attributes[i].format));
     }
 
     psoDescriptor->setVertexDescriptor(mtlVertexDescriptor);
@@ -131,7 +131,7 @@ void kr::metal::RenderPass::build() {
     }
 
     if (depthAttachment.has_value()) {
-        auto depthTex = dynamic_cast<metal::Texture*>(depthAttachment->attachment.get());
+        auto depthTex = dynamic_cast<mtl::Texture*>(depthAttachment->attachment.get());
 
         auto depth = descriptor->depthAttachment();
         depth->setClearDepth(depthAttachment->clearDepth);
@@ -158,24 +158,24 @@ void kr::metal::RenderPass::build() {
     depthDescriptor->release();
 }
 
-void kr::metal::RenderPass::destroy() {
+void kr::mtl::RenderPass::destroy() {
     ZoneScoped;
     depthState->autorelease();
     pipelineState->autorelease();
     descriptor->autorelease();
 }
 
-void kr::metal::RenderPass::setFragmentFunction(const IShader* shader) {
+void kr::mtl::RenderPass::setFragmentFunction(const IShader* shader) {
     ZoneScoped;
-    fragmentFunction = dynamic_cast<const metal::FragmentShader*>(shader)->function;
+    fragmentFunction = dynamic_cast<const mtl::FragmentShader*>(shader)->function;
 }
 
-void kr::metal::RenderPass::setVertexDescriptor(VertexDescriptor newVtxDescriptor) {
+void kr::mtl::RenderPass::setVertexDescriptor(VertexDescriptor newVtxDescriptor) {
     ZoneScoped;
     vertexDescriptor = newVtxDescriptor;
 }
 
-void kr::metal::RenderPass::setVertexFunction(const krypton::rapi::IShader* shader) {
+void kr::mtl::RenderPass::setVertexFunction(const krypton::rapi::IShader* shader) {
     ZoneScoped;
-    vertexFunction = dynamic_cast<const metal::VertexShader*>(shader)->function;
+    vertexFunction = dynamic_cast<const mtl::VertexShader*>(shader)->function;
 }

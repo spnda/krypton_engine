@@ -6,7 +6,7 @@
 #include <rapi/ishader.hpp>
 
 namespace krypton::rapi::vk {
-    class ShaderParameter : public IShaderParameter {
+    class ShaderParameter final : public IShaderParameter {
         class Device* device;
 
     public:
@@ -18,16 +18,17 @@ namespace krypton::rapi::vk {
         void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
         void buildParameter() override;
         void destroy() override;
+        void setName(std::string_view name) override;
     };
 
-    class Shader : public IShader {
+    class Shader final : public IShader {
         class Device* device;
 
         VkShaderModule shader = nullptr;
         std::string name;
         std::vector<uint32_t> spirv;
 
-        constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
+        [[nodiscard]] constexpr krypton::shaders::ShaderTargetType getTranspileTargetType() const override;
         void handleTranspileResult(krypton::shaders::ShaderCompileResult result) override;
 
     public:

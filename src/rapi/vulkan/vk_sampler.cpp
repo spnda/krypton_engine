@@ -1,3 +1,5 @@
+#include <string>
+
 #include <Tracy.hpp>
 #include <volk.h>
 
@@ -14,6 +16,8 @@ kr::vk::Sampler::Sampler(Device* device) : device(device) {
 void kr::vk::Sampler::createSampler() {
     ZoneScoped;
     vkCreateSampler(device->getHandle(), &samplerInfo, nullptr, &sampler);
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<const uint64_t&>(sampler), name.c_str());
 }
 
 VkSampler kr::vk::Sampler::getHandle() {
@@ -42,14 +46,6 @@ void kr::vk::Sampler::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (sampler == nullptr || vkSetDebugUtilsObjectNameEXT == nullptr)
-        return;
-
-    VkDebugUtilsObjectNameInfoEXT info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .objectType = VK_OBJECT_TYPE_SAMPLER,
-        .objectHandle = reinterpret_cast<const uint64_t&>(sampler),
-        .pObjectName = name.c_str(),
-    };
-    vkSetDebugUtilsObjectNameEXT(device->getHandle(), &info);
+    if (sampler != nullptr && !name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<const uint64_t&>(sampler), name.c_str());
 }

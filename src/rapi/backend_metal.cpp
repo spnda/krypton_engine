@@ -15,7 +15,6 @@
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
 #include <rapi/metal/metal_texture.hpp>
-#include <rapi/metal/shader_types.hpp>
 #include <rapi/window.hpp>
 #include <util/logging.hpp>
 
@@ -40,40 +39,9 @@ kr::MetalBackend::~MetalBackend() noexcept {
     backendAutoreleasePool->drain();
 }
 
-void kr::MetalBackend::beginFrame() {
-    ZoneScoped;
-    window->newFrame();
-
-    // Every ObjC resource created within the frame with a function that does not begin with 'new',
-    // or 'alloc', will automatically be freed at the end of the frame if retain() was not called.
-    frameAutoreleasePool = NS::AutoreleasePool::alloc()->init();
-}
-
-void kr::MetalBackend::endFrame() {
-    ZoneScoped;
-    // Drains any resources created within the render loop. Also releases the pool itself.
-    frameAutoreleasePool->drain();
-}
-
 std::shared_ptr<kr::IDevice> kr::MetalBackend::getSuitableDevice(kr::DeviceFeatures features) {
     ZoneScoped;
-    return std::make_shared<metal::Device>(MTL::CreateSystemDefaultDevice(), features);
-}
-
-std::unique_ptr<kr::ICommandBuffer> kr::MetalBackend::getFrameCommandBuffer() {
-    ZoneScoped;
-    auto cmdBuffer = std::make_unique<kr::metal::CommandBuffer>();
-    cmdBuffer->rapi = std::dynamic_pointer_cast<kr::MetalBackend>(getPointer());
-    cmdBuffer->drawable = swapchain->nextDrawable();
-    cmdBuffer->buffer = queue->commandBuffer();
-
-    renderTargetTexture->texture = cmdBuffer->drawable->texture();
-
-    return std::move(cmdBuffer);
-}
-
-std::shared_ptr<kr::ITexture> kr::MetalBackend::getRenderTargetTextureHandle() {
-    return renderTargetTexture;
+    return std::make_shared<mtl::Device>(MTL::CreateSystemDefaultDevice(), features);
 }
 
 std::shared_ptr<kr::Window> kr::MetalBackend::getWindow() {
@@ -84,33 +52,6 @@ void kr::MetalBackend::init() {
     ZoneScopedN("MetalBackend::init");
     window->create(kr::Backend::Metal);
     window->setRapiPointer(static_cast<krypton::rapi::RenderAPI*>(this));
-
-    colorPixelFormat = static_cast<MTL::PixelFormat>(metal::getScreenPixelFormat(window->getWindowPointer()));
-
-    auto wSize = window->getWindowSize();
-    krypton::log::log("Window size: {}x{}", wSize.x, wSize.y);
-
-    auto fbSize = window->getFramebufferSize();
-    krypton::log::log("Framebuffer size: {}x{}", fbSize.x, fbSize.y);
-
-    // Create the device, queue and metal layer
-    device = MTL::CreateSystemDefaultDevice();
-    device->autorelease();
-    if (device->argumentBuffersSupport() < MTL::ArgumentBuffersTier2) {
-        krypton::log::throwError("The Metal backend requires support at least ArgumentBuffersTier2.");
-    }
-
-    queue = device->newCommandQueue();
-    queue->autorelease(); // Makes the Queue be released automatically by backendAutoreleasePool
-    swapchain = window->createMetalLayer(device, colorPixelFormat);
-
-    // The texture usage here is not explicitly used anywhere.
-    renderTargetTexture =
-        std::make_shared<metal::Texture>(device, rapi::TextureUsage::ColorRenderTarget | rapi::TextureUsage::SampledImage);
-}
-
-void kr::MetalBackend::resize(int width, int height) {
-    ZoneScoped;
 }
 
 void kr::MetalBackend::shutdown() {

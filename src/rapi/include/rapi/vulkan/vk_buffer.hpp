@@ -2,12 +2,14 @@
 
 #include <string>
 
-#include <vk_mem_alloc.h>
-
 #include <rapi/ibuffer.hpp>
 
+// fwd
+typedef struct VmaAllocator_T* VmaAllocator;
+typedef struct VmaAllocation_T* VmaAllocation;
+
 namespace krypton::rapi::vk {
-    class Buffer : public IBuffer {
+    class Buffer final : public IBuffer {
         class Device* device;
         VmaAllocator allocator;
 
