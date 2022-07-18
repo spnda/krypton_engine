@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #include <span>
 #include <vector>
 
@@ -50,7 +48,6 @@ namespace krypton::rapi::mtl {
 
     class FragmentShader final : public IShader {
         friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::mtl::RenderPass;
 
     private:
         std::string msl;
@@ -70,6 +67,7 @@ namespace krypton::rapi::mtl {
         ~FragmentShader() override = default;
 
         void createModule() override;
+        auto getFunction() const -> MTL::Function*;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
     };
@@ -96,9 +94,8 @@ namespace krypton::rapi::mtl {
         ~VertexShader() override = default;
 
         void createModule() override;
+        auto getFunction() const -> MTL::Function*;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::mtl
-
-#endif

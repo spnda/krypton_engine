@@ -14,7 +14,10 @@
 
 namespace kr = krypton::rapi;
 
-kr::vk::Swapchain::Swapchain(Device* device, Window* window, VkSurfaceKHR surface) : window(window), device(device), surface(surface) {}
+kr::vk::Swapchain::Swapchain(Device* device, Window* window) : window(window), device(device) {
+    ZoneScoped;
+    surface = window->getVulkanSurface();
+}
 
 VkExtent2D kr::vk::Swapchain::calculateSurfaceExtent() {
     ZoneScoped;
@@ -47,19 +50,29 @@ VkPresentModeKHR kr::vk::Swapchain::choosePresentMode() {
     return res != presentModes.end() ? *res : VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkSurfaceFormatKHR kr::vk::Swapchain::chooseSurfaceFormat() {
+void kr::vk::Swapchain::chooseSurfaceFormat() {
     ZoneScoped;
     uint32_t formatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), surface, &formatCount, nullptr);
     formats.resize(formatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), surface, &formatCount, formats.data());
 
-    /*for (const auto& availableFormat : formats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            return availableFormat;
+    for (const auto& availableFormat : formats) {
+        if (availableFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 &&
+            availableFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT) {
+            // This is DISPLAY_P3_LINEAR, meaning it expects a linear and not a SRGB encoded value.
+            surfaceFormat = availableFormat;
+            textureFormat = TextureFormat::A2BGR10_UNORM;
+            return;
+        } else if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            surfaceFormat = availableFormat;
+            textureFormat = TextureFormat::RGBA8_SRGB;
+            return;
         }
-    }*/
-    return formats[0];
+    }
+
+    surfaceFormat = formats[0];
+    // textureFormat = TextureFormat;
 }
 
 void kr::vk::Swapchain::create(TextureUsage usage) {
@@ -76,6 +89,10 @@ void kr::vk::Swapchain::destroy() {
     swapchain = nullptr;
 }
 
+kr::TextureFormat kr::vk::Swapchain::getDrawableFormat() {
+    return textureFormat;
+}
+
 kr::ITexture* kr::vk::Swapchain::getDrawable() {
     images[imageIndex];
     return nullptr;
@@ -88,19 +105,17 @@ uint32_t kr::vk::Swapchain::getImageCount() {
     return imageCount;
 }
 
-std::unique_ptr<kr::ITexture> kr::vk::Swapchain::nextImage(ISemaphore* signal, uint32_t* pImageIndex, bool* needsResize) {
+void kr::vk::Swapchain::nextImage(ISemaphore* signal, bool* needsResize) {
     ZoneScoped;
     VkSemaphore semaphore = signal == nullptr ? nullptr : *dynamic_cast<Semaphore*>(signal)->getHandle();
-    auto res = vkAcquireNextImageKHR(device->getHandle(), swapchain, 1'000'000, semaphore, nullptr, pImageIndex);
-    imageIndex = *pImageIndex;
+    auto res = vkAcquireNextImageKHR(device->getHandle(), swapchain, 1'000'000, semaphore, nullptr, &imageIndex);
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
         *needsResize = true;
     else if (res != VK_SUCCESS)
         kl::err("Failed to acquire next image: {}", res);
-    return nullptr;
 }
 
-void kr::vk::Swapchain::present(IQueue* queue, ISemaphore* wait, uint32_t* pImageIndex, bool* needsResize) {
+void kr::vk::Swapchain::present(IQueue* queue, ISemaphore* wait, bool* needsResize) {
     ZoneScoped;
     VkPresentInfoKHR presentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -108,7 +123,7 @@ void kr::vk::Swapchain::present(IQueue* queue, ISemaphore* wait, uint32_t* pImag
         .pWaitSemaphores = dynamic_cast<Semaphore*>(wait)->getHandle(),
         .swapchainCount = 1,
         .pSwapchains = &swapchain,
-        .pImageIndices = pImageIndex,
+        .pImageIndices = &imageIndex,
     };
     auto res = vkQueuePresentKHR(dynamic_cast<Queue*>(queue)->getHandle(), &presentInfo);
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
@@ -121,7 +136,7 @@ void kr::vk::Swapchain::recreateSwapchain() {
     ZoneScoped;
     currentExtent = calculateSurfaceExtent();
     currentPresentMode = choosePresentMode();
-    surfaceFormat = chooseSurfaceFormat();
+    chooseSurfaceFormat();
 
     VkSwapchainKHR oldSwapchain = swapchain;
     VkSwapchainCreateInfoKHR swapchainInfo = {

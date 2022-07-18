@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #include <CoreGraphics/CGGeometry.h>
 #include <QuartzCore/CAMetalLayer.hpp>
 
@@ -38,5 +36,3 @@ _CA_INLINE void CA::MetalLayerWrapper::setMaximumDrawableCount(NS::UInteger coun
 _CA_INLINE void CA::MetalLayerWrapper::setContentsScale(CGFloat scale) {
     return Object::sendMessage<void>(this, _CA_PRIVATE_SEL(setContentsScale_), scale);
 }
-
-#endif // #ifdef RAPI_WITH_METAL

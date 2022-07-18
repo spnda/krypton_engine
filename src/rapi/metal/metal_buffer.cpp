@@ -30,25 +30,33 @@ void kr::mtl::Buffer::create(std::size_t sizeBytes, BufferUsage usage, BufferMem
 
 void kr::mtl::Buffer::destroy() {
     ZoneScoped;
-    buffer->release();
+    buffer->retain()->release();
     buffer = nullptr;
+}
+
+uint64_t kr::mtl::Buffer::getGPUAddress() const {
+    ZoneScoped;
+    return buffer->gpuAddress();
+}
+
+uint64_t kr::mtl::Buffer::getSize() const {
+    ZoneScoped;
+    return buffer->length();
+}
+
+void kr::mtl::Buffer::mapMemory(void** memory) {
+    ZoneScoped;
+    VERIFY((resourceOptions & MTL::ResourceStorageModePrivate) == 0);
+
+    *memory = buffer->contents();
 }
 
 void kr::mtl::Buffer::mapMemory(std::function<void(void*)> callback) {
     ZoneScoped;
-    // TODO: Is this actually correct?
     VERIFY((resourceOptions & MTL::ResourceStorageModePrivate) == 0);
 
     callback(buffer->contents());
-    if ((resourceOptions & MTL::ResourceStorageModeManaged) == MTL::ResourceStorageModeManaged) {
-        // The resource is managed, we need to notify that changes have been made.
-        buffer->didModifyRange(NS::Range::Make(0, buffer->length()));
-    }
-}
-
-std::size_t kr::mtl::Buffer::getSize() {
-    ZoneScoped;
-    return buffer->length();
+    unmapMemory();
 }
 
 void kr::mtl::Buffer::setName(std::string_view newName) {
@@ -57,4 +65,12 @@ void kr::mtl::Buffer::setName(std::string_view newName) {
 
     if (buffer != nullptr)
         buffer->setLabel(name);
+}
+
+void kr::mtl::Buffer::unmapMemory() {
+    ZoneScoped;
+    if ((resourceOptions & MTL::ResourceStorageModeManaged) == MTL::ResourceStorageModeManaged) {
+        // The resource is managed, we need to notify that changes have been made.
+        buffer->didModifyRange(NS::Range::Make(0, buffer->length()));
+    }
 }

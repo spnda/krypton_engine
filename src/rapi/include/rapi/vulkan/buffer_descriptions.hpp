@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_VULKAN
-
 #include <assets/vertex.hpp>
 
 namespace krypton::rapi::vulkan {
@@ -16,5 +14,3 @@ namespace krypton::rapi::vulkan {
         krypton::assets::Index materialIndex = 0;
     };
 } // namespace krypton::rapi::vulkan
-
-#endif // #ifdef RAPI_WITH_VULKAN

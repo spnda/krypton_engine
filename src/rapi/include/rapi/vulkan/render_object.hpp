@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_VULKAN
-
 #include <memory>
 
 #include <glm/glm.hpp>
@@ -35,5 +33,3 @@ namespace krypton::rapi::vulkan {
         explicit RenderObject() = default;
     };
 } // namespace krypton::rapi::vulkan
-
-#endif // #ifdef RAPI_WITH_VULKAN

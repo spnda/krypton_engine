@@ -2,8 +2,8 @@
 
 #ifdef WITH_GLSLANG_SHADERS
 
-#include <glslang/Include/ResourceLimits.h>
-#include <glslang/Include/glslang_c_interface.h>
+    #include <glslang/Include/ResourceLimits.h>
+    #include <glslang/Include/glslang_c_interface.h>
 
 namespace krypton::shaders {
     /* Really crappy way of defining defaults for shader resources */

@@ -1,22 +1,30 @@
 #pragma once
 
+#include <optional>
+
+#include <robin_hood.h>
+
 #include <rapi/irenderpass.hpp>
+#include <rapi/render_pass_attachments.hpp>
 
 namespace krypton::rapi::vk {
     class RenderPass final : public IRenderPass {
         class Device* device;
 
-        // TODO: Make pipelines their own object.
-        VkPipeline pipeline = nullptr;
+        robin_hood::unordered_flat_map<uint32_t, RenderPassAttachment> attachments = {};
+        std::optional<RenderPassDepthAttachment> depthAttachment = {};
+
+        std::vector<VkRenderingAttachmentInfo> attachmentInfos;
+        VkRenderingInfo renderingInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        };
 
     public:
         explicit RenderPass(Device* device);
 
-        void addAttachment(uint32_t index, RenderPassAttachment attachment) override;
+        void setAttachment(uint32_t index, RenderPassAttachment attachment) override;
+        auto getAttachment(uint32_t index) -> RenderPassAttachment& override;
         void build() override;
         void destroy() override;
-        void setFragmentFunction(const IShader* shader) override;
-        void setVertexDescriptor(VertexDescriptor descriptor) override;
-        void setVertexFunction(const IShader* shader) override;
     };
 } // namespace krypton::rapi::vk

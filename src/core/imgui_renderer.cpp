@@ -5,7 +5,9 @@
 
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
+#include <rapi/ipipeline.hpp>
 #include <rapi/irenderpass.hpp>
+#include <rapi/iswapchain.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
 #include <rapi/window.hpp>
@@ -13,8 +15,7 @@
 
 namespace kc = krypton::core;
 
-kc::ImGuiRenderer::ImGuiRenderer(std::shared_ptr<rapi::IDevice> device, krypton::rapi::Window* window)
-    : uniforms({}), window(window), device(std::move(device)) {}
+kc::ImGuiRenderer::ImGuiRenderer(rapi::IDevice* device, krypton::rapi::Window* window) : uniforms({}), window(window), device(device) {}
 
 void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
     ZoneScoped;
@@ -24,14 +25,13 @@ void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
 
     fontAtlas = device->createTexture(rapi::TextureUsage::SampledImage);
     fontAtlas->setName("ImGui font texture");
-    fontAtlas->setColorEncoding(rapi::ColorEncoding::SRGB);
     fontAtlas->setSwizzling(rapi::SwizzleChannels {
         .r = rapi::TextureSwizzle::One,
         .g = rapi::TextureSwizzle::One,
         .b = rapi::TextureSwizzle::One,
         .a = rapi::TextureSwizzle::Red,
     });
-    fontAtlas->create(rapi::TextureFormat::R8, width, height);
+    fontAtlas->create(rapi::TextureFormat::R8_SRGB, width, height);
     fontAtlas->uploadTexture(std::span { reinterpret_cast<std::byte*>(pixels), static_cast<std::size_t>(width * height) });
 
     if (fontAtlasSampler == nullptr) {
@@ -44,12 +44,14 @@ void kc::ImGuiRenderer::buildFontTexture(ImGuiIO& io) {
     io.Fonts->SetTexID(static_cast<ImTextureID>(fontAtlas.get()));
 }
 
-void kc::ImGuiRenderer::init() {
+void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     ZoneScopedN("ImGuiRenderer::init");
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     window->initImgui();
+
+    swapchain = pSwapchain;
 
     auto& io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
@@ -70,7 +72,7 @@ void kc::ImGuiRenderer::init() {
 
     // Create the shaders
     auto fragGlsl = krypton::shaders::readShaderFile("shaders/ui.frag");
-    auto vertGlsl = krypton::shaders::readShaderFile("shaders/ui2.vert");
+    auto vertGlsl = krypton::shaders::readShaderFile("shaders/ui.vert");
 
     fragmentShader =
         device->createShaderFunction({ reinterpret_cast<const std::byte*>(fragGlsl.content.data()), fragGlsl.content.size() + 1 },
@@ -87,12 +89,12 @@ void kc::ImGuiRenderer::init() {
     fragmentShader->createModule();
     vertexShader->createModule();
 
-    // Create the render pass
-    renderPass = device->createRenderPass();
-    renderPass->setFragmentFunction(fragmentShader.get());
-    renderPass->setVertexFunction(vertexShader.get());
+    // Create the pipeline
+    pipeline = device->createPipeline();
+    pipeline->setFragmentFunction(fragmentShader.get());
+    pipeline->setVertexFunction(vertexShader.get());
     // clang-format off
-    renderPass->setVertexDescriptor({
+    pipeline->setVertexDescriptor({
         .buffers = {
             {
                 .stride = sizeof(ImDrawVert),
@@ -117,12 +119,8 @@ void kc::ImGuiRenderer::init() {
             },
         }
     });
-    renderPass->addAttachment(0, {
-        // .attachment = rapi->getRenderTargetTextureHandle(),
-        .attachmentFormat = rapi::TextureFormat::BGRA10,
-        .loadAction = krypton::rapi::AttachmentLoadAction::Load,
-        .storeAction = krypton::rapi::AttachmentStoreAction::Store,
-        .clearColor = glm::fvec4(0.0),
+    pipeline->addAttachment(0, {
+        .format = swapchain->getDrawableFormat(),
         .blending = {
             .enabled = true,
             .rgbOperation = rapi::BlendOperation::Add,
@@ -133,6 +131,19 @@ void kc::ImGuiRenderer::init() {
             .alphaSourceFactor = rapi::BlendFactor::One,
             .alphaDestinationFactor = rapi::BlendFactor::OneMinusSourceAlpha,
         }
+    });
+    // clang-format on
+    pipeline->create();
+
+    // Create the render pass
+    renderPass = device->createRenderPass();
+    // clang-format off
+    renderPass->setAttachment(0, {
+        .attachment = swapchain->getDrawable(),
+        .attachmentFormat = swapchain->getDrawableFormat(),
+        .loadAction = krypton::rapi::AttachmentLoadAction::Load,
+        .storeAction = krypton::rapi::AttachmentStoreAction::Store,
+        .clearColor = glm::fvec4(0.0),
     });
     // clang-format on
     renderPass->build();
@@ -200,10 +211,13 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
             });
         });
 
+        (*renderPass)[0].attachment = swapchain->getDrawable();
         commandBuffer->beginRenderPass(renderPass.get());
-        // The vertex buffer occupies index 0 in Metal.
+        commandBuffer->bindPipeline(pipeline.get());
+        // We bind the vertex buffer to slot 0 later on.
         commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Vertex, uniformShaderParameter.get());
         commandBuffer->bindShaderParameter(2, shaders::ShaderStage::Fragment, textureShaderParameter.get());
+        commandBuffer->bindVertexBuffer(0, vertexBuffer.get(), 0);
         commandBuffer->viewport(0.0, 0.0, drawData->DisplaySize.x * drawData->FramebufferScale.x,
                                 drawData->DisplaySize.y * drawData->FramebufferScale.y, 0.0, 1.0);
 
@@ -243,10 +257,11 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 
                 commandBuffer->scissor(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
 
-                commandBuffer->bindVertexBuffer(vertexBuffer.get(), (vertexOffset + cmd.VtxOffset) * sizeof(ImDrawVert));
-                commandBuffer->drawIndexed(indexBuffer.get(), cmd.ElemCount,
-                                           sizeof(ImDrawIdx) == 2 ? rapi::IndexType::UINT16 : rapi::IndexType::UINT32, // NOLINT
-                                           (cmd.IdxOffset + indexOffset) * sizeof(ImDrawIdx));
+                commandBuffer->setVertexBufferOffset(0, (vertexOffset + cmd.VtxOffset) * sizeof(ImDrawVert));
+                commandBuffer->bindIndexBuffer(indexBuffer.get(),
+                                               sizeof(ImDrawIdx) == 2 ? rapi::IndexType::UINT16 : rapi::IndexType::UINT32, // NOLINT
+                                               (cmd.IdxOffset + indexOffset) * sizeof(ImDrawIdx));
+                commandBuffer->drawIndexed(cmd.ElemCount, 0);
             }
 
             indexOffset += cmdList->IdxBuffer.Size;

@@ -20,25 +20,15 @@ namespace krypton::rapi::mtl {
         robin_hood::unordered_flat_map<uint32_t, RenderPassAttachment> attachments = {};
         std::optional<RenderPassDepthAttachment> depthAttachment = {};
 
-        VertexDescriptor vertexDescriptor = {};
-
         MTL::Device* device = nullptr;
-
-        MTL::RenderPipelineState* pipelineState = nullptr;
-        MTL::DepthStencilState* depthState = nullptr;
         MTL::RenderPassDescriptor* descriptor = nullptr;
-
-        MTL::Function* vertexFunction = nullptr;
-        MTL::Function* fragmentFunction = nullptr;
 
     public:
         explicit RenderPass(MTL::Device* device);
 
-        void addAttachment(uint32_t index, RenderPassAttachment attachment) override;
+        void setAttachment(uint32_t index, RenderPassAttachment attachment) override;
+        auto getAttachment(uint32_t index) -> RenderPassAttachment& override;
         void build() override;
         void destroy() override;
-        void setFragmentFunction(const IShader* shader) override;
-        void setVertexDescriptor(VertexDescriptor descriptor) override;
-        void setVertexFunction(const IShader* shader) override;
     };
 } // namespace krypton::rapi::mtl

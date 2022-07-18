@@ -1,11 +1,10 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #include <Metal/MTLBuffer.hpp>
 #include <Metal/MTLDevice.hpp>
 
 #include <rapi/ibuffer.hpp>
+#include <util/attributes.hpp>
 
 namespace krypton::rapi::mtl {
     class CommandBuffer;
@@ -27,10 +26,11 @@ namespace krypton::rapi::mtl {
 
         void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) override;
         void destroy() override;
+        [[nodiscard]] auto getGPUAddress() const -> uint64_t override;
+        [[nodiscard]] auto getSize() const -> uint64_t override;
+        ALWAYS_INLINE void mapMemory(void** memory) override;
         void mapMemory(std::function<void(void*)> callback) override;
-        [[nodiscard]] std::size_t getSize() override;
         void setName(std::string_view name) override;
+        ALWAYS_INLINE void unmapMemory() override;
     };
 } // namespace krypton::rapi::mtl
-
-#endif

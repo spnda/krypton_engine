@@ -5,13 +5,13 @@
 #include <string>
 
 #ifdef WITH_SLANG_SHADERS
-#include <slang.h>
+    #include <slang.h>
 #endif
 
 #ifdef WITH_GLSLANG_SHADERS
-#include <glslang/Include/glslang_c_interface.h>
-#include <glslang/Include/glslang_c_shader_types.h>
-#include <shaders/glslang_resource.hpp>
+    #include <glslang/Include/glslang_c_interface.h>
+    #include <glslang/Include/glslang_c_shader_types.h>
+    #include <shaders/glslang_resource.hpp>
 #endif
 
 #include <spirv_cross_c.h> // We're using the C API from the submodule, as the C++ API is not 100% stable
@@ -119,21 +119,23 @@ krypton::shaders::compileSingleShader(const krypton::shaders::ShaderCompileInput
         ShaderCompileResult result;
         if (shaderInput.sourceType == ShaderSourceType::GLSL) {
             result = glslangCompileShader(shaderInput);
+        }
 #ifdef WITH_SLANG_SHADERS
-        } else if (shaderInput.sourceType == ShaderSourceType::SLANG) {
+        else if (shaderInput.sourceType == ShaderSourceType::SLANG) {
             auto slangResult = slangCompileShader(shaderInput);
             VERIFY(slangResult.size() == 1);
         }
-#else
-        }
 #endif
+
+        if (result.resultSize == 0)
+            kl::throwError("Failed to compile shader to SPIR-V");
 
         std::span<const uint32_t> spv = { reinterpret_cast<const uint32_t*>(result.resultBytes.data()),
                                           result.resultBytes.size() / sizeof(uint32_t) };
         return { spirvCrossCompile(spv, shaderInput.targetType) };
     }
 
-    krypton::log::throwError("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
+    kl::throwError("Failed to find a way how to compile shader: {}", shaderInput.filePath.string());
 }
 
 #ifdef WITH_GLSLANG_SHADERS

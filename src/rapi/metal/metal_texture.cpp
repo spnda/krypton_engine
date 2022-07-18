@@ -8,44 +8,32 @@
 namespace kr = krypton::rapi;
 
 namespace krypton::rapi::mtl {
-    MTL::PixelFormat getPixelFormat(TextureFormat textureFormat, ColorEncoding colorEncoding) noexcept {
+    MTL::PixelFormat getPixelFormat(TextureFormat textureFormat) noexcept {
         switch (textureFormat) {
-            case TextureFormat::RGBA8: {
-                if (colorEncoding == ColorEncoding::LINEAR) {
-                    return MTL::PixelFormatRGBA8Unorm;
-                } else {
-                    return MTL::PixelFormatRGBA8Unorm_sRGB;
-                }
-            }
-            case TextureFormat::RGBA16: {
-                if (colorEncoding == ColorEncoding::LINEAR) {
-                    return MTL::PixelFormatRGBA16Unorm;
-                }
-                // There's no RGBA16Unorm_sRGB
-                break;
-            }
-            case TextureFormat::BGRA10: {
-                if (colorEncoding == ColorEncoding::LINEAR)
-                    return MTL::PixelFormatBGRA10_XR;
+            case TextureFormat::RGBA8_UNORM:
+                return MTL::PixelFormatRGBA8Unorm;
+            case TextureFormat::RGBA8_SRGB:
+                return MTL::PixelFormatRGBA8Unorm_sRGB;
+            case TextureFormat::RGBA16_UNORM:
+                return MTL::PixelFormatRGBA16Unorm;
+            case TextureFormat::BGRA10_UNORM:
+                return MTL::PixelFormatBGRA10_XR;
+            case TextureFormat::BGRA10_SRGB:
                 return MTL::PixelFormatBGRA10_XR_sRGB;
-            }
-            case TextureFormat::BGR10: {
-                if (colorEncoding == ColorEncoding::LINEAR)
-                    return MTL::PixelFormatBGR10_XR;
+            case TextureFormat::BGR10_UNORM:
+                return MTL::PixelFormatBGR10_XR;
+            case TextureFormat::BGR10_SRGB:
                 return MTL::PixelFormatBGR10_XR_sRGB;
-            }
-            case TextureFormat::R8: {
-                if (colorEncoding == ColorEncoding::LINEAR) {
-                    return MTL::PixelFormatR8Unorm;
-                }
+            case TextureFormat::A2BGR10_UNORM:
+                return MTL::PixelFormatRGB10A2Unorm;
+            case TextureFormat::R8_UNORM:
+                return MTL::PixelFormatR8Unorm;
+            case TextureFormat::R8_SRGB:
                 return MTL::PixelFormatR8Unorm_sRGB;
-            }
-            case TextureFormat::D32: {
-                if (colorEncoding == ColorEncoding::LINEAR) {
-                    return MTL::PixelFormatDepth32Float;
-                }
-                break;
-            }
+            case TextureFormat::D32_FLOAT:
+                return MTL::PixelFormatDepth32Float;
+            case TextureFormat::Invalid:
+                return MTL::PixelFormatInvalid;
         }
 
         return MTL::PixelFormatInvalid;
@@ -63,7 +51,7 @@ void kr::mtl::Texture::create(TextureFormat newFormat, uint32_t newWidth, uint32
     width = newWidth;
     height = newHeight;
 
-    auto* texDesc = MTL::TextureDescriptor::texture2DDescriptor(mtl::getPixelFormat(format, encoding), width, height, false);
+    auto* texDesc = MTL::TextureDescriptor::texture2DDescriptor(getPixelFormat(format), width, height, false);
     texDesc->setUsage(MTL::TextureUsageShaderRead);
     texDesc->setStorageMode(MTL::StorageModeShared);
     texDesc->setSwizzle(swizzleChannels);
@@ -72,10 +60,6 @@ void kr::mtl::Texture::create(TextureFormat newFormat, uint32_t newWidth, uint32
 
     if (name != nullptr)
         texture->setLabel(name);
-}
-
-void kr::mtl::Texture::setColorEncoding(ColorEncoding newEncoding) {
-    encoding = newEncoding;
 }
 
 void kr::mtl::Texture::setName(std::string_view newName) {

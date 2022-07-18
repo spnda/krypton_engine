@@ -1,5 +1,4 @@
 #include <filesystem>
-#include <fstream>
 #include <vector>
 
 #include <Tracy.hpp>
@@ -12,6 +11,7 @@
 #include <assets/mesh.hpp>
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
+#include <rapi/ipipeline.hpp>
 #include <rapi/iqueue.hpp>
 #include <rapi/irenderpass.hpp>
 #include <rapi/isemaphore.hpp>
@@ -74,19 +74,33 @@ auto main(int argc, char* argv[]) -> int {
     try {
         kt::Scheduler::getInstance().start();
 
+        kr::initRenderApi();
+
         // We currently just use the default backend for the current platform.
-        // auto rapi = krypton::rapi::getRenderApi(krypton::rapi::getPlatformDefaultBackend());
-        auto rapi = krypton::rapi::getRenderApi(krypton::rapi::Backend::Vulkan);
+        auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
+        // auto rapi = kr::getRenderApi(kr::Backend::Vulkan);
         rapi->init();
 
-        auto device = rapi->getSuitableDevice({});
-        krypton::log::log("Launching on {}", device->getDeviceName());
+        // Create the window
+        auto window = std::make_unique<kr::Window>(1920, 1080);
+        window->create(rapi.get());
+        // window->pollEvents(); // Let the window open instantly.
 
-        auto window = rapi->getWindow();
-        window->pollEvents(); // Let the window open instantly.
+        // Select the physical device. TODO
+        auto physicalDevices = rapi->getPhysicalDevices();
+        if (physicalDevices.empty())
+            kl::throwError("No physical devices have been found!");
+        if (!physicalDevices.front()->meetsMinimumRequirement())
+            kl::throwError("No compatible physical device has been found!");
+        if (!physicalDevices.front()->canPresentToWindow(window.get()))
+            kl::throwError("No physical device found capable of presenting to window!");
+
+        std::unique_ptr<kr::IDevice> device = physicalDevices.front()->createDevice();
+
+        kl::log("Launching on {}", device->getDeviceName());
 
         auto swapchain = device->createSwapchain(window.get());
-        swapchain->create(krypton::rapi::TextureUsage::ColorRenderTarget);
+        swapchain->create(kr::TextureUsage::ColorRenderTarget | kr::TextureUsage::TransferDestination);
 
         bool needsResize = false;
         std::vector<FrameData> frameData(swapchain->getImageCount());
@@ -97,8 +111,8 @@ auto main(int argc, char* argv[]) -> int {
             i.renderSemaphore->create();
         }
 
-        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device, window.get());
-        imgui->init();
+        auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device.get(), window.get());
+        imgui->init(swapchain.get());
 
         auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
         auto vertSpirv = krypton::shaders::readBinaryShaderFile("shaders/vert.spv");
@@ -118,11 +132,11 @@ auto main(int argc, char* argv[]) -> int {
         defaultFragmentFunction->createModule();
         defaultVertexFunction->createModule();
 
-        auto defaultRenderPass = device->createRenderPass();
-        defaultRenderPass->setFragmentFunction(defaultFragmentFunction.get());
-        defaultRenderPass->setVertexFunction(defaultVertexFunction.get());
+        auto defaultPipeline = device->createPipeline();
+        defaultPipeline->setFragmentFunction(defaultFragmentFunction.get());
+        defaultPipeline->setVertexFunction(defaultVertexFunction.get());
         // clang-format off
-        defaultRenderPass->setVertexDescriptor({
+        defaultPipeline->setVertexDescriptor({
             .buffers = {
                {
                    .stride = sizeof(krypton::assets::Vertex),
@@ -137,11 +151,21 @@ auto main(int argc, char* argv[]) -> int {
                 }
             }
         });
-        defaultRenderPass->addAttachment(0, {
-            // .attachment = rapi->getRenderTargetTextureHandle(),
-            .attachmentFormat = krypton::rapi::TextureFormat::BGRA10,
-            .loadAction = krypton::rapi::AttachmentLoadAction::Clear,
-            .storeAction = krypton::rapi::AttachmentStoreAction::Store,
+        defaultPipeline->addAttachment(0, {
+            .format = swapchain->getDrawableFormat(),
+            .blending = {
+                .enabled = false,
+            },
+        });
+        // clang-format on
+        // defaultPipeline->create();
+
+        auto defaultRenderPass = device->createRenderPass();
+        // clang-format off
+        defaultRenderPass->setAttachment(0, {
+            .attachmentFormat = swapchain->getDrawableFormat(),
+            .loadAction = kr::AttachmentLoadAction::Clear,
+            .storeAction = kr::AttachmentStoreAction::Store,
             .clearColor = glm::fvec4(0.0),
         });
         // clang-format on
@@ -151,6 +175,7 @@ auto main(int argc, char* argv[]) -> int {
         presentationQueue->setName("PresentationQueue");
 
         auto commandPool = presentationQueue->createCommandPool();
+        auto commandBuffers = commandPool->allocateCommandBuffers(swapchain->getImageCount());
 
         uint32_t currentFrame = 0;
         while (!window->shouldClose()) {
@@ -171,17 +196,12 @@ auto main(int argc, char* argv[]) -> int {
                 std::this_thread::sleep_for(1000ms);
             }
 
-            auto commandBuffers = commandPool->allocateCommandBuffers(1);
-            auto& cmd = commandBuffers[0];
-
             ++currentFrame %= swapchain->getImageCount();
 
-            uint32_t imageIndex;
-            std::unique_ptr<krypton::rapi::ITexture> drawable;
             if (!needsResize) {
                 window->pollEvents();
 
-                drawable = swapchain->nextImage(frameData[currentFrame].imageAcquireSemaphore.get(), &imageIndex, &needsResize);
+                swapchain->nextImage(frameData[currentFrame].imageAcquireSemaphore.get(), &needsResize);
             } else {
                 window->waitEvents();
             }
@@ -189,13 +209,16 @@ auto main(int argc, char* argv[]) -> int {
             if (needsResize)
                 continue;
 
+            auto& cmd = commandBuffers[currentFrame];
+
             window->newFrame();
             imgui->newFrame();
 
+            (*defaultRenderPass)[0].attachment = swapchain->getDrawable();
             cmd->begin();
-            cmd->beginRenderPass(defaultRenderPass.get());
+            // cmd->beginRenderPass(defaultRenderPass.get());
 
-            cmd->endRenderPass();
+            // cmd->endRenderPass();
 
             drawUi(rapi.get());
             imgui->draw(cmd.get());
@@ -203,7 +226,7 @@ auto main(int argc, char* argv[]) -> int {
 
             presentationQueue->submit(cmd.get(), frameData[currentFrame].imageAcquireSemaphore.get(),
                                       frameData[currentFrame].renderSemaphore.get());
-            swapchain->present(presentationQueue.get(), frameData[currentFrame].renderSemaphore.get(), &imageIndex, &needsResize);
+            swapchain->present(presentationQueue.get(), frameData[currentFrame].renderSemaphore.get(), &needsResize);
 
             imgui->endFrame();
         }
@@ -215,9 +238,13 @@ auto main(int argc, char* argv[]) -> int {
 
         kl::log("rapi reference count: {}", rapi.use_count());
 
+        kr::terminateRenderApi();
         kt::Scheduler::getInstance().shutdown();
     } catch (const std::exception& e) {
         kl::err("Exception occured: {}", e.what());
+
+        kr::terminateRenderApi();
+        kt::Scheduler::getInstance().shutdown();
     }
     return 0;
 }

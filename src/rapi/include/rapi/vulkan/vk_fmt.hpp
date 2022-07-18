@@ -58,7 +58,7 @@ struct fmt::formatter<VkResult> {
     }
 
     template <typename FormatContext>
-    inline auto format(VkResult const& result, FormatContext& ctx) {
+    inline auto format(VkResult const& result, FormatContext& ctx) const {
         return fmt::format_to(ctx.out(), "{}", vkResultStrings[result]);
     }
 };
@@ -71,7 +71,7 @@ struct fmt::formatter<VkExtensionProperties> {
     }
 
     template <typename FormatContext>
-    inline auto format(VkExtensionProperties const& result, FormatContext& ctx) {
+    inline auto format(VkExtensionProperties const& result, FormatContext& ctx) const {
         return fmt::format_to(ctx.out(), "{}:v{}", result.extensionName, result.specVersion);
     }
 };
@@ -84,7 +84,7 @@ struct fmt::formatter<VkLayerProperties> {
     }
 
     template <typename FormatContext>
-    inline auto format(VkLayerProperties const& result, FormatContext& ctx) {
+    inline auto format(VkLayerProperties const& result, FormatContext& ctx) const {
         return fmt::format_to(ctx.out(), "{}:v{}", result.layerName, result.implementationVersion);
     }
 };

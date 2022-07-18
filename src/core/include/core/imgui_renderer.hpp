@@ -18,8 +18,10 @@ namespace krypton::core {
         } uniforms;
 
         rapi::Window* window;
-        std::shared_ptr<rapi::IDevice> device;
+        rapi::IDevice* device;
         std::shared_ptr<rapi::IRenderPass> renderPass;
+        std::shared_ptr<rapi::IPipeline> pipeline;
+        rapi::ISwapchain* swapchain = nullptr;
 
         std::shared_ptr<rapi::IBuffer> uniformBuffer;
         std::shared_ptr<rapi::ITexture> fontAtlas;
@@ -37,9 +39,9 @@ namespace krypton::core {
         void updateUniformBuffer(const ImVec2& displaySize, const ImVec2& displayPos);
 
     public:
-        explicit ImGuiRenderer(std::shared_ptr<rapi::IDevice> device, rapi::Window* window);
+        explicit ImGuiRenderer(rapi::IDevice* device, rapi::Window* window);
 
-        void init();
+        void init(rapi::ISwapchain* swapchain);
         void destroy();
         void draw(rapi::ICommandBuffer* commandBuffer);
         void newFrame();

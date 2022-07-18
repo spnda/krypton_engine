@@ -11,5 +11,7 @@ layout(location = 0) in struct {
 } inp;
 
 void main() {
-    fragColor = inp.color / 255.0f * texture(sampler2D(sTexture, textureSampler), inp.uv.st);
+    // imgui input colours are all encoded in sRGB.
+    vec4 color = vec4(pow(inp.color.rgb / 255.0f, vec3(2.2)), inp.color.a / 255.0f);
+    fragColor = color * texture(sampler2D(sTexture, textureSampler), inp.uv.st);
 }

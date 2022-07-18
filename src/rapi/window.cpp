@@ -1,10 +1,19 @@
 #define GLFW_INCLUDE_NONE
 
 #ifdef RAPI_WITH_VULKAN
-#if defined(__APPLE__)
-#define VK_USE_PLATFORM_METAL_EXT
-#endif
-#include <volk.h>
+    #if defined(__APPLE__)
+        #define VK_USE_PLATFORM_METAL_EXT
+
+        #include <TargetConditionals.h>
+        #if TARGET_OS_IPHONE
+            #define VK_USE_PLATFORM_IOS_MVK
+        #elif TARGET_OS_MAC
+            #define VK_USE_PLATFORM_MACOS_MVK
+        #endif
+    #elif defined(WIN32)
+        #define VK_USE_PLATFORM_WIN32_KHR
+    #endif
+    #include <volk.h>
 #endif
 
 #include <GLFW/glfw3.h>
@@ -15,22 +24,21 @@
 #include <fmt/core.h>
 #include <imgui_impl_glfw.h>
 
+#include <rapi/backend_vulkan.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/rapi_backends.hpp>
+#include <rapi/vulkan/vk_fmt.hpp>
+#include <rapi/vulkan/vk_instance.hpp>
 #include <rapi/window.hpp>
 #include <util/logging.hpp>
 
 #ifdef RAPI_WITH_METAL
-#include <Metal/MTLDevice.hpp>
-#include <rapi/metal/glfw_cocoa_bridge.hpp>
-#include <rapi/metal/metal_layer_wrapper.hpp>
+    #include <Metal/MTLDevice.hpp>
+    #include <rapi/metal/glfw_cocoa_bridge.hpp>
+    #include <rapi/metal/metal_layer_wrapper.hpp>
 #endif
 
 namespace krypton::rapi::window {
-    void errorCallback(int error, const char* desc) {
-        krypton::log::err("GLFW error {}: {}", error, desc);
-    }
-
     void keyCallback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] int key, [[maybe_unused]] int scancode,
                      [[maybe_unused]] int action, [[maybe_unused]] int mods) {}
 
@@ -38,11 +46,11 @@ namespace krypton::rapi::window {
         if (width > 0 && height > 0) {
             auto* w = static_cast<RenderAPI*>(glfwGetWindowUserPointer(window));
             if (w != nullptr) {
-                w->getWindow()->width = width;
-                w->getWindow()->height = height;
+                // w->getWindow()->width = width;
+                // w->getWindow()->height = height;
                 // w->resize(width, height);
             } else {
-                krypton::log::err("GLFW user pointer was nullptr!");
+                kl::err("GLFW user pointer was nullptr!");
             }
         }
     }
@@ -50,40 +58,40 @@ namespace krypton::rapi::window {
     void iconifyCallback(GLFWwindow* window, int iconified) {
         auto* rapi = static_cast<RenderAPI*>(glfwGetWindowUserPointer(window));
         if (rapi == nullptr)
-            krypton::log::err("GLFW user pointer was nullptr!");
+            kl::err("GLFW user pointer was nullptr!");
 
         if (iconified) {
-            rapi->getWindow()->minimised = true;
+            // rapi->getWindow()->minimised = true;
         } else {
-            rapi->getWindow()->minimised = false;
+            // rapi->getWindow()->minimised = false;
         }
     }
 
-    void glfwInit() {
-        ZoneScoped;
-        // This is purely to measure the cost of glfwInit with tracy.
-        if (!::glfwInit()) [[unlikely]]
-            kl::throwError("glfwInit failed. Probably an unsupported platform!");
-
-        glfwSetErrorCallback(errorCallback);
-    }
 } // namespace krypton::rapi::window
 
 krypton::rapi::Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {}
 
 krypton::rapi::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
 
-void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
+void krypton::rapi::Window::getRequiredVulkanExtensions(std::vector<const char*>& instanceExtensions) {
+    ZoneScoped;
+    uint32_t count = 0;
+    const char** extensions = glfwGetRequiredInstanceExtensions(&count);
+    for (auto i = 0U; i < count; ++i) {
+        instanceExtensions.emplace_back(extensions[i]);
+    }
+}
+
+void krypton::rapi::Window::create(RenderAPI* pRenderApi) noexcept(false) {
     ZoneScoped;
     // This method has already been called and completed successfully.
     if (window)
         return;
 
-    backend = tBackend;
+    renderApi = pRenderApi;
+    backend = renderApi->getBackend();
     if (backend == Backend::None) [[unlikely]]
-        krypton::log::throwError("Cannot create window with no rendering backend");
-
-    window::glfwInit();
+        kl::throwError("Cannot create window with no rendering backend");
 
     switch (backend) {
         case Backend::Vulkan:
@@ -93,6 +101,8 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
         case Backend::None:
             break;
     }
+
+    glfwDefaultWindowHints();
 
 #ifdef __APPLE__
     glfwWindowHintString(GLFW_COCOA_FRAME_NAME, title.c_str());
@@ -105,21 +115,28 @@ void krypton::rapi::Window::create(Backend tBackend) noexcept(false) {
 
     if (!window) {
         glfwTerminate();
-        krypton::log::throwError("Failed to create window");
+        kl::throwError("Failed to create window");
     }
 
-    krypton::log::log("Successfully created window");
+    kl::log("Successfully created window");
 
     glfwSetKeyCallback(window, window::keyCallback);
     glfwSetWindowSizeCallback(window, window::resizeCallback);
     glfwSetWindowIconifyCallback(window, window::iconifyCallback);
+
+    if (backend == Backend::Vulkan) {
+        auto vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
+        auto res = glfwCreateWindowSurface(vulkanRapi->getInstance()->getHandle(), window, nullptr,
+                                           reinterpret_cast<VkSurfaceKHR*>(&vulkanSurface));
+        if (res != VK_SUCCESS)
+            kl::err("Failed to create window surface: {}, {}", title, res);
+    }
 }
 
 void krypton::rapi::Window::destroy() {
     ZoneScoped;
     if (window != nullptr) {
         glfwDestroyWindow(window);
-        glfwTerminate();
     }
 }
 
@@ -140,6 +157,12 @@ glm::ivec2 krypton::rapi::Window::getFramebufferSize() const {
     glfwGetFramebufferSize(window, &tWidth, &tHeight);
     return { tWidth, tHeight };
 }
+
+#ifdef RAPI_WITH_VULKAN
+VkSurfaceKHR krypton::rapi::Window::getVulkanSurface() const noexcept {
+    return reinterpret_cast<VkSurfaceKHR>(vulkanSurface);
+}
+#endif
 
 GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
     return window;
@@ -171,7 +194,7 @@ bool krypton::rapi::Window::isMinimised() const {
 }
 
 bool krypton::rapi::Window::isOccluded() const {
-#ifdef __APPLE__
+#ifdef RAPI_WITH_METAL
     ZoneScoped;
     return mtl::isWindowOccluded(window);
 #else
@@ -191,9 +214,9 @@ void krypton::rapi::Window::pollEvents() {
     glfwPollEvents();
 }
 
-void krypton::rapi::Window::setRapiPointer(RenderAPI* rapi) {
+void krypton::rapi::Window::setUserPointer(void* pointer) const {
     ZoneScoped;
-    glfwSetWindowUserPointer(window, rapi);
+    glfwSetWindowUserPointer(window, pointer);
 }
 
 void krypton::rapi::Window::setWindowTitle(std::string_view newTitle) const {
@@ -210,42 +233,6 @@ void krypton::rapi::Window::waitEvents() {
     ZoneScoped;
     glfwWaitEvents();
 }
-
-#ifdef RAPI_WITH_VULKAN
-VkSurfaceKHR krypton::rapi::Window::createVulkanSurface(VkInstance vkInstance) const {
-    ZoneScoped;
-    // We're not using any GLFW Vulkan functionality, as they load the loader and driver again,
-    // wasting a considerable amount of time.
-    VkSurfaceKHR surface = nullptr;
-#if defined(__APPLE__) && defined(VK_EXT_metal_surface) && defined(RAPI_WITH_METAL)
-    // Device and pixelFormat are populated by MoltenVK.
-    // TODO: Conditionally use VK_MVK_macos_surface.
-    auto layer = createMetalLayer(nullptr, MTL::PixelFormatInvalid);
-
-    VkMetalSurfaceCreateInfoEXT createInfo = {
-        .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
-        .pLayer = layer,
-    };
-    vkCreateMetalSurfaceEXT(vkInstance, &createInfo, nullptr, &surface);
-#endif // TODO: Add support for Windows, Linux, ...
-    if (!surface) [[unlikely]] {
-        std::cerr << "Failed to create window surface." << std::endl;
-        return surface;
-    }
-    return surface;
-}
-
-std::vector<const char*> krypton::rapi::Window::getVulkanInstanceExtensions() {
-    ZoneScoped;
-    uint32_t count;
-    // TODO: Get rid of this glfw vulkan call.
-    const char** extensions = glfwGetRequiredInstanceExtensions(&count);
-    std::vector<const char*> exts(count);
-    for (uint32_t i = 0; i < count; ++i)
-        exts[i] = extensions[i];
-    return exts;
-}
-#endif // #ifdef RAPI_WITH_VULKAN
 
 #ifdef RAPI_WITH_METAL
 CA::MetalLayer* krypton::rapi::Window::createMetalLayer(MTL::Device* device, MTL::PixelFormat pixelFormat) const {

@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #include <Metal/MTLSampler.hpp>
 
 #include <rapi/isampler.hpp>
@@ -36,5 +34,3 @@ namespace krypton::rapi::mtl {
         void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::mtl
-
-#endif

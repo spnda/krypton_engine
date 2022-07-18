@@ -77,6 +77,10 @@ void kr::vk::Shader::createModule() {
         device->setDebugUtilsName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<const uint64_t&>(shader), name.c_str());
 }
 
+VkShaderModule kr::vk::Shader::getHandle() const {
+    return shader;
+}
+
 bool kr::vk::Shader::isParameterObjectCompatible(IShaderParameter* parameter) {
     return true;
 }

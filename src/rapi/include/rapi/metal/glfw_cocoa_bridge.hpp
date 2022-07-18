@@ -1,21 +1,16 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#include <Metal/MTLPixelFormat.hpp>
 #include <QuartzCore/CAMetalLayer.hpp>
 
 namespace krypton::rapi::mtl {
     void setMetalLayerOnWindow(GLFWwindow* window, CA::MetalLayer* layer);
 
-    // Gets the MTLPixelFormat that is the best suitable for the screen that is currently
-    // displaying the window.
-    MTL::PixelFormat getScreenPixelFormat(GLFWwindow* window, bool srgb = true);
+    // Returns 'true' if the display that is currently displaying the GLFWwindow can display the
+    // P3 color gamut, allowing for 10-bit framebuffer images.
+    bool canDisplayP3(GLFWwindow* window);
 
     bool isWindowOccluded(GLFWwindow* window);
 } // namespace krypton::rapi::mtl
-
-#endif // #ifdef RAPI_WITH_METAL

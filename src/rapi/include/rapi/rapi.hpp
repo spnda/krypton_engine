@@ -4,7 +4,6 @@
 #include <span>
 #include <version>
 
-#include <rapi/color_encoding.hpp>
 #include <rapi/idevice.hpp>
 #include <rapi/rapi_backends.hpp>
 #include <rapi/render_pass_attachments.hpp>
@@ -13,10 +12,11 @@
 #include <util/handle.hpp>
 
 #if !defined(__cpp_lib_enable_shared_from_this)
-#pragma error "Requires std::enable_shared_from_this"
+    #pragma error "Requires std::enable_shared_from_this"
 #endif
 
 namespace krypton::rapi {
+    class IPhysicalDevice;
     class ITexture;
     class RenderAPI;
     class Window;
@@ -38,6 +38,12 @@ namespace krypton::rapi {
     // A list of backends that are supported on this platform/build
     [[nodiscard]] constexpr Backend getPlatformSupportedBackends() noexcept;
 
+    // This needs to be called before creating a window or a RenderAPI.
+    void initRenderApi();
+
+    // Terminates the RenderAPI context. Also closes all windows.
+    void terminateRenderApi();
+
     /**
      * The RenderAPI interface that can be extended to provide different
      * render backends.
@@ -51,9 +57,9 @@ namespace krypton::rapi {
     public:
         virtual ~RenderAPI() = default;
 
-        [[nodiscard]] virtual auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> = 0;
+        constexpr virtual auto getBackend() const noexcept -> Backend = 0;
 
-        [[nodiscard]] virtual auto getWindow() -> std::shared_ptr<Window> = 0;
+        [[nodiscard]] virtual auto getPhysicalDevices() -> std::vector<IPhysicalDevice*> = 0;
 
         /**
          * Creates the window and initializes the rendering

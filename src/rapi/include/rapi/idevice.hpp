@@ -14,6 +14,7 @@ namespace krypton::shaders {
 namespace krypton::rapi {
     class IBuffer;
     class ICommandBuffer;
+    class IPipeline;
     class IQueue;
     class IRenderPass;
     class ISampler;
@@ -25,7 +26,30 @@ namespace krypton::rapi {
 
     struct DeviceFeatures {
         bool accelerationStructures = false;
+        bool bufferDeviceAddress = false;
         bool rayTracing = false;
+    };
+
+    class IDevice;
+
+    class IPhysicalDevice {
+    public:
+        virtual ~IPhysicalDevice() = default;
+
+        [[nodiscard]] virtual bool canPresentToWindow(Window* window) = 0;
+
+        [[nodiscard]] virtual auto createDevice() -> std::unique_ptr<IDevice> = 0;
+
+        // Returns true for Vulkan implementations which are layered above another graphics API.
+        // These devices are favored less than native implementations, as they cannot provide a
+        // fully conformant Vulkan implementation.
+        [[nodiscard]] virtual bool isPortabilityDriver() const = 0;
+
+        // This evaluates if the physical device supports the minimum requirements for the
+        // RenderAPI to function.
+        [[nodiscard]] virtual bool meetsMinimumRequirement() = 0;
+
+        [[nodiscard]] virtual auto supportedDeviceFeatures() -> DeviceFeatures = 0;
     };
 
     class IDevice {
@@ -38,6 +62,8 @@ namespace krypton::rapi {
         virtual ~IDevice() = default;
 
         [[nodiscard]] virtual auto createBuffer() -> std::shared_ptr<IBuffer> = 0;
+
+        [[nodiscard]] virtual auto createPipeline() -> std::shared_ptr<IPipeline> = 0;
 
         [[nodiscard]] virtual auto createRenderPass() -> std::shared_ptr<IRenderPass> = 0;
 
@@ -57,5 +83,9 @@ namespace krypton::rapi {
         [[nodiscard]] virtual auto getDeviceName() -> std::string_view = 0;
 
         [[nodiscard]] virtual auto getPresentationQueue() -> std::shared_ptr<IQueue> = 0;
+
+        // Indicates support for creating and presenting to a swapchain. If false, the device
+        // cannot be used to render onto any connected display.
+        [[nodiscard]] virtual bool isHeadless() const noexcept = 0;
     };
 } // namespace krypton::rapi

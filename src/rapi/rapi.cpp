@@ -1,8 +1,10 @@
+#include <Tracy.hpp>
+
 #ifdef RAPI_WITH_METAL
-#include <rapi/backend_metal.hpp>
+    #include <rapi/backend_metal.hpp>
 #endif
 #ifdef RAPI_WITH_VULKAN
-#include <rapi/backend_vulkan.hpp>
+    #include <rapi/backend_vulkan.hpp>
 #endif
 
 #include <rapi/rapi.hpp>
@@ -11,7 +13,14 @@
 namespace kr = krypton::rapi;
 namespace kl = krypton::log;
 
+namespace krypton::rapi {
+    void glfwErrorCallback(int error, const char* desc) {
+        kl::err("GLFW error {}: {}", error, desc);
+    }
+} // namespace krypton::rapi
+
 std::shared_ptr<kr::RenderAPI> kr::getRenderApi(Backend backend) noexcept(false) {
+    ZoneScoped;
     switch (backend) {
         case Backend::Metal: {
 #ifdef RAPI_WITH_METAL
@@ -48,4 +57,17 @@ constexpr kr::Backend kr::getPlatformSupportedBackends() noexcept {
 std::shared_ptr<kr::RenderAPI> kr::RenderAPI::getPointer() noexcept {
     // getRenderApi already creates std::make_shared so calling shared_from_this should be safe.
     return shared_from_this();
+}
+
+void kr::initRenderApi() {
+    ZoneScoped;
+    if (!::glfwInit()) [[unlikely]]
+        kl::throwError("glfwInit failed. Probably an unsupported platform!");
+
+    glfwSetErrorCallback(glfwErrorCallback);
+}
+
+void kr::terminateRenderApi() {
+    ZoneScoped;
+    glfwTerminate();
 }

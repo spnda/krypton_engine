@@ -37,6 +37,7 @@ namespace krypton::rapi::vk {
         ~Shader() override = default;
 
         void createModule() override;
+        auto getHandle() const -> VkShaderModule;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
     };

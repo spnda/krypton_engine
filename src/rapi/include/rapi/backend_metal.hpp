@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RAPI_WITH_METAL
-
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -17,6 +15,7 @@
 namespace krypton::rapi {
     namespace mtl {
         class CommandBuffer;
+        class PhysicalDevice;
         class Texture;
     } // namespace mtl
 
@@ -24,21 +23,21 @@ namespace krypton::rapi {
         friend std::shared_ptr<RenderAPI> krypton::rapi::getRenderApi(Backend backend) noexcept(false);
         friend class mtl::CommandBuffer;
 
-        std::shared_ptr<Window> window;
-
         NS::AutoreleasePool* backendAutoreleasePool = nullptr;
         NS::AutoreleasePool* frameAutoreleasePool = nullptr;
+
+        // We keep a list of physical devices around. This is mainly due to lifetime issues with
+        // mtl::Device storing a raw pointer to its corresponding mtl::PhysicalDevice.
+        std::vector<mtl::PhysicalDevice> physicalDevices;
 
         MetalBackend();
 
     public:
         ~MetalBackend() noexcept override;
 
-        auto getSuitableDevice(DeviceFeatures features) -> std::shared_ptr<IDevice> override;
-        auto getWindow() -> std::shared_ptr<Window> override;
+        constexpr auto getBackend() const noexcept -> Backend override;
+        auto getPhysicalDevices() -> std::vector<IPhysicalDevice*> override;
         void init() override;
         void shutdown() override;
     };
 } // namespace krypton::rapi
-
-#endif // #ifdef RAPI_WITH_METAL

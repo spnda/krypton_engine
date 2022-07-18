@@ -12,7 +12,17 @@ kr::mtl::Swapchain::Swapchain(MTL::Device* device, Window* window) : window(wind
 
 void kr::mtl::Swapchain::create(TextureUsage usage) {
     ZoneScoped;
-    pixelFormat = mtl::getScreenPixelFormat(window->getWindowPointer());
+    canDisplayP3 = false;
+    // canDisplayP3 = mtl::canDisplayP3(window->getWindowPointer());
+
+    if (canDisplayP3) {
+        pixelFormat = MTL::PixelFormatBGRA10_XR_sRGB;
+        format = TextureFormat::BGRA10_SRGB;
+    } else {
+        pixelFormat = MTL::PixelFormatRGBA8Unorm_sRGB;
+        format = TextureFormat::RGBA8_SRGB;
+    }
+
     layer = reinterpret_cast<CA::MetalLayerWrapper*>(window->createMetalLayer(device, pixelFormat));
     layer->setMaximumDrawableCount(3);
 }
@@ -20,6 +30,10 @@ void kr::mtl::Swapchain::create(TextureUsage usage) {
 void kr::mtl::Swapchain::destroy() {
     ZoneScoped;
     layer->retain()->release();
+}
+
+kr::TextureFormat kr::mtl::Swapchain::getDrawableFormat() {
+    return format;
 }
 
 kr::ITexture* kr::mtl::Swapchain::getDrawable() {
@@ -32,17 +46,15 @@ uint32_t kr::mtl::Swapchain::getImageCount() {
     return layer->maximumDrawableCount();
 }
 
-std::unique_ptr<kr::ITexture> kr::mtl::Swapchain::nextImage(ISemaphore* signal, uint32_t* imageIndex, bool* needsResize) {
+void kr::mtl::Swapchain::nextImage(ISemaphore* signal, bool* needsResize) {
     ZoneScoped;
     currentMetalDrawable = layer->nextDrawable();
     currentDrawable = std::make_unique<Drawable>(device, currentMetalDrawable);
     dynamic_cast<Semaphore*>(signal)->signal();
-    *imageIndex = 0;
     *needsResize = false;
-    return nullptr;
 }
 
-void kr::mtl::Swapchain::present(IQueue* queue, ISemaphore* wait, uint32_t* imageIndex, bool* needsResize) {
+void kr::mtl::Swapchain::present(IQueue* queue, ISemaphore* wait, bool* needsResize) {
     ZoneScoped;
     dynamic_cast<Semaphore*>(wait)->wait();
     currentMetalDrawable->present();

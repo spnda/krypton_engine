@@ -2,6 +2,7 @@
 
 #include <rapi/metal/metal_buffer.hpp>
 #include <rapi/metal/metal_device.hpp>
+#include <rapi/metal/metal_pipeline.hpp>
 #include <rapi/metal/metal_queue.hpp>
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
@@ -14,12 +15,60 @@
 
 namespace kr = krypton::rapi;
 
+#pragma region mtl::PhysicalDevice
+kr::mtl::PhysicalDevice::PhysicalDevice(MTL::Device* device) noexcept : device(device) {}
+
+bool kr::mtl::PhysicalDevice::canPresentToWindow(Window* window) {
+    ZoneScoped;
+    // I think with Metal it doesn't matter.
+    return true;
+}
+
+std::unique_ptr<kr::IDevice> kr::mtl::PhysicalDevice::createDevice() {
+    ZoneScoped;
+    return std::make_unique<Device>(device, DeviceFeatures {});
+}
+
+bool kr::mtl::PhysicalDevice::isPortabilityDriver() const {
+    ZoneScoped;
+    // There are no Metal-on-XYZ drivers.
+    return false;
+}
+
+bool kr::mtl::PhysicalDevice::meetsMinimumRequirement() {
+    ZoneScoped;
+    if (device->argumentBuffersSupport() == MTL::ArgumentBuffersTier1)
+        return false;
+
+    // I want to lower this requirement to Metal 2 devices and only conditionally expose
+    // Metal 3 device features with kr::DeviceFeatures.
+    if (!device->supportsFamily(MTL::GPUFamilyMetal3))
+        return false;
+
+    return true;
+}
+
+kr::DeviceFeatures kr::mtl::PhysicalDevice::supportedDeviceFeatures() {
+    ZoneScoped;
+    return DeviceFeatures {
+        .bufferDeviceAddress = true, // Given because of Metal 3 requirement.
+        .accelerationStructures = false,
+        .rayTracing = false,
+    };
+}
+#pragma endregion
+
+#pragma region mtl::Device
 kr::mtl::Device::Device(MTL::Device* device, krypton::rapi::DeviceFeatures features) noexcept : IDevice(features), device(device) {
     name = device->name()->cString(NS::UTF8StringEncoding);
 }
 
 std::shared_ptr<kr::IBuffer> kr::mtl::Device::createBuffer() {
     return std::make_shared<mtl::Buffer>(device);
+}
+
+std::shared_ptr<kr::IPipeline> kr::mtl::Device::createPipeline() {
+    return std::make_shared<mtl::Pipeline>(device);
 }
 
 std::shared_ptr<kr::IRenderPass> kr::mtl::Device::createRenderPass() {
@@ -72,3 +121,8 @@ std::string_view kr::mtl::Device::getDeviceName() {
 std::shared_ptr<kr::IQueue> kr::mtl::Device::getPresentationQueue() {
     return std::make_shared<kr::mtl::Queue>(device, device->newCommandQueue());
 }
+
+bool kr::mtl::Device::isHeadless() const noexcept {
+    return device->isHeadless();
+}
+#pragma endregion

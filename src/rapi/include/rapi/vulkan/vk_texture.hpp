@@ -6,7 +6,7 @@
 #include <rapi/vulkan/vma.hpp>
 
 namespace krypton::rapi::vk {
-    VkFormat getVulkanFormat(TextureFormat format, ColorEncoding encoding);
+    VkFormat getVulkanFormat(TextureFormat format);
     VkImageUsageFlags getVulkanImageUsage(TextureUsage usage);
 
     class Texture final : public ITexture {
@@ -14,12 +14,12 @@ namespace krypton::rapi::vk {
         VmaAllocator allocator;
 
         VmaAllocation allocation = nullptr;
+        VmaAllocationInfo allocationInfo = {};
         VkImage image = nullptr;
         VkImageView imageView = nullptr;
 
         std::string name = {};
-        ColorEncoding encoding = ColorEncoding::LINEAR;
-        TextureFormat format = TextureFormat::RGBA8;
+        TextureFormat format = TextureFormat::RGBA8_SRGB;
         TextureUsage usage;
         VkComponentMapping mapping = {};
 
@@ -28,7 +28,8 @@ namespace krypton::rapi::vk {
         ~Texture() override = default;
 
         void create(TextureFormat format, uint32_t width, uint32_t height) override;
-        void setColorEncoding(ColorEncoding encoding) override;
+        [[nodiscard]] auto getHandle() const noexcept -> VkImage;
+        [[nodiscard]] auto getView() const noexcept -> VkImageView;
         void setName(std::string_view name) override;
         void setSwizzling(SwizzleChannels swizzle) override;
         void uploadTexture(std::span<std::byte> data) override;

@@ -1,11 +1,11 @@
 #include <Tracy.hpp>
 
 #ifdef WIN32
-#define WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
 // We disable clang-format as the order of these headers matters!
 // clang-format off
-#include <Windows.h>
-#include <processthreadsapi.h>
+    #include <Windows.h>
+    #include <processthreadsapi.h>
 // clang-format on
 #endif
 

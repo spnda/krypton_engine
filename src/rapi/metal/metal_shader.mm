@@ -139,6 +139,10 @@ void kr::mtl::FragmentShader::createModule() {
     function = library->newFunction(NSSTRING("main0"));
 }
 
+MTL::Function* kr::mtl::FragmentShader::getFunction() const {
+    return function;
+}
+
 bool kr::mtl::FragmentShader::isParameterObjectCompatible(IShaderParameter* parameter) {
     return true;
 }
@@ -193,6 +197,10 @@ void kr::mtl::VertexShader::createModule() {
     compileOptions->release();
 
     function = library->newFunction(NSSTRING("main0"));
+}
+
+MTL::Function* kr::mtl::VertexShader::getFunction() const {
+    return function;
 }
 
 bool kr::mtl::VertexShader::isParameterObjectCompatible(IShaderParameter* parameter) {

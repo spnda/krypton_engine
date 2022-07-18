@@ -1,5 +1,7 @@
 #include <algorithm>
 
+#include <volk.h>
+
 #include <Tracy.hpp>
 
 #include <rapi/vulkan/vk_fmt.hpp>
@@ -17,18 +19,18 @@ struct fmt::formatter<kr::vk::Version> {
     }
 
     template <typename FormatContext>
-    inline auto format(kr::vk::Version const& result, FormatContext& ctx) {
+    inline auto format(kr::vk::Version const& result, FormatContext& ctx) const {
         return fmt::format_to(ctx.out(), "{}.{}.{}", VK_API_VERSION_MAJOR(result.ver), VK_API_VERSION_MINOR(result.ver),
                               VK_API_VERSION_PATCH(result.ver));
     }
 };
 
-std::vector<VkExtensionProperties> getAvailableInstanceExtensions() {
+std::vector<VkExtensionProperties> getAvailableInstanceExtensions(const char* layerName = nullptr) {
     ZoneScoped;
     uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    vkEnumerateInstanceExtensionProperties(layerName, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+    vkEnumerateInstanceExtensionProperties(layerName, &extensionCount, extensions.data());
     return extensions;
 }
 
@@ -45,52 +47,95 @@ void kr::vk::Instance::create() {
     ZoneScopedN("vk::Instance::create");
     auto result = volkInitialize();
     if (result != VK_SUCCESS) [[unlikely]]
-        throw std::runtime_error("No compatible vulkan loader or driver found!");
+        kl::throwError("No compatible vulkan loader or driver found!");
 
-    instanceVersion.ver = volkGetInstanceVersion();
-    if (instanceVersion.ver < VK_API_VERSION_1_1)
-        kl::throwError("The Vulkan instance version is lower than 1.1, yet we require at least 1.1. Cannot proceed.");
+    {
+        // Volk checks for vkEnumerateInstanceVersion being nullptr, determining if the loader only
+        // supports 1.0.
+        instanceVersion.ver = volkGetInstanceVersion();
+        if (instanceVersion.ver < VK_API_VERSION_1_1)
+            kl::throwError("The Vulkan implementation only supports Vulkan 1.0. Please try and update your drivers.");
 
-    availableLayers = getAvailableInstanceLayers();
-    kl::log("The Vulkan loader reports following instance layers: {}", fmt::join(availableLayers, ", "));
+        availableLayers = getAvailableInstanceLayers();
+        kl::log("The Vulkan loader reports following instance layers: {}", fmt::join(availableLayers, ", "));
 
-    availableExtensions = getAvailableInstanceExtensions();
-    kl::log("The Vulkan loader reports following instance extensions: {}", fmt::join(availableExtensions, ", "));
+        availableExtensions = getAvailableInstanceExtensions();
+        kl::log("The Vulkan loader reports following instance extensions: {}", fmt::join(availableExtensions, ", "));
+    }
 
+    std::vector<const char*> instanceLayers = {};
+    std::vector<const char*> instanceExtensions = {};
     bool hasDebugUtils = false;
-    std::vector<const char*> instanceExtensions = {
-        // The majority of implementations (around 65%) support this extension, and the only ones
-        // that don't seem to all be Linux drivers...
-        VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
-    };
+#ifdef KRYPTON_DEBUG
+    bool hasValidationFeatures = false;
+#endif
+
+    for (auto& layer : availableLayers) {
+        if (std::strcmp(layer.layerName, "VK_LAYER_KHRONOS_synchronization2") == 0) {
+            instanceLayers.emplace_back("VK_LAYER_KHRONOS_synchronization2");
+        }
+#ifdef KRYPTON_DEBUG
+        else if (std::strcmp(layer.layerName, "VK_LAYER_KHRONOS_validation") == 0) {
+            instanceLayers.emplace_back("VK_LAYER_KHRONOS_validation");
+
+            auto validationExtensions = getAvailableInstanceExtensions("VK_LAYER_KHRONOS_validation");
+            kl::log("The LAYER_KHRONOS_validation exposes following instance extensions: {}", fmt::join(validationExtensions, ", "));
+            for (auto& extension : validationExtensions) {
+                if (std::strcmp(extension.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) == 0) {
+                    instanceExtensions.emplace_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+                    hasValidationFeatures = true;
+                    break;
+                }
+            }
+            break;
+        }
+#endif
+    }
 
     // On macOS the Vulkan loader enforces the KHR_portability_enumeration instance extension to be
     // always requested if it is available.
     for (auto& extension : availableExtensions) {
         if (std::strcmp(extension.extensionName, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
-            instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+            instanceExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        } else if (std::strcmp(extension.extensionName, VK_KHR_SURFACE_EXTENSION_NAME) == 0) {
+            // The window automatically adds KHR_surface for us, and extensions need to be unique per spec.
+            headless = false;
+        } else if (std::strcmp(extension.extensionName, VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) == 0) {
+            // The majority of implementations (around 65%) support this extension, and the only ones
+            // that don't seem to all be Linux drivers...
+            instanceExtensions.emplace_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
         } else if (std::strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
 #ifdef KRYPTON_DEBUG
             hasDebugUtils = true;
-            instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            instanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
         }
     }
 
-    auto windowExtensions = Window::getVulkanInstanceExtensions();
-    instanceExtensions.insert(instanceExtensions.end(), windowExtensions.begin(), windowExtensions.end());
+    if (!headless) {
+        Window::getRequiredVulkanExtensions(instanceExtensions);
+        // Window::appendRequiredVulkanExtensions(availableExtensions, instanceExtensions);
+    }
+
     kl::log("Creating a Vulkan {} instance with these extensions: {}", instanceVersion, fmt::join(instanceExtensions, ", "));
 
-    std::vector<const char*> instanceLayers = {};
-    if (hasDebugUtils) {
-        instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
-    }
+#ifdef KRYPTON_DEBUG
+    VkValidationFeaturesEXT validationFeatures = {
+        .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+    };
+    std::vector<VkValidationFeatureEnableEXT> validationFeaturesEnable = {};
+    std::vector<VkValidationFeatureDisableEXT> validationFeaturesDisable = {};
+    if (hasValidationFeatures) {
+        // TODO: Load the enable/disable values from some config perhaps?
+        validationFeaturesEnable.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+        validationFeaturesEnable.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
 
-    for (auto& layer : availableLayers) {
-        if (std::strcmp(layer.layerName, "VK_LAYER_KHRONOS_synchronization2") == 0) {
-            instanceLayers.push_back("VK_LAYER_KHRONOS_synchronization2");
-        }
+        validationFeatures.enabledValidationFeatureCount = validationFeaturesEnable.size();
+        validationFeatures.pEnabledValidationFeatures = validationFeaturesEnable.data();
+        validationFeatures.disabledValidationFeatureCount = validationFeaturesDisable.size();
+        validationFeatures.pDisabledValidationFeatures = validationFeaturesDisable.data();
     }
+#endif
 
     VkApplicationInfo appInfo {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -110,6 +155,12 @@ void kr::vk::Instance::create() {
         .enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size()),
         .ppEnabledExtensionNames = instanceExtensions.data(),
     };
+
+#ifdef KRYPTON_DEBUG
+    if (hasValidationFeatures)
+        instanceInfo.pNext = &validationFeatures;
+#endif
+
     result = vkCreateInstance(&instanceInfo, nullptr, &instance);
     if (result != VK_SUCCESS) [[unlikely]]
         kl::throwError("Failed to create an Vulkan instance: {}!", result);
@@ -125,8 +176,7 @@ void kr::vk::Instance::createDebugUtilsMessenger() {
     VkDebugUtilsMessengerCreateInfoEXT messengerInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .flags = 0, // there are no flags yet
-        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                           VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT,
+        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
                        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
         .pfnUserCallback = debugUtilsCallback,
@@ -145,6 +195,10 @@ void kr::vk::Instance::destroy() {
 
 VkInstance kr::vk::Instance::getHandle() {
     return instance;
+}
+
+bool kr::vk::Instance::isHeadless() const noexcept {
+    return headless;
 }
 
 void kr::vk::Instance::setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback) {

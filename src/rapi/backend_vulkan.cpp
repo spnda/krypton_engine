@@ -1,11 +1,14 @@
-#ifdef RAPI_WITH_VULKAN
-
 #include <array>
 #include <string>
 
 #include <imgui.h>
 
 #include <Tracy.hpp>
+#include <volk.h>
+
+#ifdef __APPLE__
+    #include <Foundation/NSAutoreleasePool.hpp>
+#endif
 
 #include <rapi/backend_vulkan.hpp>
 #include <rapi/vulkan/vk_command_buffer.hpp>
@@ -30,13 +33,13 @@ namespace krypton::rapi::vk {
                                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) {
         switch (messageSeverity) {
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-                krypton::log::err(pCallbackData->pMessage);
+                kl::err(pCallbackData->pMessage);
                 break;
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-                krypton::log::warn(pCallbackData->pMessage);
+                kl::warn(pCallbackData->pMessage);
                 break;
             default:
-                krypton::log::log(pCallbackData->pMessage);
+                kl::log(pCallbackData->pMessage);
                 break;
         }
 
@@ -44,34 +47,52 @@ namespace krypton::rapi::vk {
     }
 } // namespace krypton::rapi::vk
 
-krypton::rapi::VulkanBackend::VulkanBackend() {
+kr::VulkanBackend::VulkanBackend() {
     ZoneScoped;
     instance = std::make_unique<vk::Instance>();
     instance->setDebugCallback(vk::vulkanDebugCallback);
-
-    window = std::make_shared<krypton::rapi::Window>("Krypton", 1920, 1080);
+#ifdef __APPLE__
+    autoreleasePool = NS::AutoreleasePool::alloc()->init();
+#endif
 }
 
-krypton::rapi::VulkanBackend::~VulkanBackend() = default;
-
-std::shared_ptr<kr::IDevice> kr::VulkanBackend::getSuitableDevice(krypton::rapi::DeviceFeatures features) {
-    auto device = std::make_shared<vk::Device>(instance.get(), window.get(), features);
-    device->create();
-    return device;
+kr::VulkanBackend::~VulkanBackend() {
+#ifdef __APPLE__
+    autoreleasePool->drain();
+#endif
 }
 
-std::shared_ptr<krypton::rapi::Window> krypton::rapi::VulkanBackend::getWindow() {
-    return window;
+constexpr kr::Backend kr::VulkanBackend::getBackend() const noexcept {
+    return Backend::Vulkan;
 }
 
-void krypton::rapi::VulkanBackend::init() {
+kr::vk::Instance* kr::VulkanBackend::getInstance() const {
+    return instance.get();
+}
+
+std::vector<kr::IPhysicalDevice*> kr::VulkanBackend::getPhysicalDevices() {
     ZoneScoped;
-    window->create(krypton::rapi::Backend::Vulkan);
-    instance->create();
+    std::vector<IPhysicalDevice*> devicePointers(physicalDevices.size());
+    for (auto i = 0UL; i < physicalDevices.size(); ++i) {
+        devicePointers[i] = &physicalDevices[i];
+    }
+    return devicePointers;
 }
 
-void krypton::rapi::VulkanBackend::shutdown() {
-    instance->destroy();
-    window->destroy();
+void kr::VulkanBackend::init() {
+    ZoneScoped;
+    instance->create();
+
+    uint32_t physicalDeviceCount = 0;
+    vkEnumeratePhysicalDevices(instance->getHandle(), &physicalDeviceCount, nullptr);
+    std::vector<VkPhysicalDevice> vulkanPhysicalDevices(physicalDeviceCount);
+    vkEnumeratePhysicalDevices(instance->getHandle(), &physicalDeviceCount, vulkanPhysicalDevices.data());
+    for (auto& vkPhysicalDevice : vulkanPhysicalDevices) {
+        physicalDevices.emplace_back(vkPhysicalDevice, instance.get()).init();
+    }
 }
-#endif // #ifdef RAPI_WITH_VULKAN
+
+void kr::VulkanBackend::shutdown() {
+    ZoneScoped;
+    instance->destroy();
+}

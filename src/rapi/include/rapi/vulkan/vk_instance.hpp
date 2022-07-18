@@ -2,8 +2,9 @@
 
 #include <vector>
 
-#include <volk.h>
+typedef struct VkInstance_T* VkInstance;
 
+#include <util/attributes.hpp>
 #include <util/nameable.hpp>
 
 namespace krypton::rapi {
@@ -24,6 +25,8 @@ namespace krypton::rapi::vk {
         std::vector<VkExtensionProperties> availableExtensions = {};
         std::vector<VkLayerProperties> availableLayers = {};
 
+        bool headless = true;
+
         void createDebugUtilsMessenger();
 
     public:
@@ -34,6 +37,9 @@ namespace krypton::rapi::vk {
         void create();
         void destroy();
         auto getHandle() -> VkInstance;
+        // If true, the VK_KHR_surface extension and the corresponding platform surface extension
+        // are not enabled, and the device cannot present to a swapchain.
+        ALWAYS_INLINE [[nodiscard]] bool isHeadless() const noexcept;
         void setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback);
     };
 } // namespace krypton::rapi::vk

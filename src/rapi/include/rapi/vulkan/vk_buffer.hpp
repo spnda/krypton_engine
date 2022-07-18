@@ -17,6 +17,7 @@ namespace krypton::rapi::vk {
         VkBuffer buffer = nullptr;
 
         VkDeviceSize bufferSize = 0;
+        VkDeviceSize bufferAddress = 0;
         std::string name;
         BufferUsage usage = BufferUsage::None;
 
@@ -26,8 +27,12 @@ namespace krypton::rapi::vk {
 
         void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) override;
         void destroy() override;
+        [[nodiscard]] auto getHandle() const -> VkBuffer;
+        [[nodiscard]] auto getGPUAddress() const -> uint64_t override;
+        [[nodiscard]] auto getSize() const -> uint64_t override;
+        void mapMemory(void** memory) override;
         void mapMemory(std::function<void(void*)> callback) override;
-        [[nodiscard]] std::size_t getSize() override;
         void setName(std::string_view name) override;
+        void unmapMemory() override;
     };
 } // namespace krypton::rapi::vk

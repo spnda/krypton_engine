@@ -17,6 +17,7 @@ AlignOperands: Align
 AllowAllArgumentsOnNextLine: true
 AlwaysBreakTemplateDeclarations: Yes
 Cpp11BracedListStyle: false
+IndentPPDirectives: BeforeHash
 SortUsingDeclarations: true
 SpaceBeforeCpp11BracedList: true
 SpaceBeforeCtorInitializerColon: true
@@ -26,5 +27,6 @@ SpacesInContainerLiterals: true
 Standard: Latest
 ---
 Language: ObjC
+IndentPPDirectives: BeforeHash
 ObjCBlockIndentWidth: 4
 ...

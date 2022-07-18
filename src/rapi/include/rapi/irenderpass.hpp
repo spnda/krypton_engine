@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <util/attributes.hpp>
+
 namespace krypton::rapi {
     class IShader;
     struct RenderPassAttachment;
@@ -9,17 +11,16 @@ namespace krypton::rapi {
     struct VertexDescriptor;
 
     class IRenderPass {
-    protected:
-        explicit IRenderPass() = default;
-
     public:
         virtual ~IRenderPass() = default;
 
-        virtual void addAttachment(uint32_t index, RenderPassAttachment attachment) = 0;
+        virtual void setAttachment(uint32_t index, RenderPassAttachment attachment) = 0;
+        [[nodiscard]] virtual auto getAttachment(uint32_t index) -> RenderPassAttachment& = 0;
         virtual void build() = 0;
         virtual void destroy() = 0;
-        virtual void setFragmentFunction(const IShader* shader) = 0;
-        virtual void setVertexDescriptor(VertexDescriptor descriptor) = 0;
-        virtual void setVertexFunction(const IShader* shader) = 0;
+
+        ALWAYS_INLINE auto operator[](uint32_t index) -> RenderPassAttachment& {
+            return getAttachment(index);
+        }
     };
 } // namespace krypton::rapi

@@ -57,7 +57,7 @@ void kr::mtl::Sampler::setName(std::string_view newName) {
         descriptor->setLabel(name);
     } else {
 #ifdef KRYPTON_DEBUG
-        krypton::log::warn("Invalid Usage: A Metal sampler cannot be named after it has been created.");
+        kl::warn("Invalid Usage: A Metal sampler cannot be named after it has been created.");
 #endif
     }
 }

@@ -17,7 +17,10 @@ namespace krypton::rapi::mtl {
         Window* window;
         MTL::Device* device;
         CA::MetalLayerWrapper* layer = nullptr;
+
         MTL::PixelFormat pixelFormat = MTL::PixelFormatInvalid;
+        TextureFormat format = TextureFormat::Invalid;
+        bool canDisplayP3 = false;
 
         CA::MetalDrawable* currentMetalDrawable = nullptr;
         std::unique_ptr<Drawable> currentDrawable;
@@ -28,10 +31,11 @@ namespace krypton::rapi::mtl {
 
         void create(TextureUsage usage) override;
         void destroy() override;
+        auto getDrawableFormat() -> TextureFormat override;
         auto getDrawable() -> ITexture* override;
         auto getImageCount() -> uint32_t override;
-        auto nextImage(ISemaphore* signal, uint32_t* imageIndex, bool* needsResize) -> std::unique_ptr<ITexture> override;
-        void present(IQueue* queue, ISemaphore* wait, uint32_t* imageIndex, bool* needsResize) override;
+        void nextImage(ISemaphore* signal, bool* needsResize) override;
+        void present(IQueue* queue, ISemaphore* wait, bool* needsResize) override;
         void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::mtl

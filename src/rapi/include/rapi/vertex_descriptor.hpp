@@ -6,15 +6,19 @@
 
 namespace krypton::rapi {
     enum class VertexFormat : uint32_t {
+        // Four 32-bit signed floats.
         RGBA32_FLOAT,
+        // Three 32-bit signed floats.
         RGB32_FLOAT,
+        // Two 32-bit signed floats.
         RG32_FLOAT,
+        // Four 8-bit unsigned normalized integers.
         RGBA8_UNORM,
     };
 
-    enum class VertexInputRate : uint32_t {
-        Vertex,
-        Instance,
+    enum class VertexInputRate : uint8_t {
+        Vertex = 0,
+        Instance = 1,
     };
 
     struct VertexBufferDescriptor {

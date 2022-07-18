@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <iostream>
 #include <string>
 
 #include <fmt/chrono.h>
@@ -34,7 +33,10 @@ namespace krypton::log {
     [[noreturn]] inline void throwError(const std::string& input) noexcept(false) {
         auto f = fmt::format(fmt::fg(fmt::color::red), input);
         std::time_t t = std::time(nullptr);
-        fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), f);
+        fmt::print(stderr, "{} {}\n",
+                   // We use fmt's fmt::styled to make the time be fmt::color::red and not the console's
+                   // standard red for stderr.
+                   fmt::styled(fmt::format("{:%H:%M:%S} |", fmt::localtime(t)), fmt::fg(fmt::color::red)), f);
         throw std::runtime_error(f);
     }
     // ↑ -------------------  NO PARAMETERS  ------------------- ↑
@@ -42,14 +44,14 @@ namespace krypton::log {
     // ↓ ------------------- WITH PARAMETERS ------------------- ↓
     template <typename... T>
     inline void log(const std::string& input, T&&... args) {
-        auto f = fmt::format(fmt::runtime(input), args...);
+        auto f = fmt::format(fmt::runtime(input), static_cast<T&&>(args)...);
         std::time_t t = std::time(nullptr);
         fmt::print(stdout, "{:%H:%M:%S} | {}\n", fmt::localtime(t), f);
     }
 
     template <typename... T>
     inline void warn(const std::string& input, T&&... args) {
-        auto f = fmt::format(fmt::runtime(input), args...);
+        auto f = fmt::format(fmt::runtime(input), static_cast<T&&>(args)...);
         auto c = fmt::format(fmt::fg(fmt::color::orange), f);
         std::time_t t = std::time(nullptr);
         fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), c);
@@ -57,7 +59,7 @@ namespace krypton::log {
 
     template <typename... T>
     inline void err(const std::string& input, T&&... args) {
-        auto f = fmt::format(fmt::runtime(input), args...);
+        auto f = fmt::format(fmt::runtime(input), static_cast<T&&>(args)...);
         auto c = fmt::format(fmt::fg(fmt::color::red), f);
         std::time_t t = std::time(nullptr);
         fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), c);
@@ -65,10 +67,13 @@ namespace krypton::log {
 
     template <typename... T>
     [[noreturn]] inline void throwError(const std::string& input, T&&... args) noexcept(false) {
-        auto f = fmt::format(fmt::runtime(input), args...);
+        auto f = fmt::format(fmt::runtime(input), static_cast<T&&>(args)...);
         auto c = fmt::format(fmt::fg(fmt::color::red), f);
         std::time_t t = std::time(nullptr);
-        fmt::print(stderr, "{:%H:%M:%S} | {}\n", fmt::localtime(t), c);
+        fmt::print(stderr, "{} {}\n",
+                   // We use fmt's fmt::styled to make the time be fmt::color::red and not the console's
+                   // standard red for stderr.
+                   fmt::styled(fmt::format("{:%H:%M:%S} |", fmt::localtime(t)), fmt::fg(fmt::color::red)), c);
         throw std::runtime_error(f);
     }
     // ↑ ------------------- WITH PARAMETERS ------------------- ↑

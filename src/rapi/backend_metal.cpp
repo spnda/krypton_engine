@@ -1,31 +1,18 @@
-#ifdef RAPI_WITH_METAL
-
-#include <algorithm>
-
-#include <Metal/Metal.hpp>
+#include <Foundation/NSAutoreleasePool.hpp>
+#include <Metal/MTLDevice.hpp>
 
 #include <Tracy.hpp>
 
 #include <rapi/backend_metal.hpp>
-#include <rapi/metal/glfw_cocoa_bridge.hpp>
-#include <rapi/metal/metal_buffer.hpp>
-#include <rapi/metal/metal_command_buffer.hpp>
 #include <rapi/metal/metal_device.hpp>
-#include <rapi/metal/metal_renderpass.hpp>
-#include <rapi/metal/metal_sampler.hpp>
-#include <rapi/metal/metal_shader.hpp>
-#include <rapi/metal/metal_texture.hpp>
 #include <rapi/window.hpp>
-#include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
-namespace ku = krypton::util;
 
 #pragma region MetalBackend
 kr::MetalBackend::MetalBackend() {
     ZoneScoped;
     backendAutoreleasePool = NS::AutoreleasePool::alloc()->init();
-    window = std::make_shared<kr::Window>("Krypton", 1920, 1080);
 }
 
 kr::MetalBackend::~MetalBackend() noexcept {
@@ -39,24 +26,29 @@ kr::MetalBackend::~MetalBackend() noexcept {
     backendAutoreleasePool->drain();
 }
 
-std::shared_ptr<kr::IDevice> kr::MetalBackend::getSuitableDevice(kr::DeviceFeatures features) {
-    ZoneScoped;
-    return std::make_shared<mtl::Device>(MTL::CreateSystemDefaultDevice(), features);
+constexpr kr::Backend kr::MetalBackend::getBackend() const noexcept {
+    return Backend::Metal;
 }
 
-std::shared_ptr<kr::Window> kr::MetalBackend::getWindow() {
-    return window;
+std::vector<kr::IPhysicalDevice*> kr::MetalBackend::getPhysicalDevices() {
+    ZoneScoped;
+    std::vector<IPhysicalDevice*> devicePointers(physicalDevices.size());
+    for (auto i = 0UL; i < physicalDevices.size(); ++i) {
+        devicePointers[i] = &physicalDevices[i];
+    }
+    return devicePointers;
 }
 
 void kr::MetalBackend::init() {
     ZoneScopedN("MetalBackend::init");
-    window->create(kr::Backend::Metal);
-    window->setRapiPointer(static_cast<krypton::rapi::RenderAPI*>(this));
+    auto* array = MTL::CopyAllDevices();
+    for (auto i = 0UL; i < array->count(); ++i) {
+        auto* device = reinterpret_cast<MTL::Device*>(array->object(i));
+        physicalDevices.emplace_back(device);
+    }
 }
 
 void kr::MetalBackend::shutdown() {
     ZoneScoped;
 }
 #pragma endregion
-
-#endif // #ifdef RAPI_WITH_METAL

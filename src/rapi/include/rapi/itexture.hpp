@@ -5,24 +5,39 @@
 #include <string_view>
 #include <type_traits>
 
-#include <rapi/color_encoding.hpp>
 #include <util/nameable.hpp>
 
 namespace krypton::rapi {
     enum class TextureFormat : uint16_t {
-        RGBA8,
-        RGBA16,
-        // These two are Metal specific and used for 10-bit colour depth.
-        BGRA10,
-        BGR10,
-        R8,
-        D32,
+        Invalid = 0,
+
+        RGBA8_UNORM,
+        RGBA8_SRGB,
+        RGBA16_UNORM,
+
+        // The next are Metal-exclusive and used for 10-bit colour depth.
+        BGRA10_UNORM,
+        BGRA10_SRGB,
+        BGR10_UNORM,
+        BGR10_SRGB,
+
+        // 10-bit color depth supported by Vulkan and Metal.
+        A2BGR10_UNORM,
+
+        // Single channel pixel formats
+        R8_UNORM,
+        R8_SRGB,
+
+        // The default depth texture format.
+        D32_FLOAT,
     };
 
-    enum class TextureUsage : uint32_t {
+    enum class TextureUsage : uint8_t {
         SampledImage = 1,
         ColorRenderTarget = 1 << 2,
         DepthRenderTarget = 1 << 3,
+        TransferSource = 1 << 4,
+        TransferDestination = 1 << 5,
     };
 
     enum class TextureSwizzle : uint8_t {
@@ -42,11 +57,11 @@ namespace krypton::rapi {
     };
 
     static constexpr inline TextureUsage operator|(TextureUsage a, TextureUsage b) {
-        return static_cast<TextureUsage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+        return static_cast<TextureUsage>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
     }
 
     static constexpr inline TextureUsage operator&(TextureUsage a, TextureUsage b) {
-        return static_cast<TextureUsage>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+        return static_cast<TextureUsage>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
     }
 
     class ITexture : public util::Nameable {
@@ -55,8 +70,6 @@ namespace krypton::rapi {
         ~ITexture() override = default;
 
         virtual void create(TextureFormat textureFormat, uint32_t width, uint32_t height) = 0;
-
-        virtual void setColorEncoding(ColorEncoding encoding) = 0;
 
         virtual void setSwizzling(SwizzleChannels swizzle) = 0;
 

@@ -1,5 +1,3 @@
-#ifdef RAPI_WITH_METAL
-
 #define GLFW_EXPOSE_NATIVE_COCOA
 #import <GLFW/glfw3.h>
 #import <GLFW/glfw3native.h>
@@ -18,46 +16,19 @@ namespace krypton::rapi::mtl {
         nswindow.contentView.wantsLayer = TRUE;
     }
 
-    MTL::PixelFormat getScreenPixelFormat(GLFWwindow* window, bool srgb) {
+    bool canDisplayP3(GLFWwindow* window) {
         NSScreen* nativeMonitor = nil;
 
-        NSWindow* nsWindow = glfwGetCocoaWindow(window);
-        if ([nsWindow respondsToSelector:@selector(screen)]) {
-            auto screen = [nsWindow screen];
-            nativeMonitor = screen == nil ? [NSScreen mainScreen] : screen;
-        } else {
-            auto* monitor = glfwGetWindowMonitor(window);
-
-            // We're not in fullscreen. Instead, we'll query the display gamut of the "main"
-            // monitor through [NSScreen main].
-            if (monitor == nil)
-                nativeMonitor = [NSScreen mainScreen];
-
-            // If we're fullscreen we can actually fetch the proper NSScreen for our window.
-            CGDirectDisplayID cocoaMonitor = glfwGetCocoaMonitor(monitor);
-            const auto unitNumber = CGDisplayUnitNumber(cocoaMonitor);
-
-            for (NSScreen* screen in [NSScreen screens]) {
-                NSNumber* screenNumber = [screen deviceDescription][@"NSScreenNumber"];
-
-                if (CGDisplayUnitNumber([screenNumber unsignedIntValue]) == unitNumber) {
-                    nativeMonitor = screen;
-                    break;
-                }
-            }
-        }
+        auto screen = [glfwGetCocoaWindow(window) screen];
+        nativeMonitor = screen == nil ? [NSScreen mainScreen] : screen;
 
         if (nativeMonitor == nil)
-            return srgb ? MTL::PixelFormatBGRA8Unorm_sRGB : MTL::PixelFormatBGRA8Unorm;
+            return false;
 
-        bool canDisplayP3 = [nativeMonitor canRepresentDisplayGamut:(NSDisplayGamutP3)];
-        return canDisplayP3 ? (srgb ? MTL::PixelFormatBGRA10_XR_sRGB : MTL::PixelFormatBGRA10_XR)
-                            : (srgb ? MTL::PixelFormatBGRA8Unorm_sRGB : MTL::PixelFormatBGRA8Unorm);
+        return [nativeMonitor canRepresentDisplayGamut:(NSDisplayGamutP3)];
     }
 
     bool isWindowOccluded(GLFWwindow* window) {
         return !([glfwGetCocoaWindow(window) occlusionState] & NSWindowOcclusionStateVisible);
     }
 }
-
-#endif // #ifdef RAPI_WITH_METAL

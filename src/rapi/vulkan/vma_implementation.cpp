@@ -16,8 +16,8 @@ inline void vmaDebugPrint(const char* format, Args&&... args) {
     fmt::printf("\n");
 }
 
-// Some weird macro shenanigans
-#define VMA_DEBUG_LOG(...) ::vmaDebugPrint(__VA_ARGS__)
+    // Some weird macro shenanigans
+    #define VMA_DEBUG_LOG(...) ::vmaDebugPrint(__VA_ARGS__)
 #endif
 
 #include <rapi/vulkan/vma.hpp>

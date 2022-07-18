@@ -4,6 +4,9 @@
 #include <memory>
 #include <vector>
 
+#ifndef GLM_FORCE_INTRINSICS
+    #define GLM_FORCE_INTRINSICS
+#endif
 #include <glm/glm.hpp>
 
 #include <assets/material.hpp>

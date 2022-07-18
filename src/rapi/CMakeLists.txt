@@ -2,8 +2,9 @@ add_library(krypton_rapi)
 add_library(krypton::rapi ALIAS krypton_rapi)
 
 find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
-target_link_libraries(krypton_rapi PRIVATE glfw)
+target_link_libraries(krypton_rapi PRIVATE glfw glm::glm)
 target_link_libraries(krypton_rapi PUBLIC imgui::imgui)
 target_link_libraries(krypton_rapi PUBLIC krypton::assets)
 target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
@@ -11,17 +12,16 @@ target_link_libraries(krypton_rapi PUBLIC krypton::util)
 
 target_compile_features(krypton_rapi PRIVATE cxx_std_20)
 
+# Some configuration for GLM, to 1. enable intrinsics (SSE, AVX, Neon), 2. to enable shader-like
+# vector swizzling, and 3. force inlining all glm functions.
+target_compile_definitions(krypton_rapi PUBLIC GLM_FORCE_INTRINSICS GLM_SWIZZLE GLM_FORCE_INLINE)
+
 target_include_directories(krypton_rapi PUBLIC "include")
 
-# Test if Vulkan is available and include it if so.
-find_package(Vulkan)
-
-message(STATUS "${Vulkan_MoltenVK_LIBRARY}")
-
-if (Vulkan_FOUND)
+if (TARGET Vulkan-Headers)
   add_compile_definitions(RAPI_WITH_VULKAN)
 
-  target_link_libraries(krypton_rapi PRIVATE volk::volk_headers vk-mem-alloc)
+  target_link_libraries(krypton_rapi PRIVATE Vulkan::Headers volk::volk_headers VMA::Headers)
 
   add_source_directory(TARGET krypton_rapi FOLDER "vulkan/")
   add_files(TARGET krypton_rapi "backend_vulkan.cpp")

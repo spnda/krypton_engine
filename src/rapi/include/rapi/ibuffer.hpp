@@ -45,15 +45,17 @@ namespace krypton::rapi {
 
         virtual void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) = 0;
         virtual void destroy() = 0;
+        [[nodiscard]] virtual auto getGPUAddress() const -> uint64_t = 0;
+        [[nodiscard]] virtual auto getSize() const -> uint64_t = 0;
+
+        virtual void mapMemory(void** memory) = 0;
 
         /**
          * Maps CPU accessible memory to a void* for reading and writing. This will not work for
-         * device local memory.
+         * device local memory. This is effectively just a shorthand for mapMemory and unmapMemory.
          */
         virtual void mapMemory(std::function<void(void*)> callback) = 0;
 
-        [[nodiscard]] virtual std::size_t getSize() = 0;
+        virtual void unmapMemory() = 0;
     };
-
-    static_assert(std::is_abstract_v<IBuffer>);
 } // namespace krypton::rapi

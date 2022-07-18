@@ -4,29 +4,27 @@
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_texture.hpp>
 #include <rapi/vulkan/vma.hpp>
+#include <util/assert.hpp>
 #include <util/bits.hpp>
 
 namespace kr = krypton::rapi;
 
 namespace krypton::rapi::vk {
-    VkFormat getVulkanFormat(TextureFormat format, ColorEncoding encoding) {
+    VkFormat getVulkanFormat(TextureFormat format) {
         ZoneScoped;
         switch (format) {
-            case TextureFormat::RGBA8: {
-                if (encoding == ColorEncoding::LINEAR)
-                    return VK_FORMAT_R8G8B8A8_UNORM;
+            case TextureFormat::RGBA8_UNORM:
+                return VK_FORMAT_R8G8B8A8_UNORM;
+            case TextureFormat::RGBA8_SRGB:
                 return VK_FORMAT_R8G8B8A8_SRGB;
-            }
-            case TextureFormat::RGBA16: {
-                if (encoding == ColorEncoding::LINEAR)
-                    return VK_FORMAT_R16G16B16A16_UNORM;
-                return VK_FORMAT_UNDEFINED;
-            }
-            case TextureFormat::R8: {
-                if (encoding == ColorEncoding::LINEAR)
-                    return VK_FORMAT_R8_UNORM;
+            case TextureFormat::RGBA16_UNORM:
+                return VK_FORMAT_R16G16B16A16_UNORM;
+            case TextureFormat::A2BGR10_UNORM:
+                return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+            case TextureFormat::R8_UNORM:
+                return VK_FORMAT_R8_UNORM;
+            case TextureFormat::R8_SRGB:
                 return VK_FORMAT_R8_SRGB;
-            }
             default:
                 return VK_FORMAT_UNDEFINED;
         }
@@ -53,13 +51,14 @@ kr::vk::Texture::Texture(Device* device, VmaAllocator allocator, rapi::TextureUs
 
 void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t height) {
     ZoneScoped;
+    VERIFY(newFormat != TextureFormat::Invalid);
     format = newFormat;
 
     VkImageUsageFlags usageFlags = getVulkanImageUsage(usage);
 
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .format = getVulkanFormat(format, encoding),
+        .format = getVulkanFormat(format),
         .extent = {
             .width = width,
             .height = height,
@@ -67,19 +66,23 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
         .usage = usageFlags,
     };
 
-    VmaAllocationCreateInfo allocationInfo = {
+    VmaAllocationCreateInfo allocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    vmaCreateImage(allocator, &imageInfo, &allocationInfo, &image, &allocation, nullptr);
+    vmaCreateImage(allocator, &imageInfo, &allocationCreateInfo, &image, &allocation, &allocationInfo);
 
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
 }
 
-void kr::vk::Texture::setColorEncoding(ColorEncoding newEncoding) {
-    encoding = newEncoding;
+VkImage kr::vk::Texture::getHandle() const noexcept {
+    return image;
+}
+
+VkImageView kr::vk::Texture::getView() const noexcept {
+    return imageView;
 }
 
 void kr::vk::Texture::setName(std::string_view newName) {
