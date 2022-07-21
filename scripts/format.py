@@ -43,12 +43,13 @@ def format_file(write: bool, file: str):
             write_files = ["-i"] if write else ["--dry-run", "-Werror"]
             call_and_check([clangfmt, *write_files, "--style=file", file])
 
-    if cmakefmt is not None and file.endswith("CMakeLists.txt"):
+    if cmakefmt is not None and (file.endswith("CMakeLists.txt") or file.endswith(".cmake")):
         print(f"Formatting {file}")
         call_and_check([cmakefmt, "-o" if write else "--check", file, file])
 
 
 def main():
+    print(sys.argv, len(sys.argv))
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--write",
@@ -56,7 +57,7 @@ def main():
         default=False,
         action=argparse.BooleanOptionalAction,
     )
-    parser.add_argument("--directory", nargs="*", help="The directories to format")
+    parser.add_argument("--directory", action='append', help="The directories to format")
     parser.add_argument("filenames", nargs="*", help="A list of files to format")
     args = parser.parse_args()
 
@@ -72,12 +73,8 @@ def main():
     if args.directory is not None:
         for directory in args.directory:
             if os.path.isdir(directory):
-                for file in glob.iglob(f"{directory}/**/*", recursive=True):
+                for file in glob.iglob(f"{directory}/**", recursive=True):
                     format_file(args.write, file)
-            else:
-                # This purely exists as the order of arguments can make the parsing ambiguous if
-                # multiple directories are used.
-                format_file(args.write, directory)
 
     for file in args.filenames:
         format_file(args.write, file)

@@ -9,9 +9,7 @@ target_link_libraries(krypton_util PUBLIC Tracy::TracyClient)
 target_link_libraries(krypton_util PUBLIC magic_enum::magic_enum)
 target_link_libraries(krypton_util PUBLIC robin_hood::robin_hood)
 
-if(WIN32
-   OR UNIX
-   AND NOT APPLE)
+if(NOT APPLE)
   target_link_libraries(krypton_util PUBLIC assert)
 endif()
 

@@ -12,7 +12,8 @@ vcpkg_installed/*
 .vs/*
 
 # Optional externel dependencies we don't want to host.
-external/*
+external/**/*
+!external/CMakeLists.txt
 
 # We'll include the VSCode launch configurations.
 !.vscode/tasks.json

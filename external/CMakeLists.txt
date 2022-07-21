@@ -22,12 +22,13 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
               "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/slang-glslang.dll")
     add_dependencies(slang-core slang-glslang-copy)
   elseif(APPLE) # APPLE before UNIX!
-    set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib")
+    set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION
+                                                "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib")
 
     add_custom_target(
-            slang-core-copy ALL
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib"
-            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libslang.dylib")
+      slang-core-copy ALL
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/external/slang/bin/macosx-x64/release/libslang.dylib"
+              "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libslang.dylib")
     add_dependencies(slang-core slang-core-copy)
   elseif(UNIX)
     set_target_properties(slang-core PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/external/slang/bin/linux-x64/release/libslang.so")
@@ -86,7 +87,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}MachineIndependent${GLSLANG_LIB_POSTFIX}")
 endif()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp-beta" AND APPLE)
+if(APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp-beta")
   message(STATUS "Found metal-cpp")
 
   find_library(METAL_LIBRARY Metal)

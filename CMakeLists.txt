@@ -48,7 +48,7 @@ if(MSVC) # cl.exe or clang-cl.exe
   # Microsoft not properly setting __cplusplus by default. AVX should be supported by any AMD/Intel CPU newer than 2011/2012. setting
   # /external makes warnings/diagnostic information not be printed for all headers included with angle-brackets.
   # cmake-format: off
-  add_compile_options(/Zc:__cplusplus /EHsc /W4 /Ob2 /MP /arch:AVX /external:anglebrackets)
+  add_compile_options(/Zc:__cplusplus /EHsc /W4 /Ob2 /MP /arch:AVX /external:W0 /external:anglebrackets)
   # cmake-format: on
 
   if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
@@ -92,7 +92,7 @@ include(add_files)
 include(add_source_directory)
 
 # We add this first as this provides targets other subdirectories require
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/external")
+add_subdirectory("${CMAKE_SOURCE_DIR}/external")
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/assets")

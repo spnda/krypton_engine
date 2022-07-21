@@ -12,13 +12,13 @@ target_link_libraries(krypton_rapi PUBLIC krypton::util)
 
 target_compile_features(krypton_rapi PRIVATE cxx_std_20)
 
-# Some configuration for GLM, to 1. enable intrinsics (SSE, AVX, Neon), 2. to enable shader-like
-# vector swizzling, and 3. force inlining all glm functions.
-target_compile_definitions(krypton_rapi PUBLIC GLM_FORCE_INTRINSICS GLM_SWIZZLE GLM_FORCE_INLINE)
+# Some configuration for GLM, to 1. enable intrinsics (SSE, AVX, Neon), 2. to enable shader-like vector swizzling, and 3. force inlining all
+# glm functions.
+target_compile_definitions(krypton_rapi PUBLIC GLM_FORCE_INTRINSICS GLM_FORCE_SWIZZLE GLM_FORCE_INLINE)
 
 target_include_directories(krypton_rapi PUBLIC "include")
 
-if (TARGET Vulkan-Headers)
+if(TARGET Vulkan-Headers)
   add_compile_definitions(RAPI_WITH_VULKAN)
 
   target_link_libraries(krypton_rapi PRIVATE Vulkan::Headers volk::volk_headers VMA::Headers)
