@@ -20,4 +20,4 @@ if(MSVC)
   set_target_properties(krypton_core PROPERTIES LINK_FLAGS "/ignore:4099")
 endif()
 
-add_files(TARGET krypton_core "main.cpp" "imgui_renderer.cpp")
+add_source_directory(TARGET krypton_core FOLDER ".")

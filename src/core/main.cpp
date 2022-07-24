@@ -79,8 +79,8 @@ auto main(int argc, char* argv[]) -> int {
 
     try {
         // We currently just use the default backend for the current platform.
-        auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
-        // auto rapi = kr::getRenderApi(kr::Backend::Vulkan);
+        // auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
+        auto rapi = kr::getRenderApi(kr::Backend::Vulkan);
         rapi->init();
 
         // Create the window
