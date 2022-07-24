@@ -4,8 +4,9 @@
 #include <string_view>
 #include <vector>
 
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
+#include <glm/fwd.hpp>
 
 #ifdef RAPI_WITH_VULKAN
 typedef struct VkInstance_T* VkInstance;
@@ -42,7 +43,6 @@ namespace krypton::rapi {
      * handles input and other window events.
      */
     class Window final {
-        // We befriend all the RenderAPIs manually here
         friend class RenderAPI;
         friend void window::resizeCallback(GLFWwindow* window, int width, int height);
         friend void window::iconifyCallback(GLFWwindow* window, int iconified);
@@ -60,8 +60,6 @@ namespace krypton::rapi {
 
         bool minimised = false;
 
-        [[nodiscard]] GLFWwindow* getWindowPointer() const;
-
     public:
         explicit Window(uint32_t width, uint32_t height);
         explicit Window(std::string title, uint32_t width, uint32_t height);
@@ -71,8 +69,8 @@ namespace krypton::rapi {
         [[nodiscard]] float getAspectRatio() const;
         [[nodiscard]] auto getContentScale() const -> glm::fvec2;
         [[nodiscard]] auto getFramebufferSize() const -> glm::ivec2;
+        [[nodiscard]] GLFWwindow* getWindowPointer() const;
         [[nodiscard]] auto getWindowSize() const -> glm::ivec2;
-        void initImgui() const;
         [[nodiscard]] bool isMinimised() const;
         [[nodiscard]] bool isOccluded() const;
         static void newFrame();

@@ -1,4 +1,7 @@
+#include <array>
+
 #include <Tracy.hpp>
+#include <glm/vec4.hpp>
 #include <volk.h>
 
 #include <rapi/render_pass_attachments.hpp>
@@ -40,22 +43,34 @@ void kr::vk::RenderPass::build() {
     for (auto& attachment : attachments) {
         auto& second = attachment.second;
 
+        if (second.attachment == nullptr) {
+            attachmentInfos[attachment.first] = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            };
+            continue;
+        }
+
         auto vkTexture = dynamic_cast<Texture*>(second.attachment);
         VkClearValue clearValue;
         std::memcpy(&clearValue.color, &second.clearColor, sizeof(second.clearColor));
         attachmentInfos[attachment.first] = VkRenderingAttachmentInfo {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = vkTexture->getView(),
+            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
             .loadOp = vulkanLoadActions[static_cast<uint8_t>(second.loadAction)],
             .storeOp = vulkanStoreActions[static_cast<uint8_t>(second.storeAction)],
             .clearValue = clearValue,
         };
     }
 
-    renderingInfo.colorAttachmentCount = attachmentInfos.size();
+    renderingInfo.colorAttachmentCount = static_cast<uint32_t>(attachmentInfos.size());
     renderingInfo.pColorAttachments = attachmentInfos.data();
 }
 
 void kr::vk::RenderPass::destroy() {
     ZoneScoped;
+}
+
+const VkRenderingInfo* kr::vk::RenderPass::getRenderingInfo() const noexcept {
+    return &renderingInfo;
 }

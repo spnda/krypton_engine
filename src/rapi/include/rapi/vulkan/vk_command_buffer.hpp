@@ -8,6 +8,7 @@ typedef struct VkCommandPool_T* VkCommandPool;
 
 namespace krypton::rapi::vk {
     class Buffer;
+    class Pipeline;
 
     class CommandBuffer final : public ICommandBuffer {
         class Device* device;
@@ -16,6 +17,8 @@ namespace krypton::rapi::vk {
         VkCommandBuffer cmdBuffer;
 
         // State
+        bool hasBegun = false;
+        Pipeline* boundPipeline = nullptr;
         Buffer* boundVertexBuffer = nullptr;
 
     public:

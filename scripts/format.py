@@ -49,7 +49,6 @@ def format_file(write: bool, file: str):
 
 
 def main():
-    print(sys.argv, len(sys.argv))
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--write",

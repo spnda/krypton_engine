@@ -114,6 +114,10 @@ std::shared_ptr<kr::ITexture> kr::mtl::Device::createTexture(rapi::TextureUsage 
     return std::make_shared<mtl::Texture>(device, usage);
 }
 
+void kr::mtl::Device::destroy() {
+    // MTL::Device lifetimes are not our concern.
+}
+
 std::string_view kr::mtl::Device::getDeviceName() {
     return name;
 }

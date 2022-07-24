@@ -1,19 +1,8 @@
 #pragma once
 
-#include <functional>
-#include <mutex>
 #include <string>
-#include <thread>
 
-#include <rapi/vulkan/vma.hpp>
-
-#include <assets/mesh.hpp>
 #include <rapi/rapi.hpp>
-#include <rapi/vulkan/buffer_descriptions.hpp>
-#include <rapi/vulkan/render_object.hpp>
-#include <rapi/window.hpp>
-#include <util/large_free_list.hpp>
-#include <util/large_vector.hpp>
 
 #ifdef __APPLE__
 namespace NS {
@@ -44,7 +33,7 @@ namespace krypton::rapi {
         explicit VulkanBackend();
 
     public:
-        ~VulkanBackend() override;
+        ~VulkanBackend() noexcept override;
 
         constexpr auto getBackend() const noexcept -> Backend override;
         auto getPhysicalDevices() -> std::vector<IPhysicalDevice*> override;

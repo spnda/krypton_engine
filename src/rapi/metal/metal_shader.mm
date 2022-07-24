@@ -139,6 +139,11 @@ void kr::mtl::FragmentShader::createModule() {
     function = library->newFunction(NSSTRING("main0"));
 }
 
+void kr::mtl::FragmentShader::destroy() {
+    ZoneScoped;
+    function->retain()->release();
+}
+
 MTL::Function* kr::mtl::FragmentShader::getFunction() const {
     return function;
 }
@@ -197,6 +202,11 @@ void kr::mtl::VertexShader::createModule() {
     compileOptions->release();
 
     function = library->newFunction(NSSTRING("main0"));
+}
+
+void kr::mtl::VertexShader::destroy() {
+    ZoneScoped;
+    function->retain()->release();
 }
 
 MTL::Function* kr::mtl::VertexShader::getFunction() const {

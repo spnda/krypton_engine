@@ -24,5 +24,5 @@
     #endif
 
     #define ASSERT_LOWERCASE
-    #include <asserts.hpp>
+    #include <assert.hpp>
 #endif

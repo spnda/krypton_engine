@@ -13,6 +13,8 @@ if(NOT APPLE)
   target_link_libraries(krypton_util PUBLIC assert)
 endif()
 
+compiler_flags(TARGET krypton_util)
+
 target_compile_features(krypton_util PRIVATE cxx_std_20)
 
 target_include_directories(krypton_util PUBLIC "include")

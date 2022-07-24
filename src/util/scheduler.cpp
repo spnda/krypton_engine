@@ -1,6 +1,10 @@
 #include <Tracy.hpp>
 
-#ifdef WIN32
+#if defined __APPLE__ || defined __linux__
+    #define _GNU_SOURCE
+#endif
+
+#if defined WIN32
     #define WIN32_LEAN_AND_MEAN
 // We disable clang-format as the order of these headers matters!
 // clang-format off
@@ -90,14 +94,9 @@ void kt::Scheduler::start() {
 void kt::Scheduler::workerThreadLoop(uint32_t threadId) {
     {
         auto threadName = fmt::format("Worker Thread {}", threadId);
+        // Tracy already set the pthread or Win32 thread names for us within this call, even when
+        // TRACY_ENABLE is not defined.
         tracy::SetThreadName(threadName.c_str());
-
-#if defined(__APPLE__) || defined(__linux__)
-        pthread_setname_np(threadName.c_str());
-#elif WIN32
-        auto wthreadName = std::wstring(threadName.begin(), threadName.end());
-        SetThreadDescription(threadPool.back().native_handle(), wthreadName.c_str());
-#endif
     }
 
     // This thread is supposed to run infinitely.
@@ -125,7 +124,8 @@ void kt::Scheduler::workerThreadLoop(uint32_t threadId) {
 
         // Now, execute the job.
         if (job) {
-            ZoneScoped job();
+            ZoneScoped;
+            job();
         }
     }
 }

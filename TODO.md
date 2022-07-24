@@ -10,4 +10,4 @@ things may or may not happen and might also have different priorities.
 - Implement a SPIR-V validator to validate the SPIR-V passed to the RAPI, and whether it targets
   the correct shader stage and has a given entry point.
 - Add a semaphore abstraction which bases on MTLEvent and Vulkan timeline semaphores.
-- ???
+- Implement a more abstracted interface over descriptor sets.

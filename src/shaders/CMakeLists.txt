@@ -22,11 +22,14 @@ endif()
 
 target_link_libraries(krypton_shaders PUBLIC krypton::util)
 
+compiler_flags(TARGET krypton_shaders)
+
 target_compile_features(krypton_shaders PRIVATE cxx_std_20)
 
 target_include_directories(krypton_shaders PUBLIC "./include")
 
-add_files(TARGET krypton_shaders "include/shaders/glslang_resource.hpp" "include/shaders/shaders.hpp" "shaders.cpp")
+add_source_directory(TARGET krypton_shaders FOLDER "include/shaders/")
+add_files(TARGET krypton_shaders "shaders.cpp")
 
 # Copy shaders into binary directory
 

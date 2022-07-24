@@ -22,7 +22,7 @@
 
 #include <Tracy.hpp>
 #include <fmt/core.h>
-#include <imgui_impl_glfw.h>
+#include <glm/vec2.hpp>
 
 #include <rapi/backend_vulkan.hpp>
 #include <rapi/rapi.hpp>
@@ -31,12 +31,6 @@
 #include <rapi/vulkan/vk_instance.hpp>
 #include <rapi/window.hpp>
 #include <util/logging.hpp>
-
-#ifdef RAPI_WITH_METAL
-    #include <Metal/MTLDevice.hpp>
-    #include <rapi/metal/glfw_cocoa_bridge.hpp>
-    #include <rapi/metal/metal_layer_wrapper.hpp>
-#endif
 
 namespace krypton::rapi::window {
     void keyCallback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] int key, [[maybe_unused]] int scancode,
@@ -66,14 +60,15 @@ namespace krypton::rapi::window {
             // rapi->getWindow()->minimised = false;
         }
     }
-
 } // namespace krypton::rapi::window
 
-krypton::rapi::Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {}
+namespace kr = krypton::rapi;
 
-krypton::rapi::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
+kr::Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {}
 
-void krypton::rapi::Window::getRequiredVulkanExtensions(std::vector<const char*>& instanceExtensions) {
+kr::Window::Window(std::string title, uint32_t width, uint32_t height) : title(std::move(title)), width(width), height(height) {}
+
+void kr::Window::getRequiredVulkanExtensions(std::vector<const char*>& instanceExtensions) {
     ZoneScoped;
     uint32_t count = 0;
     const char** extensions = glfwGetRequiredInstanceExtensions(&count);
@@ -82,11 +77,13 @@ void krypton::rapi::Window::getRequiredVulkanExtensions(std::vector<const char*>
     }
 }
 
-void krypton::rapi::Window::create(RenderAPI* pRenderApi) noexcept(false) {
+void kr::Window::create(RenderAPI* pRenderApi) noexcept(false) {
     ZoneScoped;
     // This method has already been called and completed successfully.
-    if (window)
+    if (window) {
+        kl::warn("Tried calling Window::create on a already created window {}", title);
         return;
+    }
 
     renderApi = pRenderApi;
     backend = renderApi->getBackend();
@@ -125,6 +122,7 @@ void krypton::rapi::Window::create(RenderAPI* pRenderApi) noexcept(false) {
     glfwSetWindowIconifyCallback(window, window::iconifyCallback);
 
     if (backend == Backend::Vulkan) {
+        ZoneScoped;
         auto vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
         auto res = glfwCreateWindowSurface(vulkanRapi->getInstance()->getHandle(), window, nullptr,
                                            reinterpret_cast<VkSurfaceKHR*>(&vulkanSurface));
@@ -133,25 +131,32 @@ void krypton::rapi::Window::create(RenderAPI* pRenderApi) noexcept(false) {
     }
 }
 
-void krypton::rapi::Window::destroy() {
+void kr::Window::destroy() {
     ZoneScoped;
+    if (backend == Backend::Vulkan) {
+        auto vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
+        vkDestroySurfaceKHR(vulkanRapi->getInstance()->getHandle(), reinterpret_cast<VkSurfaceKHR>(vulkanSurface), nullptr);
+        vulkanSurface = nullptr;
+    }
+
     if (window != nullptr) {
         glfwDestroyWindow(window);
+        window = nullptr;
     }
 }
 
-float krypton::rapi::Window::getAspectRatio() const {
+float kr::Window::getAspectRatio() const {
     return static_cast<float>(width) / static_cast<float>(height);
 }
 
-glm::fvec2 krypton::rapi::Window::getContentScale() const {
+glm::fvec2 kr::Window::getContentScale() const {
     ZoneScoped;
     float xScale, yScale;
     glfwGetWindowContentScale(window, &xScale, &yScale);
     return { xScale, yScale };
 }
 
-glm::ivec2 krypton::rapi::Window::getFramebufferSize() const {
+glm::ivec2 kr::Window::getFramebufferSize() const {
     ZoneScoped;
     int tWidth, tHeight;
     glfwGetFramebufferSize(window, &tWidth, &tHeight);
@@ -159,90 +164,57 @@ glm::ivec2 krypton::rapi::Window::getFramebufferSize() const {
 }
 
 #ifdef RAPI_WITH_VULKAN
-VkSurfaceKHR krypton::rapi::Window::getVulkanSurface() const noexcept {
+VkSurfaceKHR kr::Window::getVulkanSurface() const noexcept {
     return reinterpret_cast<VkSurfaceKHR>(vulkanSurface);
 }
 #endif
 
-GLFWwindow* krypton::rapi::Window::getWindowPointer() const {
+GLFWwindow* kr::Window::getWindowPointer() const {
     return window;
 }
 
-glm::ivec2 krypton::rapi::Window::getWindowSize() const {
+glm::ivec2 kr::Window::getWindowSize() const {
     ZoneScoped;
     int tWidth, tHeight;
     glfwGetWindowSize(window, &tWidth, &tHeight);
     return { tWidth, tHeight };
 }
 
-void krypton::rapi::Window::initImgui() const {
-    ZoneScoped;
-    switch (backend) {
-        case Backend::Vulkan:
-            ImGui_ImplGlfw_InitForVulkan(window, true);
-            break;
-        case Backend::Metal:
-            ImGui_ImplGlfw_InitForOther(window, true);
-            break;
-        case Backend::None:
-            break;
-    }
-}
-
-bool krypton::rapi::Window::isMinimised() const {
+bool kr::Window::isMinimised() const {
     return minimised;
 }
 
-bool krypton::rapi::Window::isOccluded() const {
-#ifdef RAPI_WITH_METAL
-    ZoneScoped;
-    return mtl::isWindowOccluded(window);
-#else
+#ifndef __APPLE__
+bool kr::Window::isOccluded() const { // NOLINT
     return false;
+}
 #endif
-}
 
-void krypton::rapi::Window::newFrame() {
+void kr::Window::newFrame() {
     ZoneScoped;
-    // TODO: Move this out of rapi. We can likely reimplement its functionality through what this
-    //       Window class will handle for us in the future.
-    ImGui_ImplGlfw_NewFrame();
 }
 
-void krypton::rapi::Window::pollEvents() {
+void kr::Window::pollEvents() {
     ZoneScoped;
     glfwPollEvents();
 }
 
-void krypton::rapi::Window::setUserPointer(void* pointer) const {
+void kr::Window::setUserPointer(void* pointer) const {
     ZoneScoped;
     glfwSetWindowUserPointer(window, pointer);
 }
 
-void krypton::rapi::Window::setWindowTitle(std::string_view newTitle) const {
+void kr::Window::setWindowTitle(std::string_view newTitle) const {
     ZoneScoped;
     glfwSetWindowTitle(window, newTitle.data());
 }
 
-bool krypton::rapi::Window::shouldClose() const {
+bool kr::Window::shouldClose() const {
     ZoneScoped;
     return glfwWindowShouldClose(window);
 }
 
-void krypton::rapi::Window::waitEvents() {
+void kr::Window::waitEvents() {
     ZoneScoped;
     glfwWaitEvents();
 }
-
-#ifdef RAPI_WITH_METAL
-CA::MetalLayer* krypton::rapi::Window::createMetalLayer(MTL::Device* device, MTL::PixelFormat pixelFormat) const {
-    auto layer = reinterpret_cast<CA::MetalLayerWrapper*>(CA::MetalLayer::layer());
-    if (device != nullptr)
-        layer->setDevice(device);
-    if (pixelFormat != MTL::PixelFormatInvalid)
-        layer->setPixelFormat(pixelFormat);
-    layer->setContentsScale(static_cast<CGFloat>(getContentScale().x));
-    mtl::setMetalLayerOnWindow(window, layer);
-    return layer;
-}
-#endif

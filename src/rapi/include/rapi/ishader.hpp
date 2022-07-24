@@ -62,7 +62,6 @@ namespace krypton::rapi {
         krypton::shaders::ShaderSourceType sourceType;
 
         bool needs_transpile = false;
-        bool has_transpiled = false;
 
         // The constructor creates a copy from the given bytes span. The container previously
         // holding the given bytes can be destroyed right after this constructor has completed.
@@ -82,6 +81,8 @@ namespace krypton::rapi {
         // This actually creates the function module that can be used for creating pipelines.
         // Having not called this, this shader is effectively useless.
         virtual void createModule() = 0;
+
+        virtual void destroy() = 0;
 
         // In debug mode, this lets the implementation check if the parameter object is compatible
         // with this shader, meaning that all shader parameters are covered, and have the correct

@@ -24,13 +24,15 @@ void kr::mtl::Queue::setName(std::string_view newName) {
     queue->setLabel(name);
 }
 
-void kr::mtl::Queue::submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal) {
-    auto buffer = dynamic_cast<mtl::CommandBuffer*>(cmdBuffer)->buffer;
+void kr::mtl::Queue::submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal, IFence* fence) {
+    auto buffer = dynamic_cast<CommandBuffer*>(cmdBuffer)->buffer;
     if (wait != nullptr)
-        dynamic_cast<mtl::Semaphore*>(wait)->wait();
-    buffer->addCompletedHandler([signal](auto* cmdBuffer) {
+        dynamic_cast<Semaphore*>(wait)->wait();
+    buffer->addCompletedHandler([fence, signal](auto* cmdBuffer) {
         if (signal != nullptr)
-            dynamic_cast<mtl::Semaphore*>(signal)->signal();
+            dynamic_cast<Semaphore*>(signal)->signal();
+        if (fence != nullptr)
+            dynamic_cast<Fence*>(fence)->signal();
     });
     buffer->commit();
 }

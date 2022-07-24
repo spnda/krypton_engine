@@ -49,6 +49,12 @@ void kr::vk::Instance::create() {
     if (result != VK_SUCCESS) [[unlikely]]
         kl::throwError("No compatible vulkan loader or driver found!");
 
+#if GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4
+    // Calling glfwInitVulkanLoader bypasses GLFW loading the Vulkan loader again, after volk has
+    // already done so. Sadly, this is only available with GLFW 3.4.
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
+
     {
         // Volk checks for vkEnumerateInstanceVersion being nullptr, determining if the loader only
         // supports 1.0.
@@ -114,7 +120,6 @@ void kr::vk::Instance::create() {
 
     if (!headless) {
         Window::getRequiredVulkanExtensions(instanceExtensions);
-        // Window::appendRequiredVulkanExtensions(availableExtensions, instanceExtensions);
     }
 
     kl::log("Creating a Vulkan {} instance with these extensions: {}", instanceVersion, fmt::join(instanceExtensions, ", "));
@@ -130,9 +135,9 @@ void kr::vk::Instance::create() {
         validationFeaturesEnable.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         validationFeaturesEnable.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
 
-        validationFeatures.enabledValidationFeatureCount = validationFeaturesEnable.size();
+        validationFeatures.enabledValidationFeatureCount = static_cast<uint32_t>(validationFeaturesEnable.size());
         validationFeatures.pEnabledValidationFeatures = validationFeaturesEnable.data();
-        validationFeatures.disabledValidationFeatureCount = validationFeaturesDisable.size();
+        validationFeatures.disabledValidationFeatureCount = static_cast<uint32_t>(validationFeaturesDisable.size());
         validationFeatures.pDisabledValidationFeatures = validationFeaturesDisable.data();
     }
 #endif
@@ -190,6 +195,9 @@ void kr::vk::Instance::createDebugUtilsMessenger() {
 
 void kr::vk::Instance::destroy() {
     ZoneScoped;
+    if (messenger != nullptr)
+        vkDestroyDebugUtilsMessengerEXT(instance, messenger, nullptr);
+
     vkDestroyInstance(instance, nullptr);
 }
 

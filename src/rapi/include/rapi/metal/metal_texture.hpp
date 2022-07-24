@@ -46,6 +46,7 @@ namespace krypton::rapi::mtl {
         ~Texture() override = default;
 
         void create(TextureFormat format, uint32_t width, uint32_t height) override;
+        void destroy() override;
         void setName(std::string_view name) override;
         void setSwizzling(SwizzleChannels swizzle) override;
         void uploadTexture(std::span<std::byte> data) override;

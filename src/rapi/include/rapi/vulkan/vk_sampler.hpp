@@ -16,6 +16,7 @@ namespace krypton::rapi::vk {
         ~Sampler() override = default;
 
         void createSampler() override;
+        void destroy() override;
         auto getHandle() -> VkSampler;
         void setAddressModeU(SamplerAddressMode mode) override;
         void setAddressModeV(SamplerAddressMode mode) override;

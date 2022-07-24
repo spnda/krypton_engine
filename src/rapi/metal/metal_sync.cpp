@@ -7,9 +7,11 @@
 namespace kr = krypton::rapi;
 
 #pragma region mtl::Semaphore
-kr::mtl::Semaphore::Semaphore(MTL::Device* device) : device(device) {}
+kr::mtl::Semaphore::Semaphore(MTL::Device* device) noexcept : device(device) {}
 
 void kr::mtl::Semaphore::create() {}
+
+void kr::mtl::Semaphore::destroy() {}
 
 void kr::mtl::Semaphore::setName(std::string_view name) {}
 
@@ -25,6 +27,35 @@ void kr::mtl::Semaphore::wait() {
 }
 #pragma endregion
 
+#pragma region mtl::Fence
+kr::mtl::Fence::Fence(MTL::Device* device) noexcept : device(device) {}
+
+void kr::mtl::Fence::create(bool signaled) {
+    ZoneScoped;
+    skip = signaled;
+}
+
+void kr::mtl::Fence::destroy() {}
+
+void kr::mtl::Fence::reset() {}
+
+void kr::mtl::Fence::setName(std::string_view name) {}
+
+void kr::mtl::Fence::signal() {
+    ZoneScoped;
+    cv.notify_all();
+}
+
+void kr::mtl::Fence::wait() {
+    ZoneScoped;
+    if (skip)
+        return;
+
+    auto lock = std::unique_lock(mtx);
+    cv.wait(lock, []() { return true; });
+}
+#pragma endregion
+
 #pragma region mtl::Event
 kr::mtl::Event::Event(MTL::Device* device) : device(device) {}
 
@@ -34,6 +65,11 @@ void kr::mtl::Event::create(uint64_t initialValue) {
 
     if (name != nullptr)
         event->setLabel(name);
+}
+
+void kr::mtl::Event::destroy() {
+    ZoneScoped;
+    event->retain()->release();
 }
 
 void kr::mtl::Event::setName(std::string_view newName) {

@@ -9,7 +9,7 @@
 
 namespace kr = krypton::rapi;
 
-kr::vk::Buffer::Buffer(Device* device, VmaAllocator allocator) noexcept : device(device), allocator(allocator) {}
+kr::vk::Buffer::Buffer(Device* device) noexcept : device(device) {}
 
 void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kUsage, krypton::rapi::BufferMemoryLocation location) {
     ZoneScoped;
@@ -56,18 +56,20 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
         .requiredFlags = 0,
     };
 
-    auto result = vmaCreateBuffer(allocator, &bufferInfo, &allocationInfo, &buffer, &allocation, nullptr);
+    auto result = vmaCreateBuffer(device->getAllocator(), &bufferInfo, &allocationInfo, &buffer, &allocation, nullptr);
     if (result != VK_SUCCESS)
         kl::err("Failed to create buffer: {}", result);
 
-    VkBufferDeviceAddressInfo deviceAddressInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = buffer,
-    };
-    if (device->getProperties().apiVersion >= VK_API_VERSION_1_3) {
-        bufferAddress = vkGetBufferDeviceAddress(device->getHandle(), &deviceAddressInfo);
-    } else if (device->isExtensionEnabled(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
-        bufferAddress = vkGetBufferDeviceAddressKHR(device->getHandle(), &deviceAddressInfo);
+    if (device->getEnabledFeatures().bufferDeviceAddress) {
+        VkBufferDeviceAddressInfo deviceAddressInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = buffer,
+        };
+        if (device->getProperties().apiVersion >= VK_API_VERSION_1_3) {
+            bufferAddress = vkGetBufferDeviceAddress(device->getHandle(), &deviceAddressInfo);
+        } else if (vkGetBufferDeviceAddressKHR != nullptr) {
+            bufferAddress = vkGetBufferDeviceAddressKHR(device->getHandle(), &deviceAddressInfo);
+        }
     }
 
     if (!name.empty())
@@ -76,7 +78,7 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
 
 void kr::vk::Buffer::destroy() {
     ZoneScoped;
-    vmaDestroyBuffer(allocator, buffer, allocation);
+    vmaDestroyBuffer(device->getAllocator(), buffer, allocation);
     buffer = nullptr;
     allocation = nullptr;
 }
@@ -98,7 +100,7 @@ uint64_t kr::vk::Buffer::getSize() const {
 
 void kr::vk::Buffer::mapMemory(void** memory) {
     ZoneScoped;
-    auto res = vmaMapMemory(allocator, allocation, memory);
+    auto res = vmaMapMemory(device->getAllocator(), allocation, memory);
     if (res != VK_SUCCESS) [[unlikely]] {
         kl::err("Failed to map buffer memory. Perhaps the buffer is private? {}", res);
     }
@@ -107,24 +109,24 @@ void kr::vk::Buffer::mapMemory(void** memory) {
 void kr::vk::Buffer::mapMemory(std::function<void(void*)> callback) {
     ZoneScoped;
     void* ptr;
-    auto res = vmaMapMemory(allocator, allocation, &ptr);
+    auto res = vmaMapMemory(device->getAllocator(), allocation, &ptr);
     if (res != VK_SUCCESS) [[unlikely]] {
         kl::err("Failed to map buffer memory. Perhaps the buffer is private? {}", res);
         return;
     }
     callback(ptr);
-    vmaUnmapMemory(allocator, allocation);
+    vmaUnmapMemory(device->getAllocator(), allocation);
 }
 
 void kr::vk::Buffer::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (buffer != nullptr)
+    if (buffer != nullptr && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<const uint64_t&>(buffer), name.c_str());
 }
 
 void kr::vk::Buffer::unmapMemory() {
     ZoneScoped;
-    vmaUnmapMemory(allocator, allocation);
+    vmaUnmapMemory(device->getAllocator(), allocation);
 }

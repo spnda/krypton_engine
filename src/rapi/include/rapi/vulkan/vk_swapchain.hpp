@@ -2,6 +2,7 @@
 
 #include <rapi/iswapchain.hpp>
 #include <rapi/itexture.hpp>
+#include <rapi/vulkan/vk_texture.hpp>
 
 // fwd.
 typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
@@ -20,8 +21,10 @@ namespace krypton::rapi::vk {
         std::vector<VkSurfaceFormatKHR> formats;
 
         // Images
-        VkImageUsageFlags imageFlags;
+        VkImageUsageFlags imageFlags = 0;
+        TextureUsage textureUsage = TextureUsage::None;
         uint32_t imageCount = 0;
+        std::vector<SwapchainTexture> textures;
         std::vector<VkImage> images;
         std::vector<VkImageView> imageViews;
 

@@ -1,9 +1,5 @@
-#include <array>
-#include <string>
-
-#include <imgui.h>
-
 #include <Tracy.hpp>
+#include <glm/mat4x3.hpp>
 #include <volk.h>
 
 #ifdef __APPLE__
@@ -56,11 +52,13 @@ kr::VulkanBackend::VulkanBackend() {
 #endif
 }
 
-kr::VulkanBackend::~VulkanBackend() {
 #ifdef __APPLE__
+kr::VulkanBackend::~VulkanBackend() noexcept {
     autoreleasePool->drain();
-#endif
 }
+#else
+kr::VulkanBackend::~VulkanBackend() noexcept = default;
+#endif
 
 constexpr kr::Backend kr::VulkanBackend::getBackend() const noexcept {
     return Backend::Vulkan;

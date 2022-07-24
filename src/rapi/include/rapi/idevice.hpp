@@ -14,6 +14,7 @@ namespace krypton::shaders {
 namespace krypton::rapi {
     class IBuffer;
     class ICommandBuffer;
+    class IFence;
     class IPipeline;
     class IQueue;
     class IRenderPass;
@@ -27,6 +28,7 @@ namespace krypton::rapi {
     struct DeviceFeatures {
         bool accelerationStructures = false;
         bool bufferDeviceAddress = false;
+        bool indexType8Bit = false;
         bool rayTracing = false;
     };
 
@@ -63,6 +65,8 @@ namespace krypton::rapi {
 
         [[nodiscard]] virtual auto createBuffer() -> std::shared_ptr<IBuffer> = 0;
 
+        [[nodiscard]] virtual auto createFence() -> std::shared_ptr<IFence> = 0;
+
         [[nodiscard]] virtual auto createPipeline() -> std::shared_ptr<IPipeline> = 0;
 
         [[nodiscard]] virtual auto createRenderPass() -> std::shared_ptr<IRenderPass> = 0;
@@ -80,7 +84,13 @@ namespace krypton::rapi {
 
         [[nodiscard]] virtual auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> = 0;
 
+        virtual void destroy() = 0;
+
         [[nodiscard]] virtual auto getDeviceName() -> std::string_view = 0;
+
+        [[nodiscard]] inline auto getEnabledFeatures() const noexcept -> const DeviceFeatures& {
+            return enabledFeatures;
+        }
 
         [[nodiscard]] virtual auto getPresentationQueue() -> std::shared_ptr<IQueue> = 0;
 

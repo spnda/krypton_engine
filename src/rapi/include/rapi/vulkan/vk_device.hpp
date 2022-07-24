@@ -22,13 +22,14 @@ namespace krypton::rapi::vk {
         std::vector<VkPhysicalDevice> availablePhysicalDevices = {};
         std::vector<VkQueueFamilyProperties2> queueFamilies = {};
         std::vector<uint32_t> presentQueueIndices;
-        VkPhysicalDeviceProperties properties = {};
 
         robin_hood::unordered_set<std::string> availableExtensions;
 
         VkPhysicalDevice physicalDevice = nullptr;
 
     public:
+        VkPhysicalDeviceProperties properties = {};
+
         explicit PhysicalDevice(VkPhysicalDevice physicalDevice, Instance* instance) noexcept;
 
         bool canPresentToWindow(Window* window) override;
@@ -56,13 +57,13 @@ namespace krypton::rapi::vk {
         uint32_t transferQueueFamily = UINT32_MAX;
 
         void determineQueues(std::vector<VkDeviceQueueCreateInfo>& deviceQueues, std::vector<std::vector<float>>& priorities);
-        void enableDesiredExtensions(std::vector<const char*>& deviceExtensions);
 
     public:
         explicit Device(Instance* instance, vk::PhysicalDevice* pPhysicalDevice, DeviceFeatures features) noexcept;
 
         auto create() -> VkResult;
         auto createBuffer() -> std::shared_ptr<IBuffer> override;
+        auto createFence() -> std::shared_ptr<IFence> override;
         auto createPipeline() -> std::shared_ptr<IPipeline> override;
         auto createRenderPass() -> std::shared_ptr<IRenderPass> override;
         auto createSampler() -> std::shared_ptr<ISampler> override;
@@ -72,7 +73,9 @@ namespace krypton::rapi::vk {
         auto createShaderParameter() -> std::shared_ptr<IShaderParameter> override;
         auto createSwapchain(Window* window) -> std::shared_ptr<ISwapchain> override;
         auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> override;
+        void destroy() override;
         auto getDeviceName() -> std::string_view override;
+        ALWAYS_INLINE [[nodiscard]] auto getAllocator() const -> VmaAllocator;
         [[nodiscard]] auto getHandle() const -> VkDevice;
         [[nodiscard]] auto getInstance() const -> Instance*;
         [[nodiscard]] auto getProperties() const -> const VkPhysicalDeviceProperties&;

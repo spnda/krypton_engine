@@ -11,6 +11,8 @@ target_link_libraries(krypton_core PRIVATE krypton::assets krypton::assets::load
 target_link_libraries(krypton_core PRIVATE krypton::rapi)
 target_link_libraries(krypton_core PRIVATE krypton::util)
 
+compiler_flags(TARGET krypton_core)
+
 target_compile_features(krypton_core PRIVATE cxx_std_20)
 
 if(MSVC)

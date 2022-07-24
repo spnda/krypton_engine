@@ -1,12 +1,13 @@
-#include <span>
+#include <filesystem>
+#include <functional>
 #include <utility>
 
 #include <Tracy.hpp>
+#include <fmt/format.h>
+#include <imgui_impl_glfw.h>
 
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
-#include <rapi/ipipeline.hpp>
-#include <rapi/irenderpass.hpp>
 #include <rapi/iswapchain.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
@@ -49,7 +50,7 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    window->initImgui();
+    ImGui_ImplGlfw_InitForOther(window->getWindowPointer(), true);
 
     swapchain = pSwapchain;
 
@@ -60,15 +61,33 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
 
     buildFontTexture(io);
 
-    // Create the index/vertex buffers
-    vertexBuffer = device->createBuffer();
-    indexBuffer = device->createBuffer();
+    // Create the index/vertex buffers. As the swapchain implementation might have multiple
+    // swapchain images, meaning we have multiple frames in flight, we'll need unique buffers
+    // for each frame in flight to avoid any race conditions.
+    buffers.resize(swapchain->getImageCount());
+    for (auto i = 0UL; i < swapchain->getImageCount(); ++i) {
+        buffers[i].vertexBuffer = device->createBuffer();
+        buffers[i].indexBuffer = device->createBuffer();
 
-    vertexBuffer->setName("ImGui Vertex Buffer");
-    indexBuffer->setName("ImGui Index Buffer");
+        buffers[i].vertexBuffer->setName(fmt::format("ImGui Vertex Buffer {}", i));
+        buffers[i].indexBuffer->setName(fmt::format("ImGui Index Buffer {}", i));
 
-    vertexBuffer->create(sizeof(ImDrawVert), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
-    indexBuffer->create(sizeof(ImDrawIdx), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
+        buffers[i].vertexBuffer->create(sizeof(ImDrawVert), rapi::BufferUsage::UniformBuffer | rapi::BufferUsage::VertexBuffer,
+                                        rapi::BufferMemoryLocation::SHARED);
+        buffers[i].indexBuffer->create(sizeof(ImDrawIdx), rapi::BufferUsage::UniformBuffer | rapi::BufferUsage::IndexBuffer,
+                                       rapi::BufferMemoryLocation::SHARED);
+
+        // Build our uniform buffer
+        buffers[i].uniformBuffer = device->createBuffer();
+        buffers[i].uniformBuffer->setName(fmt::format("ImGui Uniform Buffer {}", i + 1));
+        buffers[i].uniformBuffer->create(sizeof(ImGuiShaderUniforms), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
+
+        updateUniformBuffer(buffers[i].uniformBuffer.get(), io.DisplaySize, ImVec2(0, 0));
+
+        buffers[i].uniformShaderParameter = device->createShaderParameter();
+        buffers[i].uniformShaderParameter->addBuffer(0, buffers[i].uniformBuffer);
+        buffers[i].uniformShaderParameter->buildParameter();
+    }
 
     // Create the shaders
     auto fragGlsl = krypton::shaders::readShaderFile("shaders/ui.frag");
@@ -103,17 +122,17 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
         },
         .attributes = {
             {
-                .offset = offsetof(ImDrawVert, pos),
+                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, pos)),
                 .bufferIndex = 0,
                 .format = rapi::VertexFormat::RG32_FLOAT,
             },
             {
-                .offset = offsetof(ImDrawVert, uv),
+                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, uv)),
                 .bufferIndex = 0,
                 .format = rapi::VertexFormat::RG32_FLOAT,
             },
             {
-                .offset = offsetof(ImDrawVert, col),
+                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, col)),
                 .bufferIndex = 0,
                 .format = rapi::VertexFormat::RGBA8_UNORM,
             },
@@ -148,17 +167,7 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     // clang-format on
     renderPass->build();
 
-    // Build our uniform buffer
-    uniformBuffer = device->createBuffer();
-    uniformBuffer->setName("ImGui Uniform Buffer");
-    uniformBuffer->create(sizeof(ImGuiShaderUniforms), rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
-
-    updateUniformBuffer(io.DisplaySize, ImVec2(0, 0));
-
-    uniformShaderParameter = device->createShaderParameter();
-    uniformShaderParameter->addBuffer(0, uniformBuffer);
-    uniformShaderParameter->buildParameter();
-
+    // Build our font atlas shader parameter
     textureShaderParameter = device->createShaderParameter();
     textureShaderParameter->addTexture(0, fontAtlas);
     textureShaderParameter->addSampler(1, fontAtlasSampler);
@@ -166,7 +175,25 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
 }
 
 void kc::ImGuiRenderer::destroy() {
-    uniformBuffer->destroy();
+    for (auto& buf : buffers) {
+        buf.indexBuffer->destroy();
+        buf.vertexBuffer->destroy();
+        buf.uniformShaderParameter->destroy();
+        buf.uniformBuffer->destroy();
+    }
+
+    textureShaderParameter->destroy();
+    fontAtlasSampler->destroy();
+    fontAtlas->destroy();
+
+    pipeline->destroy();
+    renderPass->destroy();
+
+    fragmentShader->destroy();
+    vertexShader->destroy();
+
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }
 
 void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
@@ -174,11 +201,16 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
     ImGui::Render();
     auto* drawData = ImGui::GetDrawData();
 
+    currentFrame = ++currentFrame % swapchain->getImageCount();
+
+    auto& vertexBuffer = buffers[currentFrame].vertexBuffer;
+    auto& indexBuffer = buffers[currentFrame].indexBuffer;
+
     // Copy all vertex and index buffers into the proper buffers. Because of Vulkan, we cannot copy
     // buffers while within a render pass.
     if (drawData->TotalVtxCount > 0) {
         // Update the uniform buffer
-        updateUniformBuffer(drawData->DisplaySize, drawData->DisplayPos);
+        updateUniformBuffer(buffers[currentFrame].uniformBuffer.get(), drawData->DisplaySize, drawData->DisplayPos);
 
         size_t vertexBufferSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
         size_t indexBufferSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
@@ -186,16 +218,18 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         // We will have to resize the buffers if they're not large enough for all the data.
         if (vertexBufferSize > vertexBuffer->getSize()) {
             vertexBuffer->destroy();
-            vertexBuffer->create(vertexBufferSize, rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
+            vertexBuffer->create(vertexBufferSize, rapi::BufferUsage::UniformBuffer | rapi::BufferUsage::VertexBuffer,
+                                 rapi::BufferMemoryLocation::SHARED);
         }
 
         if (indexBufferSize > indexBuffer->getSize()) {
             indexBuffer->destroy();
-            indexBuffer->create(vertexBufferSize, rapi::BufferUsage::UniformBuffer, rapi::BufferMemoryLocation::SHARED);
+            indexBuffer->create(vertexBufferSize, rapi::BufferUsage::UniformBuffer | rapi::BufferUsage::IndexBuffer,
+                                rapi::BufferMemoryLocation::SHARED);
         }
 
         // Copy the vertex and index buffers
-        vertexBuffer->mapMemory([this, drawData](void* vtxData) {
+        vertexBuffer->mapMemory([indexBuffer, drawData](void* vtxData) {
             indexBuffer->mapMemory([drawData, vtxData](void* idxData) {
                 auto* vertexDestination = static_cast<ImDrawVert*>(vtxData);
                 auto* indexDestination = static_cast<ImDrawIdx*>(idxData);
@@ -205,8 +239,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
                     std::memcpy(vertexDestination, list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert));
                     std::memcpy(indexDestination, list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
-                    vertexDestination += list->VtxBuffer.Size;
-                    indexDestination += list->IdxBuffer.Size;
+                    vertexDestination += list->VtxBuffer.Size * sizeof(ImDrawVert);
+                    indexDestination += list->IdxBuffer.Size * sizeof(ImDrawIdx);
                 }
             });
         });
@@ -214,8 +248,7 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         (*renderPass)[0].attachment = swapchain->getDrawable();
         commandBuffer->beginRenderPass(renderPass.get());
         commandBuffer->bindPipeline(pipeline.get());
-        // We bind the vertex buffer to slot 0 later on.
-        commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Vertex, uniformShaderParameter.get());
+        commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Vertex, buffers[currentFrame].uniformShaderParameter.get());
         commandBuffer->bindShaderParameter(2, shaders::ShaderStage::Fragment, textureShaderParameter.get());
         commandBuffer->bindVertexBuffer(0, vertexBuffer.get(), 0);
         commandBuffer->viewport(0.0, 0.0, drawData->DisplaySize.x * drawData->FramebufferScale.x,
@@ -260,7 +293,7 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
                 commandBuffer->setVertexBufferOffset(0, (vertexOffset + cmd.VtxOffset) * sizeof(ImDrawVert));
                 commandBuffer->bindIndexBuffer(indexBuffer.get(),
                                                sizeof(ImDrawIdx) == 2 ? rapi::IndexType::UINT16 : rapi::IndexType::UINT32, // NOLINT
-                                               (cmd.IdxOffset + indexOffset) * sizeof(ImDrawIdx));
+                                               (cmd.IdxOffset + static_cast<uint32_t>(indexOffset)) * sizeof(ImDrawIdx));
                 commandBuffer->drawIndexed(cmd.ElemCount, 0);
             }
 
@@ -275,6 +308,7 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 void kc::ImGuiRenderer::newFrame() {
     ZoneScoped;
     ImGui::NewFrame();
+    ImGui_ImplGlfw_NewFrame();
 }
 
 void kc::ImGuiRenderer::endFrame() {
@@ -282,7 +316,7 @@ void kc::ImGuiRenderer::endFrame() {
     ImGui::EndFrame();
 }
 
-void kc::ImGuiRenderer::updateUniformBuffer(const ImVec2& displaySize, const ImVec2& displayPos) {
+void kc::ImGuiRenderer::updateUniformBuffer(rapi::IBuffer* uniformBuffer, const ImVec2& displaySize, const ImVec2& displayPos) {
     ZoneScoped;
     uniforms.scale.x = 2.0f / displaySize.x;
     uniforms.scale.y = 2.0f / displaySize.y;

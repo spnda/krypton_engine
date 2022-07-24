@@ -44,35 +44,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:> is a generator expression to remove the Debug/Release
                                                                       # folders.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
-if(MSVC) # cl.exe or clang-cl.exe
-  # Microsoft not properly setting __cplusplus by default. AVX should be supported by any AMD/Intel CPU newer than 2011/2012. setting
-  # /external makes warnings/diagnostic information not be printed for all headers included with angle-brackets.
-  # cmake-format: off
-  add_compile_options(/Zc:__cplusplus /EHsc /W4 /Ob2 /MP /arch:AVX /external:W0 /external:anglebrackets)
-  # cmake-format: on
-
-  if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
-    # CMake auto sets /RTC1 which is incompatible with /O1 and /O2.
-    add_compile_options(/analyze /sdl)
-  else()
-    add_compile_options(/O2)
-  endif()
-else()
-  # Clang, AppleClang, or GCC
-  add_compile_options(
-    -Wall
-    -Wextra
-    -Wmicrosoft
-    -Wold-style-cast
-    -Wno-unused-parameter
-    -pedantic
-    -Og)
-  if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
-    add_compile_options(-O0)
-  else()
-    add_compile_options(-O3)
-  endif()
-endif()
 
 if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
   add_compile_definitions(KRYPTON_DEBUG)
@@ -90,6 +61,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 include(add_files)
 include(add_source_directory)
+include(compiler_flags)
 
 # We add this first as this provides targets other subdirectories require
 add_subdirectory("${CMAKE_SOURCE_DIR}/external")

@@ -17,6 +17,7 @@ namespace krypton::rapi::vk {
         std::vector<VkRenderingAttachmentInfo> attachmentInfos;
         VkRenderingInfo renderingInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .layerCount = 1,
         };
 
     public:
@@ -26,5 +27,6 @@ namespace krypton::rapi::vk {
         auto getAttachment(uint32_t index) -> RenderPassAttachment& override;
         void build() override;
         void destroy() override;
+        [[nodiscard]] auto getRenderingInfo() const noexcept -> const VkRenderingInfo*;
     };
 } // namespace krypton::rapi::vk

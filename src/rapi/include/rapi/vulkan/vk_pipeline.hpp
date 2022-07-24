@@ -57,6 +57,7 @@ namespace krypton::rapi::vk {
         void create() override;
         void destroy() override;
         auto getHandle() const -> VkPipeline;
+        auto getLayout() const -> VkPipelineLayout;
         void setDepthWriteEnabled(bool enabled) override;
         void setFragmentFunction(const IShader* shader) override;
         void setName(std::string_view name) override;

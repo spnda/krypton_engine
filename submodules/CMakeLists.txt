@@ -11,17 +11,19 @@ add_subdirectory("${KRYPTON_SUBMODULES}/magic_enum")
 # SDK.
 add_library(Vulkan-Headers INTERFACE)
 add_library(Vulkan::Headers ALIAS Vulkan-Headers)
-target_include_directories(Vulkan-Headers SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers/include")
+target_include_directories(Vulkan-Headers SYSTEM INTERFACE "${KRYPTON_SUBMODULES}/Vulkan-Headers/include")
 
-# volk automatically calls find_package(Vulkan) if this is ON.
+# volk automatically calls find_package(Vulkan) if VOLK_PULL_IN_VULKAN is ON. VOLK_HEADERS_ONLY makes it only add volk::volk_headers and
+# doesn't try compiling volk::volk statically, which would fail because VOLK_PULL_IN_VULKAN is set to OFF.
 set(VOLK_PULL_IN_VULKAN OFF)
+set(VOLK_HEADERS_ONLY ON)
 add_subdirectory("${KRYPTON_SUBMODULES}/volk")
 
 # We don't want to link to the VMA library as it automatically defines VMA_IMPLEMENTATION for us and we can then not define custom macros to
 # customise the library. Therefore, we'll just create a interface target that only exposes the header.
 add_library(VMA-Headers INTERFACE)
 add_library(VMA::Headers ALIAS VMA-Headers)
-target_include_directories(VMA-Headers SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vk-mem-alloc/include")
+target_include_directories(VMA-Headers SYSTEM INTERFACE "${KRYPTON_SUBMODULES}/vk-mem-alloc/include")
 
 if(NOT APPLE)
   # Apple Clang's libstdcpp has bugs which break the asserts library.
@@ -29,15 +31,15 @@ if(NOT APPLE)
 endif()
 
 # ↓ -------------------  TRACY  ------------------- ↓
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tracy")
+if(NOT EXISTS "${KRYPTON_SUBMODULES}/tracy")
   message(FATAL_ERROR "The tracy submodule does not exist.")
 endif()
 
-add_library(tracy_client "${CMAKE_CURRENT_SOURCE_DIR}/tracy/TracyClient.cpp")
+add_library(tracy_client "${KRYPTON_SUBMODULES}/tracy/TracyClient.cpp")
 add_library(Tracy::TracyClient ALIAS tracy_client)
 
 target_compile_features(tracy_client PUBLIC cxx_std_11)
-target_include_directories(tracy_client SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/tracy/")
+target_include_directories(tracy_client SYSTEM PUBLIC "${KRYPTON_SUBMODULES}/tracy/")
 target_link_libraries(tracy_client PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
 
 if(KRYPTON_USE_TRACY)
@@ -49,7 +51,7 @@ endif()
 # ↑ -------------------  TRACY  ------------------- ↑
 
 # ↓ -------------------  IMGUI  ------------------- ↓
-set(IMGUI_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/imgui")
+set(IMGUI_DIRECTORY "${KRYPTON_SUBMODULES}/imgui")
 if(NOT EXISTS "${IMGUI_DIRECTORY}")
   message(FATAL_ERROR "The imgui submodule does not exist.")
 endif()

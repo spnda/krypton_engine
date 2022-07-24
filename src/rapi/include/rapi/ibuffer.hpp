@@ -2,10 +2,14 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <string_view>
 
 #include <util/nameable.hpp>
+
+namespace std {
+    template <typename func>
+    class function;
+}
 
 namespace krypton::rapi {
     enum class BufferMemoryLocation : uint32_t {
@@ -39,12 +43,15 @@ namespace krypton::rapi {
     }
 
     class IBuffer : public util::Nameable {
+    protected:
+        BufferUsage usage = BufferUsage::None;
 
     public:
         ~IBuffer() override = default;
 
         virtual void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) = 0;
         virtual void destroy() = 0;
+        // Requires the device to have been created with DeviceFeatures::bufferDeviceAddress set to true.
         [[nodiscard]] virtual auto getGPUAddress() const -> uint64_t = 0;
         [[nodiscard]] virtual auto getSize() const -> uint64_t = 0;
 

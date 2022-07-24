@@ -197,6 +197,10 @@ VkPipeline kr::vk::Pipeline::getHandle() const {
     return pipeline;
 }
 
+VkPipelineLayout kr::vk::Pipeline::getLayout() const {
+    return pipelineLayout;
+}
+
 void kr::vk::Pipeline::setDepthWriteEnabled(bool enabled) {
     ZoneScoped;
     depthStencilInfo.depthWriteEnable = enabled;
@@ -210,7 +214,7 @@ void kr::vk::Pipeline::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (pipeline != nullptr)
+    if (pipeline != nullptr && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<const uint64_t&>(pipeline), name.c_str());
 }
 
@@ -226,21 +230,21 @@ void kr::vk::Pipeline::setVertexDescriptor(VertexDescriptor descriptor) {
         auto& binding = bindings[i];
         binding.inputRate = vulkanVertexInputRates[static_cast<uint8_t>(descriptor.buffers[i].inputRate)];
         binding.stride = descriptor.buffers[i].stride;
-        binding.binding = i;
+        binding.binding = static_cast<uint32_t>(i);
     }
 
     attributes.resize(descriptor.attributes.size());
     for (auto i = 0ULL; i < descriptor.attributes.size(); ++i) {
         auto& attribute = attributes[i];
-        attribute.location = i;
+        attribute.location = static_cast<uint32_t>(i);
         attribute.binding = descriptor.attributes[i].bufferIndex;
         attribute.offset = descriptor.attributes[i].offset;
         attribute.format = getVulkanVertexFormat(descriptor.attributes[i].format);
     }
 
-    vertexInputInfo.vertexBindingDescriptionCount = bindings.size();
+    vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
     vertexInputInfo.pVertexBindingDescriptions = bindings.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = attributes.size();
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
     vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 }
 

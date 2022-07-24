@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include <Tracy.hpp>
 
 #include <rapi/ishader.hpp>

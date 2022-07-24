@@ -12,31 +12,35 @@
 namespace krypton::core {
     class ImGuiRenderer final {
         struct ImGuiShaderUniforms {
-            // glm::mat4x4 transform = {};
             glm::fvec2 scale = {};
             glm::fvec2 translate = {};
         } uniforms;
+
+        struct ImGuiFrameBuffers {
+            std::shared_ptr<rapi::IBuffer> vertexBuffer;
+            std::shared_ptr<rapi::IBuffer> indexBuffer;
+            std::shared_ptr<rapi::IBuffer> uniformBuffer;
+            std::shared_ptr<rapi::IShaderParameter> uniformShaderParameter;
+        };
 
         rapi::Window* window;
         rapi::IDevice* device;
         std::shared_ptr<rapi::IRenderPass> renderPass;
         std::shared_ptr<rapi::IPipeline> pipeline;
         rapi::ISwapchain* swapchain = nullptr;
+        uint32_t currentFrame = 0;
 
-        std::shared_ptr<rapi::IBuffer> uniformBuffer;
+        std::vector<ImGuiFrameBuffers> buffers;
+
         std::shared_ptr<rapi::ITexture> fontAtlas;
         std::shared_ptr<rapi::ISampler> fontAtlasSampler;
-        std::shared_ptr<rapi::IShaderParameter> uniformShaderParameter;
         std::shared_ptr<rapi::IShaderParameter> textureShaderParameter;
-
-        std::shared_ptr<rapi::IBuffer> vertexBuffer;
-        std::shared_ptr<rapi::IBuffer> indexBuffer;
 
         std::shared_ptr<rapi::IShader> fragmentShader;
         std::shared_ptr<rapi::IShader> vertexShader;
 
         void buildFontTexture(ImGuiIO& io);
-        void updateUniformBuffer(const ImVec2& displaySize, const ImVec2& displayPos);
+        void updateUniformBuffer(rapi::IBuffer* uniformBuffer, const ImVec2& displaySize, const ImVec2& displayPos);
 
     public:
         explicit ImGuiRenderer(rapi::IDevice* device, rapi::Window* window);

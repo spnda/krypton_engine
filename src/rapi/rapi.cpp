@@ -1,4 +1,5 @@
 #include <Tracy.hpp>
+#include <glfw/glfw3.h>
 
 #ifdef RAPI_WITH_METAL
     #include <rapi/backend_metal.hpp>
@@ -59,15 +60,18 @@ std::shared_ptr<kr::RenderAPI> kr::RenderAPI::getPointer() noexcept {
     return shared_from_this();
 }
 
-void kr::initRenderApi() {
+bool kr::initRenderApi() noexcept {
     ZoneScoped;
-    if (!::glfwInit()) [[unlikely]]
-        kl::throwError("glfwInit failed. Probably an unsupported platform!");
+    if (!::glfwInit()) [[unlikely]] {
+        kl::err("glfwInit failed. Probably an unsupported platform!");
+        return false;
+    }
 
     glfwSetErrorCallback(glfwErrorCallback);
+    return true;
 }
 
-void kr::terminateRenderApi() {
+void kr::terminateRenderApi() noexcept {
     ZoneScoped;
     glfwTerminate();
 }

@@ -5,42 +5,71 @@
 
 #include <Tracy.hpp>
 #include <TracyVulkan.hpp>
+#include <glm/vec4.hpp>
 
 #include <rapi/vulkan/vk_buffer.hpp>
 #include <rapi/vulkan/vk_command_buffer.hpp>
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_pipeline.hpp>
 #include <rapi/vulkan/vk_queue.hpp>
+#include <rapi/vulkan/vk_renderpass.hpp>
+#include <rapi/vulkan/vk_shader.hpp>
 #include <util/assert.hpp>
 
 namespace kr = krypton::rapi;
+
+// clang-format off
+static constexpr std::array<VkIndexType, 3> vulkanIndexTypes {
+    VK_INDEX_TYPE_UINT16,
+    VK_INDEX_TYPE_UINT32,
+    VK_INDEX_TYPE_UINT8_EXT
+};
+// clang-format on
 
 #pragma region vk::CommandBuffer
 kr::vk::CommandBuffer::CommandBuffer(Device* device, Queue* queue, VkCommandBuffer buffer)
     : device(device), queue(queue), cmdBuffer(buffer) {}
 
 void kr::vk::CommandBuffer::begin() {
+    ZoneScoped;
+    // We allow reusing command buffers, therefore we need to reset command buffers here.
+    if (hasBegun)
+        vkResetCommandBuffer(cmdBuffer, 0);
+
     VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = 0,
     };
     vkBeginCommandBuffer(cmdBuffer, &beginInfo);
     TracyVkZone(queue->getTracyContext(), cmdBuffer, "");
+    hasBegun = true;
 }
 
-void kr::vk::CommandBuffer::beginRenderPass(const IRenderPass* renderPass) {}
+void kr::vk::CommandBuffer::beginRenderPass(const IRenderPass* renderPass) {
+    ZoneScoped;
+    if (vkCmdBeginRendering != nullptr) {
+        vkCmdBeginRendering(cmdBuffer, dynamic_cast<const RenderPass*>(renderPass)->getRenderingInfo());
+    } else {
+        vkCmdBeginRenderingKHR(cmdBuffer, dynamic_cast<const RenderPass*>(renderPass)->getRenderingInfo());
+    }
+}
 
 void kr::vk::CommandBuffer::bindIndexBuffer(IBuffer* indexBuffer, IndexType type, uint32_t offset) {
     ZoneScoped;
     auto* vkBuffer = dynamic_cast<Buffer*>(indexBuffer);
-    vkCmdBindIndexBuffer(cmdBuffer, vkBuffer->getHandle(), offset, type == IndexType::UINT16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmdBuffer, vkBuffer->getHandle(), offset, vulkanIndexTypes[static_cast<uint8_t>(type)]);
 }
 
-void kr::vk::CommandBuffer::bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) {}
+void kr::vk::CommandBuffer::bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) {
+    ZoneScoped;
+    // vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline->getLayout(), 0, 1,
+    //                         dynamic_cast<ShaderParameter*>(parameter)->getHandle(), 0, nullptr);
+}
 
 void kr::vk::CommandBuffer::bindPipeline(IPipeline* pipeline) {
     ZoneScoped;
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_cast<Pipeline*>(pipeline)->getHandle());
+    boundPipeline = dynamic_cast<Pipeline*>(pipeline);
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline->getHandle());
 }
 
 void kr::vk::CommandBuffer::bindVertexBuffer(uint32_t index, IBuffer* buffer, uint64_t offset) {
@@ -52,20 +81,28 @@ void kr::vk::CommandBuffer::bindVertexBuffer(uint32_t index, IBuffer* buffer, ui
 
 void kr::vk::CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t firstIndex) {
     ZoneScoped;
-    vkCmdDrawIndexed(cmdBuffer, indexCount, 1, firstIndex, 0, 0);
+    // vkCmdDrawIndexed(cmdBuffer, indexCount, 1UL, firstIndex, 0, 0);
 }
 
 void kr::vk::CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t firstIndex, uint32_t instanceCount, uint32_t firstInstance) {
     ZoneScoped;
-    vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, firstIndex, 0, firstInstance);
+    // vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, firstIndex, 0, firstInstance);
 }
 
 void kr::vk::CommandBuffer::end() {
+    ZoneScoped;
     TracyVkCollect(queue->getTracyContext(), cmdBuffer);
     vkEndCommandBuffer(cmdBuffer);
 }
 
-void kr::vk::CommandBuffer::endRenderPass() {}
+void kr::vk::CommandBuffer::endRenderPass() {
+    ZoneScoped;
+    if (vkCmdEndRendering != nullptr) {
+        vkCmdEndRendering(cmdBuffer);
+    } else {
+        vkCmdEndRenderingKHR(cmdBuffer);
+    }
+}
 
 VkCommandBuffer kr::vk::CommandBuffer::getHandle() const {
     return cmdBuffer;

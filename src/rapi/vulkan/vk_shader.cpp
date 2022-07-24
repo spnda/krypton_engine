@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include <Tracy.hpp>
 #include <volk.h>
 
@@ -23,7 +25,17 @@ void kr::vk::ShaderParameter::buildParameter() {}
 
 void kr::vk::ShaderParameter::destroy() {}
 
-void kr::vk::ShaderParameter::setName(std::string_view newName) {}
+VkDescriptorSet* kr::vk::ShaderParameter::getHandle() {
+    return &set;
+}
+
+void kr::vk::ShaderParameter::setName(std::string_view newName) {
+    ZoneScoped;
+    name = newName;
+
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_DESCRIPTOR_SET, reinterpret_cast<const uint64_t&>(set), name.c_str());
+}
 #pragma endregion
 
 #pragma region vk::Shader
@@ -75,6 +87,12 @@ void kr::vk::Shader::createModule() {
 
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<const uint64_t&>(shader), name.c_str());
+}
+
+void kr::vk::Shader::destroy() {
+    ZoneScoped;
+    vkDestroyShaderModule(device->getHandle(), shader, nullptr);
+    shader = nullptr;
 }
 
 VkShaderModule kr::vk::Shader::getHandle() const {

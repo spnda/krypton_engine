@@ -18,7 +18,7 @@ namespace krypton::util {
         /**
          * Custom iterator to iterate over a LargeVector safely.
          */
-        class Iterator {
+        class Iterator : std::input_iterator_tag {
             friend class LargeVector;
 
             size_t pos = 0;
@@ -32,18 +32,17 @@ namespace krypton::util {
             using value_type = T;
             using difference_type = std::ptrdiff_t;
 
-            explicit constexpr Iterator() = default;
+            constexpr explicit Iterator() = default;
 
             constexpr Iterator& operator++();         /* prefix operator */
             constexpr const Iterator operator++(int); /* postfix operator */
             constexpr T& operator*() const;
             constexpr T* operator->() const;
-            constexpr bool operator==(const Iterator& other) const noexcept = default;
+            constexpr bool operator==(const Iterator& other) const noexcept;
         };
 
-// Apple Clang 13.1 still doesn't support std::forward_iterator...
-#ifndef __APPLE__
-        static_assert(std::forward_iterator<Iterator>); /* Make sure our iterator implementation is correct */
+#if !defined(__APPLE) && !defined(__clang_major__)
+        static_assert(std::input_iterator<Iterator>); /* Make sure our iterator implementation is correct */
 #endif
 
         friend class LargeVector;
@@ -94,6 +93,11 @@ namespace krypton::util {
     template <typename T, size_t blockSize>
     constexpr T* LargeVector<T, blockSize>::Iterator::operator->() const {
         return std::addressof(operator*());
+    }
+
+    template <typename T, size_t blockSize>
+    constexpr bool LargeVector<T, blockSize>::Iterator::operator==(const Iterator& other) const noexcept {
+        return (vector == other.vector) && (pos == other.pos);
     }
 
     template <typename T, size_t blockSize>

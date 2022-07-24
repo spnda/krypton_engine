@@ -29,6 +29,11 @@ void kr::mtl::Sampler::createSampler() {
     descriptor->release();
 }
 
+void kr::mtl::Sampler::destroy() {
+    ZoneScoped;
+    samplerState->retain()->release();
+}
+
 void kr::mtl::Sampler::setAddressModeU(SamplerAddressMode mode) {
     descriptor->setSAddressMode(metalAddressModes[static_cast<uint16_t>(mode)]);
 }

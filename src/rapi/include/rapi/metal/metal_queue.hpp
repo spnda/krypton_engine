@@ -17,6 +17,6 @@ namespace krypton::rapi::mtl {
         auto createCommandPool() -> std::shared_ptr<ICommandBufferPool> override;
         [[nodiscard]] auto getHandle() const -> MTL::CommandQueue*;
         void setName(std::string_view name) override;
-        void submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal) override;
+        void submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal, IFence* fence) override;
     };
 } // namespace krypton::rapi::mtl

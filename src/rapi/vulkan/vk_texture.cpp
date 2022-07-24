@@ -46,8 +46,11 @@ namespace krypton::rapi::vk {
     }
 } // namespace krypton::rapi::vk
 
-kr::vk::Texture::Texture(Device* device, VmaAllocator allocator, rapi::TextureUsage usage)
-    : device(device), allocator(allocator), usage(usage) {}
+#pragma region vk::Texture
+kr::vk::Texture::Texture(Device* device, rapi::TextureUsage usage) : device(device), usage(usage), image(nullptr), imageView(nullptr) {}
+
+kr::vk::Texture::Texture(krypton::rapi::vk::Device* device, rapi::TextureUsage usage, VkImage image, VkImageView imageView)
+    : device(device), usage(usage), image(image), imageView(imageView) {}
 
 void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t height) {
     ZoneScoped;
@@ -71,10 +74,20 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    vmaCreateImage(allocator, &imageInfo, &allocationCreateInfo, &image, &allocation, &allocationInfo);
+    vmaCreateImage(device->getAllocator(), &imageInfo, &allocationCreateInfo, &image, &allocation, &allocationInfo);
 
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
+}
+
+void kr::vk::Texture::destroy() {
+    ZoneScoped;
+    vkDestroyImageView(device->getHandle(), imageView, nullptr);
+    vmaDestroyImage(device->getAllocator(), image, allocation);
+
+    imageView = nullptr;
+    image = nullptr;
+    allocation = nullptr;
 }
 
 VkImage kr::vk::Texture::getHandle() const noexcept {
@@ -105,3 +118,13 @@ void kr::vk::Texture::setSwizzling(SwizzleChannels swizzle) {
 void kr::vk::Texture::uploadTexture(std::span<std::byte> data) {
     ZoneScoped;
 }
+#pragma endregion
+
+#pragma region vk::SwapchainTexture
+kr::vk::SwapchainTexture::SwapchainTexture(krypton::rapi::vk::Device* device, rapi::TextureUsage usage) : Texture(device, usage) {}
+
+void kr::vk::SwapchainTexture::setImage(VkImage image, VkImageView view) noexcept {
+    this->image = image;
+    this->imageView = view;
+}
+#pragma endregion

@@ -4,7 +4,7 @@
 #include <memory>
 #include <optional>
 
-#include <glm/glm.hpp>
+#include <glm/fwd.hpp>
 
 #include <rapi/itexture.hpp>
 

@@ -2,12 +2,11 @@
 
 #include <memory>
 #include <span>
+#include <vector>
 #include <version>
 
 #include <rapi/idevice.hpp>
 #include <rapi/rapi_backends.hpp>
-#include <rapi/render_pass_attachments.hpp>
-#include <rapi/vertex_descriptor.hpp>
 #include <util/consteval_pow.hpp>
 #include <util/handle.hpp>
 
@@ -39,10 +38,10 @@ namespace krypton::rapi {
     [[nodiscard]] constexpr Backend getPlatformSupportedBackends() noexcept;
 
     // This needs to be called before creating a window or a RenderAPI.
-    void initRenderApi();
+    bool initRenderApi() noexcept;
 
     // Terminates the RenderAPI context. Also closes all windows.
-    void terminateRenderApi();
+    void terminateRenderApi() noexcept;
 
     /**
      * The RenderAPI interface that can be extended to provide different

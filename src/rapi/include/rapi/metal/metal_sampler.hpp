@@ -27,6 +27,7 @@ namespace krypton::rapi::mtl {
         ~Sampler() override = default;
 
         void createSampler() override;
+        void destroy() override;
         void setAddressModeU(SamplerAddressMode mode) override;
         void setAddressModeV(SamplerAddressMode mode) override;
         void setAddressModeW(SamplerAddressMode mode) override;

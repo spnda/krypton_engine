@@ -67,6 +67,7 @@ namespace krypton::rapi::mtl {
         ~FragmentShader() override = default;
 
         void createModule() override;
+        void destroy() override;
         auto getFunction() const -> MTL::Function*;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
@@ -94,6 +95,7 @@ namespace krypton::rapi::mtl {
         ~VertexShader() override = default;
 
         void createModule() override;
+        void destroy() override;
         auto getFunction() const -> MTL::Function*;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;

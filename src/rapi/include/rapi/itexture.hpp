@@ -33,6 +33,7 @@ namespace krypton::rapi {
     };
 
     enum class TextureUsage : uint8_t {
+        None = 0,
         SampledImage = 1,
         ColorRenderTarget = 1 << 2,
         DepthRenderTarget = 1 << 3,
@@ -70,6 +71,8 @@ namespace krypton::rapi {
         ~ITexture() override = default;
 
         virtual void create(TextureFormat textureFormat, uint32_t width, uint32_t height) = 0;
+
+        virtual void destroy() = 0;
 
         virtual void setSwizzling(SwizzleChannels swizzle) = 0;
 

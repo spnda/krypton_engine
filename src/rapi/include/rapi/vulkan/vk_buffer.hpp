@@ -11,7 +11,6 @@ typedef struct VmaAllocation_T* VmaAllocation;
 namespace krypton::rapi::vk {
     class Buffer final : public IBuffer {
         class Device* device;
-        VmaAllocator allocator;
 
         VmaAllocation allocation = nullptr;
         VkBuffer buffer = nullptr;
@@ -19,10 +18,9 @@ namespace krypton::rapi::vk {
         VkDeviceSize bufferSize = 0;
         VkDeviceSize bufferAddress = 0;
         std::string name;
-        BufferUsage usage = BufferUsage::None;
 
     public:
-        explicit Buffer(Device* device, VmaAllocator allocator) noexcept;
+        explicit Buffer(Device* device) noexcept;
         ~Buffer() override = default;
 
         void create(std::size_t sizeBytes, BufferUsage usage, BufferMemoryLocation location) override;

@@ -1,11 +1,11 @@
-#include <utility>
-
 #include <Tracy.hpp>
+#include <glm/vec4.hpp>
 #include <volk.h>
 #include <vulkan/vulkan_beta.h>
 
 #include <rapi/vulkan/vk_buffer.hpp>
 #include <rapi/vulkan/vk_device.hpp>
+#include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_instance.hpp>
 #include <rapi/vulkan/vk_pipeline.hpp>
 #include <rapi/vulkan/vk_queue.hpp>
@@ -34,6 +34,11 @@ kr::vk::PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, Instance
 
 bool kr::vk::PhysicalDevice::canPresentToWindow(Window* window) {
     ZoneScoped;
+    // Headless instances don't support VK_KHR_surface and the function pointer we run in the below
+    // loop would trigger a segfault.
+    if (instance->isHeadless())
+        return false;
+
     // This could probably be optimized drastically. We shouldn't iterate over each queue family to
     // see if any supports present.
     for (auto i = 0UL; i < queueFamilies.size(); ++i) {
@@ -98,10 +103,16 @@ bool kr::vk::PhysicalDevice::meetsMinimumRequirement() {
     if (properties.apiVersion < VK_API_VERSION_1_1)
         return false;
 
-    if (!supportsExtension(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
+    // Perhaps I'll some day add some fallback support for the original sync, though in that case
+    // we should just ship the VK_LAYER_synchronization_2 with the program.
+    if (properties.apiVersion < VK_API_VERSION_1_3 && !supportsExtension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME))
         return false;
 
-    if (!supportsExtension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME))
+    if (properties.apiVersion < VK_API_VERSION_1_3 && !supportsExtension(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME))
+        return false;
+
+    // 1.2 requires timelineSemaphore.
+    if (properties.apiVersion < VK_API_VERSION_1_2 && !supportsExtension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME))
         return false;
 
     return true;
@@ -109,11 +120,17 @@ bool kr::vk::PhysicalDevice::meetsMinimumRequirement() {
 
 kr::DeviceFeatures kr::vk::PhysicalDevice::supportedDeviceFeatures() {
     ZoneScoped;
+    VkPhysicalDeviceVulkan12Features vulkan12Features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+    };
+    getDeviceProperties(&vulkan12Features);
+
     return DeviceFeatures {
-        .accelerationStructures = false,
-        .bufferDeviceAddress =
-            supportsExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) || properties.apiVersion >= VK_API_VERSION_1_3,
-        .rayTracing = false,
+        .accelerationStructures = supportsExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME),
+        .bufferDeviceAddress = supportsExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) || vulkan12Features.bufferDeviceAddress ||
+                               properties.apiVersion >= VK_API_VERSION_1_3,
+        .indexType8Bit = supportsExtension(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME),
+        .rayTracing = supportsExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME),
     };
 }
 
@@ -142,10 +159,42 @@ std::vector<VkQueueFamilyProperties2> kr::vk::getQueueFamilyProperties(VkPhysica
     return queueFamilies;
 }
 
-auto enableDynamicRendering(VkPhysicalDeviceProperties& properties, kr::vk::PhysicalDevice* physicalDevice,
-                            std::vector<const char*>& extensions) {
+auto enableBufferDeviceAddress(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions,
+                               kr::DeviceFeatures& deviceFeatures) {
     ZoneScoped;
-    if (properties.apiVersion < VK_API_VERSION_1_3) {
+    if (!deviceFeatures.bufferDeviceAddress) {
+        return VkPhysicalDeviceBufferDeviceAddressFeatures {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+            .bufferDeviceAddress = false,
+        };
+    }
+
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_3) {
+        extensions.emplace_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+    }
+    return VkPhysicalDeviceBufferDeviceAddressFeatures {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .bufferDeviceAddress = true,
+    };
+}
+
+auto enable8BitIndex(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions, kr::DeviceFeatures& deviceFeatures) {
+    ZoneScoped;
+    bool support = false;
+    if (deviceFeatures.indexType8Bit && physicalDevice->supportsExtension(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
+        support = true;
+        extensions.emplace_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+    }
+
+    return VkPhysicalDeviceIndexTypeUint8FeaturesEXT {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+        .indexTypeUint8 = support,
+    };
+}
+
+auto enableDynamicRendering(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions) {
+    ZoneScoped;
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_3) {
         // dynamicRendering is required with 1.3. We'll enable the extension on older versions.
         extensions.emplace_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
         extensions.emplace_back(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
@@ -158,10 +207,9 @@ auto enableDynamicRendering(VkPhysicalDeviceProperties& properties, kr::vk::Phys
     };
 }
 
-auto enableImagelessFramebuffer(VkPhysicalDeviceProperties& properties, kr::vk::PhysicalDevice* physicalDevice,
-                                std::vector<const char*>& extensions) {
+auto enableImagelessFramebuffer(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions) {
     ZoneScoped;
-    if (properties.apiVersion < VK_API_VERSION_1_2) {
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2) {
         extensions.emplace_back(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
         extensions.emplace_back(VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME);
     }
@@ -172,9 +220,11 @@ auto enableImagelessFramebuffer(VkPhysicalDeviceProperties& properties, kr::vk::
     };
 }
 
-auto enableTimelineSemaphore(std::vector<const char*>& extensions) {
+auto enableTimelineSemaphore(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions) {
     ZoneScoped;
-    extensions.emplace_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2)
+        extensions.emplace_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+
     return VkPhysicalDeviceTimelineSemaphoreFeatures {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
         .timelineSemaphore = true,
@@ -187,15 +237,75 @@ kr::vk::Device::Device(Instance* instance, PhysicalDevice* physicalDevice, Devic
 VkResult kr::vk::Device::create() {
     ZoneScopedN("vk::Device::create");
     std::vector<const char*> deviceExtensions = {};
-    enableDesiredExtensions(deviceExtensions);
 
     // Enables certain extensions and adds their feature structs to the pNext chain.
     StructureChain deviceFeatures {
-        enableTimelineSemaphore(deviceExtensions),
-        enableDynamicRendering(physicalDevice->properties, physicalDevice, deviceExtensions),
-        enableImagelessFramebuffer(physicalDevice->properties, physicalDevice, deviceExtensions),
+        enableBufferDeviceAddress(physicalDevice, deviceExtensions, enabledFeatures),
+        enable8BitIndex(physicalDevice, deviceExtensions, enabledFeatures),
+        enableTimelineSemaphore(physicalDevice, deviceExtensions),
+        enableDynamicRendering(physicalDevice, deviceExtensions),
+        enableImagelessFramebuffer(physicalDevice, deviceExtensions),
     };
     deviceFeatures.link();
+
+    // These all don't come with a feature struct.
+    if (physicalDevice->supportsExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
+        deviceExtensions.emplace_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+    if (physicalDevice->supportsExtension(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
+        deviceExtensions.emplace_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+    if (physicalDevice->supportsExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+        deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2 &&
+        physicalDevice->supportsExtension(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME))
+        deviceExtensions.emplace_back(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME);
+
+    VkPhysicalDeviceSynchronization2Features sync2Features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+        .pNext = deviceFeatures.getPointer(),
+    };
+    if (physicalDevice->properties.apiVersion >= VK_API_VERSION_1_3) {
+        sync2Features.synchronization2 = true;
+    } else if (physicalDevice->supportsExtension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)) {
+        deviceExtensions.emplace_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+        sync2Features.synchronization2 = true;
+    }
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .pNext = &sync2Features,
+    };
+    if (enabledFeatures.bufferDeviceAddress || enabledFeatures.accelerationStructures) {
+        // BDAs are part of Vulkan 1.2, though are only required as of 1.3.
+        if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2)
+            deviceExtensions.emplace_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+        bdaFeatures.bufferDeviceAddress = true;
+    }
+
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+        .pNext = &bdaFeatures,
+    };
+    if (enabledFeatures.accelerationStructures) {
+        // https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_KHR_acceleration_structure.html
+        // KHR_acceleration_structure requires these three extensions.
+        deviceExtensions.emplace_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+        deviceExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        deviceExtensions.emplace_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        accelerationStructureFeatures.accelerationStructure = true;
+    }
+
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+        .pNext = &accelerationStructureFeatures,
+    };
+    if (enabledFeatures.rayTracing) {
+        // Requires VK_KHR_spirv_1_4, which is part of Vulkan 1.2
+        if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2)
+            deviceExtensions.emplace_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+
+        deviceExtensions.emplace_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        rayTracingPipelineFeatures.rayTracingPipeline = true;
+    }
 
     std::vector<VkDeviceQueueCreateInfo> deviceQueues = {};
     std::vector<std::vector<float>> deviceQueuePriorities = {}; // We use this to keep the priorities float pointers alive.
@@ -203,10 +313,13 @@ VkResult kr::vk::Device::create() {
 
     {
         ZoneScoped;
+        kl::log("Creating Vulkan device {} with these extensions: {}", physicalDevice->properties.deviceName,
+                fmt::join(deviceExtensions, ", "));
+
         // Create the logical device
         VkDeviceCreateInfo deviceInfo = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .pNext = deviceFeatures.getPointer(),
+            .pNext = &rayTracingPipelineFeatures,
             .queueCreateInfoCount = static_cast<uint32_t>(deviceQueues.size()),
             .pQueueCreateInfos = deviceQueues.data(),
             .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
@@ -239,10 +352,13 @@ VkResult kr::vk::Device::create() {
                                                  .device = device,
                                                  .pVulkanFunctions = &vmaFunctions,
                                                  .instance = instance->getHandle(),
-                                                 .vulkanApiVersion = instance->instanceVersion.ver };
+                                                 .vulkanApiVersion = physicalDevice->properties.apiVersion };
 
         if (physicalDevice->supportsExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
             allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+
+        if (enabledFeatures.bufferDeviceAddress)
+            allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
         vmaCreateAllocator(&allocatorInfo, &allocator);
     }
@@ -251,7 +367,12 @@ VkResult kr::vk::Device::create() {
 
 std::shared_ptr<kr::IBuffer> kr::vk::Device::createBuffer() {
     ZoneScoped;
-    return std::make_shared<Buffer>(this, allocator);
+    return std::make_shared<Buffer>(this);
+}
+
+std::shared_ptr<kr::IFence> kr::vk::Device::createFence() {
+    ZoneScoped;
+    return std::make_shared<Fence>(this);
 }
 
 std::shared_ptr<kr::IPipeline> kr::vk::Device::createPipeline() {
@@ -293,7 +414,18 @@ std::shared_ptr<kr::ISwapchain> kr::vk::Device::createSwapchain(Window* window) 
 
 std::shared_ptr<kr::ITexture> kr::vk::Device::createTexture(TextureUsage usage) {
     ZoneScoped;
-    return std::make_shared<Texture>(this, allocator, usage);
+    return std::make_shared<Texture>(this, usage);
+}
+
+void kr::vk::Device::destroy() {
+    // Ensure that all work has finished.
+    auto res = vkDeviceWaitIdle(device);
+    if (res != VK_SUCCESS)
+        kl::err("Failed to wait on device idle: {}", res);
+
+    vmaDestroyAllocator(allocator);
+
+    vkDestroyDevice(device, nullptr);
 }
 
 void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& deviceQueues, std::vector<std::vector<float>>& priorities) {
@@ -302,26 +434,31 @@ void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& devic
     // we'll create as many queues as we can from that family.
     auto& queueFamilies = physicalDevice->queueFamilies;
     priorities.resize(queueFamilies.size());
+    deviceQueues.resize(queueFamilies.size());
     for (uint32_t i = 0; i < queueFamilies.size(); ++i) {
         auto& qfProperties = queueFamilies[i].queueFamilyProperties;
 
         // We only take the first transfer-only queue family for the transfer queue batch. Ideally,
-        // we create multiple of these transfer queues to maximise parallelism.
-        if (qfProperties.queueFlags == VK_QUEUE_TRANSFER_BIT && transferQueueFamily == UINT32_MAX) {
+        // we want to create multiple of these transfer queues to maximise parallelism. We check
+        // here for queues that report transfer capabilities and DON'T report compute capabilities.
+        // Graphics implies compute, so this should only be a queue supporting transfer, and
+        // additionally it might support sparse and, or presentation.
+        if ((qfProperties.queueFlags & VK_QUEUE_TRANSFER_BIT && !(qfProperties.queueFlags & VK_QUEUE_COMPUTE_BIT)) &&
+            transferQueueFamily == UINT32_MAX) {
             // This is a "transfer-only" queue.
             transferQueueFamily = i;
 
             auto count = qfProperties.queueCount;
             priorities[i].resize(count);
-            for (auto j = count; j > 0; --j)
+            for (auto j = 0U; j < count; ++j)
                 priorities[i][j] = 1.0f;
 
-            deviceQueues.emplace_back(VkDeviceQueueCreateInfo {
+            deviceQueues[i] = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                 .queueFamilyIndex = i,
                 .queueCount = count,
                 .pQueuePriorities = priorities[i].data(),
-            });
+            };
             continue;
         }
 
@@ -337,12 +474,12 @@ void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& devic
         }
 
         priorities[i].emplace_back(1.0f);
-        deviceQueues.emplace_back(VkDeviceQueueCreateInfo {
+        deviceQueues[i] = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .queueFamilyIndex = i,
             .queueCount = 1,
             .pQueuePriorities = priorities[i].data(),
-        });
+        };
     }
 
     if (presentationQueueFamily == UINT32_MAX) {
@@ -350,46 +487,14 @@ void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& devic
     }
 }
 
-void kr::vk::Device::enableDesiredExtensions(std::vector<const char*>& deviceExtensions) {
-    ZoneScoped;
-    auto& properties = physicalDevice->properties;
-    // Note that we do not check for supported extensions if a deviceFeature is set to true. This
-    // is similar to how Vulkan handles misuse of the API. Only the following few extensions are
-    // optional for this device, which we will conditionally enable.
-
-    if (physicalDevice->supportsExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
-        deviceExtensions.emplace_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-    if (physicalDevice->supportsExtension(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
-        deviceExtensions.emplace_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-    if (physicalDevice->supportsExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
-        deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    if (properties.apiVersion < VK_API_VERSION_1_2 && physicalDevice->supportsExtension(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME))
-        deviceExtensions.emplace_back(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME);
-
-    if (enabledFeatures.bufferDeviceAddress || enabledFeatures.accelerationStructures) {
-        deviceExtensions.emplace_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-    }
-
-    if (enabledFeatures.accelerationStructures) {
-        // https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_KHR_acceleration_structure.html
-        // KHR_acceleration_structure requires these three extensions.
-        deviceExtensions.emplace_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-        deviceExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-        deviceExtensions.emplace_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-    }
-
-    if (enabledFeatures.rayTracing) {
-        // Requires VK_KHR_spirv_1_4, which is part of Vulkan 1.2
-        if (properties.apiVersion < VK_API_VERSION_1_2)
-            deviceExtensions.emplace_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
-
-        deviceExtensions.emplace_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-    }
-}
-
 std::string_view kr::vk::Device::getDeviceName() {
     ZoneScoped;
     return physicalDevice->properties.deviceName;
+}
+
+VmaAllocator kr::vk::Device::getAllocator() const {
+    ZoneScoped;
+    return allocator;
 }
 
 VkDevice kr::vk::Device::getHandle() const {
@@ -421,13 +526,14 @@ bool kr::vk::Device::isExtensionEnabled(const char* extensionName) const {
 }
 
 bool kr::vk::Device::isHeadless() const noexcept {
+    ZoneScoped;
     return instance->isHeadless();
 }
 
 void kr::vk::Device::setDebugUtilsName(VkObjectType objectType, const uint64_t& handle, const char* string) {
     ZoneScoped;
 #ifdef KRYPTON_DEBUG
-    if (vkSetDebugUtilsObjectNameEXT == nullptr)
+    if (vkSetDebugUtilsObjectNameEXT == nullptr || handle == 0)
         return;
 
     VkDebugUtilsObjectNameInfoEXT info = {

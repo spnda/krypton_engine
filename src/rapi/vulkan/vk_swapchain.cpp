@@ -1,6 +1,7 @@
 #include <string>
 
 #include <Tracy.hpp>
+#include <glm/vec2.hpp>
 #include <volk.h>
 
 #include <rapi/vulkan/vk_device.hpp>
@@ -79,12 +80,19 @@ void kr::vk::Swapchain::create(TextureUsage usage) {
     ZoneScoped;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->getPhysicalDevice(), surface, &capabilities);
 
-    this->imageFlags = getVulkanImageUsage(usage);
+    textureUsage = usage;
+    imageFlags = getVulkanImageUsage(usage);
     recreateSwapchain();
 }
 
 void kr::vk::Swapchain::destroy() {
     ZoneScoped;
+    // Destroy all image views first
+    for (auto& view : imageViews) {
+        vkDestroyImageView(device->getHandle(), view, nullptr);
+        view = nullptr;
+    }
+
     vkDestroySwapchainKHR(device->getHandle(), swapchain, nullptr);
     swapchain = nullptr;
 }
@@ -94,8 +102,7 @@ kr::TextureFormat kr::vk::Swapchain::getDrawableFormat() {
 }
 
 kr::ITexture* kr::vk::Swapchain::getDrawable() {
-    images[imageIndex];
-    return nullptr;
+    return &textures[imageIndex];
 }
 
 uint32_t kr::vk::Swapchain::getImageCount() {
@@ -205,6 +212,11 @@ void kr::vk::Swapchain::recreateSwapchain() {
 
         return imageView;
     });
+
+    textures.resize(imageCount, SwapchainTexture { device, textureUsage });
+    for (auto i = 0UL; i < imageCount; ++i) {
+        textures[i].setImage(images[i], imageViews[i]);
+    }
 }
 
 void kr::vk::Swapchain::setName(std::string_view newName) {

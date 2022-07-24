@@ -1,13 +1,19 @@
 #pragma once
 
 #include <robin_hood.h>
-#include <volk.h>
 
 #include <rapi/ishader.hpp>
+
+// fwd.
+typedef VkDescriptorSet_T* VkDescriptorSet;
+typedef VkShaderModule_T* VkShaderModule;
 
 namespace krypton::rapi::vk {
     class ShaderParameter final : public IShaderParameter {
         class Device* device;
+
+        VkDescriptorSet set = nullptr;
+        std::string name;
 
     public:
         explicit ShaderParameter(Device* device);
@@ -18,6 +24,7 @@ namespace krypton::rapi::vk {
         void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
         void buildParameter() override;
         void destroy() override;
+        [[nodiscard]] auto getHandle() -> VkDescriptorSet*;
         void setName(std::string_view name) override;
     };
 
@@ -37,7 +44,8 @@ namespace krypton::rapi::vk {
         ~Shader() override = default;
 
         void createModule() override;
-        auto getHandle() const -> VkShaderModule;
+        void destroy() override;
+        [[nodiscard]] auto getHandle() const -> VkShaderModule;
         bool isParameterObjectCompatible(IShaderParameter* parameter) override;
         void setName(std::string_view name) override;
     };

@@ -22,7 +22,7 @@ std::shared_ptr<kr::ICommandBufferPool> kr::vk::Queue::createCommandPool() {
     VkCommandPool pool;
     VkCommandPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = 0,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = familyIndex,
     };
     vkCreateCommandPool(device->getHandle(), &poolInfo, nullptr, &pool);
@@ -43,7 +43,7 @@ void kr::vk::Queue::createTracyContext() {
 
 void kr::vk::Queue::destroy() {
 #ifdef TRACY_ENABLE
-    TracyVkDestroy(tracyCtx);
+    TracyVkDestroy(static_cast<TracyVkCtx>(tracyCtx));
 #endif
 }
 
@@ -53,7 +53,7 @@ VkQueue kr::vk::Queue::getHandle() const {
 
 #ifdef TRACY_ENABLE
 TracyVkCtx kr::vk::Queue::getTracyContext() const {
-    return tracyCtx;
+    return static_cast<TracyVkCtx>(tracyCtx);
 }
 #endif
 
@@ -63,7 +63,7 @@ void kr::vk::Queue::setName(std::string_view newName) {
 
 #ifdef TRACY_ENABLE
     if (tracyCtx != nullptr) {
-        TracyVkContextName(tracyCtx, newName.data(), newName.size());
+        TracyVkContextName(static_cast<TracyVkCtx>(tracyCtx), newName.data(), newName.size());
     }
 #endif
 
@@ -71,22 +71,22 @@ void kr::vk::Queue::setName(std::string_view newName) {
         device->setDebugUtilsName(VK_OBJECT_TYPE_QUEUE, reinterpret_cast<const uint64_t&>(queue), name.c_str());
 }
 
-void kr::vk::Queue::submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal) {
+void kr::vk::Queue::submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal, IFence* fence) {
     ZoneScoped;
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
-    auto buffer = dynamic_cast<vk::CommandBuffer*>(cmdBuffer)->getHandle();
+    auto buffer = dynamic_cast<CommandBuffer*>(cmdBuffer)->getHandle();
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = dynamic_cast<vk::Semaphore*>(wait)->getHandle(),
+        .pWaitSemaphores = dynamic_cast<Semaphore*>(wait)->getHandle(),
         .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
         .pCommandBuffers = &buffer,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = dynamic_cast<vk::Semaphore*>(signal)->getHandle(),
+        .pSignalSemaphores = dynamic_cast<Semaphore*>(signal)->getHandle(),
     };
-    auto res = vkQueueSubmit(queue, 1, &submitInfo, nullptr);
+    auto res = vkQueueSubmit(queue, 1, &submitInfo, *dynamic_cast<Fence*>(fence)->getHandle());
     if (res != VK_SUCCESS)
         kl::err("Failed to submit queue: {}", res);
 }

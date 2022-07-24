@@ -22,6 +22,7 @@ namespace krypton::rapi {
         ~ISampler() override = default;
 
         virtual void createSampler() = 0;
+        virtual void destroy() = 0;
         virtual void setAddressModeU(SamplerAddressMode mode) = 0;
         virtual void setAddressModeV(SamplerAddressMode mode) = 0;
         virtual void setAddressModeW(SamplerAddressMode mode) = 0;

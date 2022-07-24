@@ -14,11 +14,11 @@ namespace krypton::shaders {
 }
 
 namespace krypton::rapi {
-    enum class IndexType {
+    enum class IndexType : uint8_t {
         // Uint8 is not guaranteed to be always supported.
-        UINT8,
-        UINT16,
-        UINT32,
+        UINT16 = 0,
+        UINT32 = 1,
+        UINT8 = 2,
     };
 
     class IRenderPass;

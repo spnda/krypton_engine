@@ -18,7 +18,6 @@ namespace krypton::rapi::mtl {
         MTL::Buffer* buffer = nullptr;
         NS::String* name = nullptr;
         MTL::ResourceOptions resourceOptions = 0;
-        BufferUsage usage = BufferUsage::None;
 
     public:
         explicit Buffer(MTL::Device* device);

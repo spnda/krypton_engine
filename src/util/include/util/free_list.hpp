@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <type_traits>
 #include <vector>
 
 #include <util/assert.hpp>
@@ -25,7 +26,7 @@ namespace krypton::util {
 
         // Only needed for the own data() function, which can be made optional.
         // { t.data() } -> std::same_as<X*>;
-    } && std::is_constructible<X>(); // clang-format breaks this line badly.
+    }; // && std::is_constructible_v<X>(); // clang-format breaks this line badly.
     // clang-format on
 
     /**
@@ -43,12 +44,12 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container = std::vector<Object>>
     class FreeList {
         // TODO: Implement iterator to get values from container and mappings at the same time.
-        class Iterator {
+        class Iterator : public std::input_iterator_tag {
             size_t pos = 0;
             FreeList* list = nullptr;
 
         public:
-            using iterator_category = std::forward_iterator_tag;
+            using iterator_category = std::input_iterator_tag;
             using value_type = Object;
             using difference_type = std::ptrdiff_t;
 
@@ -59,11 +60,11 @@ namespace krypton::util {
             const Iterator operator++(int); /* postfix operator */
             Object& operator*() const;
             Object* operator->() const;
-            bool operator==(const Iterator& other) const noexcept = default;
+            bool operator==(const Iterator& other) const noexcept;
         };
 
 #if !defined(__APPLE) && !defined(__clang_major__)
-        static_assert(std::forward_iterator<Iterator>); /* Make sure our iterator implementation is correct */
+        static_assert(std::input_iterator<Iterator>); /* Make sure our iterator implementation is correct */
 #endif
 
         Container container;
@@ -72,7 +73,7 @@ namespace krypton::util {
         [[nodiscard]] auto createSlot() -> typename Handle<handleId>::IndexSize;
 
     public:
-        constexpr FreeList();
+        constexpr explicit FreeList();
 
         [[nodiscard]] constexpr Iterator begin() noexcept;
         [[nodiscard]] auto capacity() const noexcept -> typename Handle<handleId>::IndexSize;
@@ -109,6 +110,11 @@ namespace krypton::util {
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
     Object* FreeList<Object, handleId, Container>::Iterator::operator->() const {
         return std::addressof(operator*());
+    }
+
+    template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>
+    bool FreeList<Object, handleId, Container>::Iterator::operator==(const Iterator& other) const noexcept {
+        return (list == other.list) && (pos == other.pos);
     }
 
     template <typename Object, TemplateStringLiteral handleId, FreeListContainer<Object> Container>

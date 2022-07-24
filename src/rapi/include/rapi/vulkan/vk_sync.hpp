@@ -1,7 +1,6 @@
 #pragma once
 
-#include <rapi/ievent.hpp>
-#include <rapi/isemaphore.hpp>
+#include <rapi/isync.hpp>
 
 // fwd.
 typedef struct VkSemaphore_T* VkSemaphore;
@@ -18,8 +17,26 @@ namespace krypton::rapi::vk {
         ~Semaphore() override = default;
 
         void create() override;
+        void destroy() override;
         auto getHandle() -> VkSemaphore*;
         void setName(std::string_view name) override;
+    };
+
+    class Fence final : public IFence {
+        class Device* device;
+        VkFence fence = nullptr;
+        std::string name;
+
+    public:
+        explicit Fence(Device* device);
+        ~Fence() override = default;
+
+        void create(bool signaled) override;
+        void destroy() override;
+        auto getHandle() -> VkFence*;
+        void reset() override;
+        void setName(std::string_view name) override;
+        void wait() override;
     };
 
     class Event final : public IEvent {
@@ -32,6 +49,7 @@ namespace krypton::rapi::vk {
         ~Event() override = default;
 
         void create(uint64_t initialValue) override;
+        void destroy() override;
         auto getHandle() -> VkEvent*;
         void setName(std::string_view name) override;
     };

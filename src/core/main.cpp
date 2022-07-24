@@ -14,10 +14,12 @@
 #include <rapi/ipipeline.hpp>
 #include <rapi/iqueue.hpp>
 #include <rapi/irenderpass.hpp>
-#include <rapi/isemaphore.hpp>
 #include <rapi/iswapchain.hpp>
+#include <rapi/isync.hpp>
 #include <rapi/itexture.hpp>
 #include <rapi/rapi.hpp>
+#include <rapi/render_pass_attachments.hpp>
+#include <rapi/vertex_descriptor.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
 #include <util/logging.hpp>
@@ -36,6 +38,7 @@ std::string modelPathString;
 struct FrameData {
     std::shared_ptr<kr::ISemaphore> imageAcquireSemaphore;
     std::shared_ptr<kr::ISemaphore> renderSemaphore;
+    std::shared_ptr<kr::IFence> fence;
 };
 
 void loadModel(krypton::rapi::RenderAPI* rapi, const fs::path& path) {
@@ -71,11 +74,11 @@ void drawUi(krypton::rapi::RenderAPI* rapi) {
 }
 
 auto main(int argc, char* argv[]) -> int {
+    kt::Scheduler::getInstance().start();
+    if (!kr::initRenderApi())
+        return -1;
+
     try {
-        kt::Scheduler::getInstance().start();
-
-        kr::initRenderApi();
-
         // We currently just use the default backend for the current platform.
         auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
         // auto rapi = kr::getRenderApi(kr::Backend::Vulkan);
@@ -86,14 +89,26 @@ auto main(int argc, char* argv[]) -> int {
         window->create(rapi.get());
         // window->pollEvents(); // Let the window open instantly.
 
-        // Select the physical device. TODO
+        // Select the physical device with the best features.
         auto physicalDevices = rapi->getPhysicalDevices();
         if (physicalDevices.empty())
             kl::throwError("No physical devices have been found!");
-        if (!physicalDevices.front()->meetsMinimumRequirement())
+
+        kr::IPhysicalDevice* selectedPhysicalDevice = nullptr;
+        for (auto i = 0UL; i < physicalDevices.size(); ++i) {
+            auto& device = physicalDevices[i];
+            if (!device->meetsMinimumRequirement())
+                continue;
+            if (!device->canPresentToWindow(window.get()))
+                continue;
+
+            // This device meets all conditions.
+            selectedPhysicalDevice = device;
+            break;
+        }
+
+        if (selectedPhysicalDevice == nullptr)
             kl::throwError("No compatible physical device has been found!");
-        if (!physicalDevices.front()->canPresentToWindow(window.get()))
-            kl::throwError("No physical device found capable of presenting to window!");
 
         std::unique_ptr<kr::IDevice> device = physicalDevices.front()->createDevice();
 
@@ -109,6 +124,8 @@ auto main(int argc, char* argv[]) -> int {
             i.imageAcquireSemaphore->create();
             i.renderSemaphore = device->createSemaphore();
             i.renderSemaphore->create();
+            i.fence = device->createFence();
+            i.fence->create(true);
         }
 
         auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device.get(), window.get());
@@ -179,8 +196,11 @@ auto main(int argc, char* argv[]) -> int {
 
         uint32_t currentFrame = 0;
         while (!window->shouldClose()) {
+            // See tracy chapter 3.1.2
+            static const char* const frameName = "frame";
+
             ZoneScopedN("frameloop");
-            FrameMark;
+            FrameMarkStart(frameName);
             if (window->isMinimised()) {
                 window->waitEvents();
                 continue;
@@ -196,7 +216,7 @@ auto main(int argc, char* argv[]) -> int {
                 std::this_thread::sleep_for(1000ms);
             }
 
-            ++currentFrame %= swapchain->getImageCount();
+            currentFrame = ++currentFrame % swapchain->getImageCount();
 
             if (!needsResize) {
                 window->pollEvents();
@@ -215,6 +235,10 @@ auto main(int argc, char* argv[]) -> int {
             imgui->newFrame();
 
             (*defaultRenderPass)[0].attachment = swapchain->getDrawable();
+
+            frameData[currentFrame].fence->wait();
+            frameData[currentFrame].fence->reset();
+
             cmd->begin();
             // cmd->beginRenderPass(defaultRenderPass.get());
 
@@ -225,26 +249,38 @@ auto main(int argc, char* argv[]) -> int {
             cmd->end();
 
             presentationQueue->submit(cmd.get(), frameData[currentFrame].imageAcquireSemaphore.get(),
-                                      frameData[currentFrame].renderSemaphore.get());
+                                      frameData[currentFrame].renderSemaphore.get(), frameData[currentFrame].fence.get());
             swapchain->present(presentationQueue.get(), frameData[currentFrame].renderSemaphore.get(), &needsResize);
 
             imgui->endFrame();
+            FrameMarkEnd(frameName);
         }
 
+        // Ensure the command buffers are done.
+        for (auto& frame : frameData)
+            frame.fence->wait();
+
+        swapchain->destroy();
+        window->destroy();
+
         defaultRenderPass->destroy();
+        defaultPipeline->destroy();
+
+        for (auto& frame : frameData) {
+            frame.fence->destroy();
+            frame.imageAcquireSemaphore->destroy();
+            frame.renderSemaphore->destroy();
+        }
 
         imgui->destroy();
         rapi->shutdown();
 
         kl::log("rapi reference count: {}", rapi.use_count());
-
-        kr::terminateRenderApi();
-        kt::Scheduler::getInstance().shutdown();
     } catch (const std::exception& e) {
         kl::err("Exception occured: {}", e.what());
-
-        kr::terminateRenderApi();
-        kt::Scheduler::getInstance().shutdown();
     }
+
+    kr::terminateRenderApi();
+    kt::Scheduler::getInstance().shutdown();
     return 0;
 }

@@ -16,9 +16,7 @@ namespace krypton::rapi::vk {
         VkQueue queue;
         uint32_t familyIndex;
         std::string name;
-#ifdef TRACY_ENABLE
-        TracyVkCtx tracyCtx = nullptr;
-#endif
+        void* tracyCtx = nullptr;
 
     public:
         explicit Queue(Device* device, VkQueue queue, uint32_t familyIndex);
@@ -34,6 +32,6 @@ namespace krypton::rapi::vk {
         [[nodiscard]] ALWAYS_INLINE auto getTracyContext() const -> TracyVkCtx;
 #endif
         void setName(std::string_view) override;
-        void submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal) override;
+        void submit(ICommandBuffer* cmdBuffer, ISemaphore* wait, ISemaphore* signal, IFence* fence) override;
     };
 } // namespace krypton::rapi::vk

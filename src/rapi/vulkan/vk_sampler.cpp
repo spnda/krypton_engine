@@ -20,6 +20,12 @@ void kr::vk::Sampler::createSampler() {
         device->setDebugUtilsName(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<const uint64_t&>(sampler), name.c_str());
 }
 
+void kr::vk::Sampler::destroy() {
+    ZoneScoped;
+    vkDestroySampler(device->getHandle(), sampler, nullptr);
+    sampler = nullptr;
+}
+
 VkSampler kr::vk::Sampler::getHandle() {
     return sampler;
 }

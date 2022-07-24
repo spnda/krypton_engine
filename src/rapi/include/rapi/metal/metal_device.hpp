@@ -40,6 +40,7 @@ namespace krypton::rapi::mtl {
         ~Device() override = default;
 
         auto createBuffer() -> std::shared_ptr<IBuffer> override;
+        auto createFence() -> std::shared_ptr<IFence> override;
         auto createPipeline() -> std::shared_ptr<IPipeline> override;
         auto createRenderPass() -> std::shared_ptr<IRenderPass> override;
         auto createSampler() -> std::shared_ptr<ISampler> override;
@@ -49,6 +50,7 @@ namespace krypton::rapi::mtl {
         auto createShaderParameter() -> std::shared_ptr<IShaderParameter> override;
         auto createSwapchain(Window* window) -> std::shared_ptr<ISwapchain> override;
         auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> override;
+        void destroy() override;
         auto getDeviceName() -> std::string_view override;
         auto getPresentationQueue() -> std::shared_ptr<IQueue> override;
         [[nodiscard]] bool isHeadless() const noexcept override;

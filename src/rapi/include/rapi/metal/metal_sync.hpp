@@ -6,8 +6,7 @@
 #include <Metal/MTLDevice.hpp>
 #include <Metal/MTLEvent.hpp>
 
-#include <rapi/ievent.hpp>
-#include <rapi/isemaphore.hpp>
+#include <rapi/isync.hpp>
 
 namespace krypton::rapi::mtl {
     // Metal does not have a sync primitive like VkSemaphore. We therefore implement our own
@@ -19,13 +18,33 @@ namespace krypton::rapi::mtl {
         mutable std::mutex mtx;
 
     public:
-        explicit Semaphore(MTL::Device* device);
+        explicit Semaphore(MTL::Device* device) noexcept;
         ~Semaphore() override = default;
 
         void create() override;
+        void destroy() override;
         void setName(std::string_view name) override;
         void signal();
         void wait();
+    };
+
+    class Fence final : public IFence {
+        MTL::Device* device;
+
+        std::condition_variable cv;
+        mutable std::mutex mtx;
+        bool skip = false;
+
+    public:
+        explicit Fence(MTL::Device* device) noexcept;
+        ~Fence() override = default;
+
+        void create(bool signaled) override;
+        void destroy() override;
+        void reset() override;
+        void setName(std::string_view name) override;
+        void signal();
+        void wait() override;
     };
 
     class Event final : public IEvent {
@@ -38,6 +57,7 @@ namespace krypton::rapi::mtl {
         ~Event() override = default;
 
         void create(uint64_t initialValue) override;
+        void destroy() override;
         void setName(std::string_view name) override;
     };
 } // namespace krypton::rapi::mtl

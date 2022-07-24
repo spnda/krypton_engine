@@ -20,14 +20,11 @@ namespace krypton::rapi::vk {
     public:
         explicit StructureChain(T const&... structs) : structs(static_cast<const T&&>(structs)...) {}
 
-        [[nodiscard]] auto getPointer() const noexcept -> std::enable_if_t<sizeof...(T) != 0, const void*> {
-#ifdef ZoneScoped
-            ZoneScoped;
-#endif
+        [[nodiscard]] inline auto getPointer() const noexcept -> std::enable_if_t<sizeof...(T) != 0, void*> {
             return std::get<0>(structs).pNext;
         }
 
-        auto link() -> std::enable_if_t<sizeof...(T) != 0, void> {
+        inline auto link() -> std::enable_if_t<sizeof...(T) != 0, void> {
 #ifdef ZoneScoped
             ZoneScoped;
 #endif
