@@ -228,21 +228,29 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         }
 
         // Copy the vertex and index buffers
-        vertexBuffer->mapMemory([indexBuffer, drawData](void* vtxData) {
-            indexBuffer->mapMemory([drawData, vtxData](void* idxData) {
-                auto* vertexDestination = static_cast<ImDrawVert*>(vtxData);
-                auto* indexDestination = static_cast<ImDrawIdx*>(idxData);
-                for (int i = 0; i < drawData->CmdListsCount; ++i) {
-                    auto& list = drawData->CmdLists[i];
+        {
+            void* vtxData;
+            void* idxData;
+            vertexBuffer->mapMemory(&vtxData);
+            indexBuffer->mapMemory(&idxData);
 
-                    std::memcpy(vertexDestination, list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert));
-                    std::memcpy(indexDestination, list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx));
+            auto* vertexDestination = static_cast<ImDrawVert*>(vtxData);
+            auto* indexDestination = static_cast<ImDrawIdx*>(idxData);
+            for (int i = 0; i < drawData->CmdListsCount; ++i) {
+                auto& list = drawData->CmdLists[i];
 
-                    vertexDestination += list->VtxBuffer.Size * sizeof(ImDrawVert);
-                    indexDestination += list->IdxBuffer.Size * sizeof(ImDrawIdx);
-                }
-            });
-        });
+                std::memcpy(vertexDestination, list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert));
+                std::memcpy(indexDestination, list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx));
+
+                // Because the destination pointers have a type of ImDrawXYZ*, it already
+                // properly takes the byte size into account.
+                vertexDestination += list->VtxBuffer.Size;
+                indexDestination += list->IdxBuffer.Size;
+            }
+
+            vertexBuffer->unmapMemory();
+            indexBuffer->unmapMemory();
+        }
 
         (*renderPass)[0].attachment = swapchain->getDrawable();
         commandBuffer->beginRenderPass(renderPass.get());
@@ -306,8 +314,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 
 void kc::ImGuiRenderer::newFrame() {
     ZoneScoped;
-    ImGui::NewFrame();
     ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 }
 
 void kc::ImGuiRenderer::endFrame() {
