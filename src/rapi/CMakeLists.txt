@@ -1,10 +1,7 @@
 add_library(krypton_rapi)
 add_library(krypton::rapi ALIAS krypton_rapi)
 
-find_package(glfw3 CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
-
-target_link_libraries(krypton_rapi PRIVATE glfw glm::glm)
+target_link_libraries(krypton_rapi PRIVATE glfw glm)
 target_link_libraries(krypton_rapi PUBLIC krypton::assets)
 target_link_libraries(krypton_rapi PUBLIC krypton::shaders)
 target_link_libraries(krypton_rapi PUBLIC krypton::util)

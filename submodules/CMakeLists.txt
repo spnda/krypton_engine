@@ -1,11 +1,26 @@
-find_package(glfw3 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
 set(KRYPTON_SUBMODULES ${CMAKE_CURRENT_SOURCE_DIR})
 set(KRYPTON_SUBMODULES_BIN ${CMAKE_BINARY_DIR}/submodules)
 
-add_subdirectory("${KRYPTON_SUBMODULES}/SPIRV-Cross" "${KRYPTON_SUBMODULES_BIN}/SPIRV-Cross")
+# Submodules that work with a simple add_subdirectory.
+if(NOT APPLE)
+  # Apple Clang's libstdcpp has bugs which break the asserts library.
+  add_subdirectory("${KRYPTON_SUBMODULES}/asserts" "${KRYPTON_SUBMODULES_BIN}/asserts")
+endif()
+add_subdirectory("${KRYPTON_SUBMODULES}/fmt" "${KRYPTON_SUBMODULES_BIN}/fmt")
 add_subdirectory("${KRYPTON_SUBMODULES}/magic_enum")
+add_subdirectory("${KRYPTON_SUBMODULES}/robin-hood")
+add_subdirectory("${KRYPTON_SUBMODULES}/SPIRV-Cross" "${KRYPTON_SUBMODULES_BIN}/SPIRV-Cross")
+
+# Submodules that require a bit more configuration, maybe even a custom target.
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_BUILD_TESTS OFF)
+set(GLFW_BUILD_DOCS OFF)
+add_subdirectory("${KRYPTON_SUBMODULES}/glfw" "${KRYPTON_SUBMODULES_BIN}/glfw")
+
+add_library(glm INTERFACE)
+target_include_directories(glm SYSTEM INTERFACE "${KRYPTON_SUBMODULES}/glm") # includes are top level...
 
 # Add Vulkan headers. This is a replacement for the CMake's Vulkan::Headers to use the submodule's headers instead of those from the Vulkan
 # SDK.
@@ -25,10 +40,8 @@ add_library(VMA-Headers INTERFACE)
 add_library(VMA::Headers ALIAS VMA-Headers)
 target_include_directories(VMA-Headers SYSTEM INTERFACE "${KRYPTON_SUBMODULES}/vk-mem-alloc/include")
 
-if(NOT APPLE)
-  # Apple Clang's libstdcpp has bugs which break the asserts library.
-  add_subdirectory("${KRYPTON_SUBMODULES}/asserts" "${KRYPTON_SUBMODULES_BIN}/asserts")
-endif()
+add_library(tinygltf INTERFACE)
+target_include_directories(tinygltf SYSTEM INTERFACE "${KRYPTON_SUBMODULES}/tinygltf")
 
 # ↓ -------------------  TRACY  ------------------- ↓
 if(NOT EXISTS "${KRYPTON_SUBMODULES}/tracy")

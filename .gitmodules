@@ -1,15 +1,30 @@
 [submodule "submodules/asserts"]
 	path = submodules/asserts
 	url = https://github.com/jeremy-rifkin/asserts
+[submodule "submodules/fmt"]
+	path = submodules/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "submodules/glfw"]
+	path = submodules/glfw
+	url = https://github.com/glfw/glfw
+[submodule "submodules/glm"]
+	path = submodules/glm
+	url = https://github.com/g-truc/glm
 [submodule "submodules/imgui"]
 	path = submodules/imgui
 	url = https://github.com/ocornut/imgui
 [submodule "submodules/magic_enum"]
 	path = submodules/magic_enum
 	url = https://github.com/Neargye/magic_enum
+[submodule "submodules/robin-hood"]
+	path = submodules/robin-hood
+	url = https://github.com/martinus/robin-hood-hashing
 [submodule "submodules/SPIRV-Cross"]
 	path = submodules/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross
+[submodule "submodules/tinygltf"]
+	path = submodules/tinygltf
+	url = https://github.com/syoyo/tinygltf
 [submodule "submodules/tracy"]
 	path = submodules/tracy
 	url = https://github.com/wolfpld/tracy
