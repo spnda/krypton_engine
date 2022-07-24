@@ -20,33 +20,6 @@ namespace krypton::shaders {
 } // namespace krypton::shaders
 
 namespace krypton::rapi {
-    class IBuffer;
-
-    /**
-     * An interface to allow a cross-platform way to create parameter objects for shaders.
-     * A single parameter might include multiple objects; it acts more like a struct with members
-     * than an actual single value parameter.
-     *
-     * In Vulkan terminology, this would be known as a VkDescriptorSet.
-     */
-    class IShaderParameter : public util::Nameable {
-    protected:
-        explicit IShaderParameter() = default;
-
-        ~IShaderParameter() override = default;
-
-    public:
-        virtual void addBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) = 0;
-
-        virtual void addTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) = 0;
-
-        virtual void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) = 0;
-
-        virtual void buildParameter() = 0;
-
-        virtual void destroy() = 0;
-    };
-
     /**
      * The IShader interface is intended to be used as a base class/interface with everything
      * related to shader compiling, shader management, and shader parameters/uniforms. This

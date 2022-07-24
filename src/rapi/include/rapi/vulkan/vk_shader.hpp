@@ -5,29 +5,9 @@
 #include <rapi/ishader.hpp>
 
 // fwd.
-typedef VkDescriptorSet_T* VkDescriptorSet;
 typedef VkShaderModule_T* VkShaderModule;
 
 namespace krypton::rapi::vk {
-    class ShaderParameter final : public IShaderParameter {
-        class Device* device;
-
-        VkDescriptorSet set = nullptr;
-        std::string name;
-
-    public:
-        explicit ShaderParameter(Device* device);
-        ~ShaderParameter() override = default;
-
-        void addBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) override;
-        void addTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) override;
-        void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
-        void buildParameter() override;
-        void destroy() override;
-        [[nodiscard]] auto getHandle() -> VkDescriptorSet*;
-        void setName(std::string_view name) override;
-    };
-
     class Shader final : public IShader {
         class Device* device;
 

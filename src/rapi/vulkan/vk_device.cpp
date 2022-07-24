@@ -11,6 +11,7 @@
 #include <rapi/vulkan/vk_renderpass.hpp>
 #include <rapi/vulkan/vk_sampler.hpp>
 #include <rapi/vulkan/vk_shader.hpp>
+#include <rapi/vulkan/vk_shaderparameter.hpp>
 #include <rapi/vulkan/vk_swapchain.hpp>
 #include <rapi/vulkan/vk_sync.hpp>
 #include <rapi/vulkan/vk_texture.hpp>

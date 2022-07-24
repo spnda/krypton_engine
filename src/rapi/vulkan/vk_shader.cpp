@@ -10,32 +10,6 @@
 
 namespace kr = krypton::rapi;
 
-#pragma region vk::ShaderParameter
-kr::vk::ShaderParameter::ShaderParameter(Device* device) : device(device) {}
-
-void kr::vk::ShaderParameter::addBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) {}
-
-void kr::vk::ShaderParameter::addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) {}
-
-void kr::vk::ShaderParameter::addTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) {}
-
-void kr::vk::ShaderParameter::buildParameter() {}
-
-void kr::vk::ShaderParameter::destroy() {}
-
-VkDescriptorSet* kr::vk::ShaderParameter::getHandle() {
-    return &set;
-}
-
-void kr::vk::ShaderParameter::setName(std::string_view newName) {
-    ZoneScoped;
-    name = newName;
-
-    if (!name.empty())
-        device->setDebugUtilsName(VK_OBJECT_TYPE_DESCRIPTOR_SET, reinterpret_cast<const uint64_t&>(set), name.c_str());
-}
-#pragma endregion
-
 #pragma region vk::Shader
 kr::vk::Shader::Shader(Device* device, std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType source)
     : IShader(bytes, source), device(device) {
