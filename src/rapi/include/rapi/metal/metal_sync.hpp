@@ -12,13 +12,11 @@ namespace krypton::rapi::mtl {
     // Metal does not have a sync primitive like VkSemaphore. We therefore implement our own
     // host semaphore using std::condition_variable and the MTLCommandBuffer callbacks.
     class Semaphore final : public ISemaphore {
-        MTL::Device* device;
-
         std::condition_variable cv;
         mutable std::mutex mtx;
 
     public:
-        explicit Semaphore(MTL::Device* device) noexcept;
+        explicit Semaphore() noexcept;
         ~Semaphore() override = default;
 
         void create() override;
@@ -29,14 +27,12 @@ namespace krypton::rapi::mtl {
     };
 
     class Fence final : public IFence {
-        MTL::Device* device;
-
         std::condition_variable cv;
         mutable std::mutex mtx;
         bool skip = false;
 
     public:
-        explicit Fence(MTL::Device* device) noexcept;
+        explicit Fence() noexcept;
         ~Fence() override = default;
 
         void create(bool signaled) override;

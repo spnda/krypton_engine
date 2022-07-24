@@ -47,10 +47,10 @@ namespace krypton::rapi::vk {
 } // namespace krypton::rapi::vk
 
 #pragma region vk::Texture
-kr::vk::Texture::Texture(Device* device, rapi::TextureUsage usage) : device(device), usage(usage), image(nullptr), imageView(nullptr) {}
+kr::vk::Texture::Texture(Device* device, rapi::TextureUsage usage) : device(device), image(nullptr), imageView(nullptr), usage(usage) {}
 
 kr::vk::Texture::Texture(krypton::rapi::vk::Device* device, rapi::TextureUsage usage, VkImage image, VkImageView imageView)
-    : device(device), usage(usage), image(image), imageView(imageView) {}
+    : device(device), image(image), imageView(imageView), usage(usage) {}
 
 void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t height) {
     ZoneScoped;

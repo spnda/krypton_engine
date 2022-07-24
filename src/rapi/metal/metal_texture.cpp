@@ -62,6 +62,11 @@ void kr::mtl::Texture::create(TextureFormat newFormat, uint32_t newWidth, uint32
         texture->setLabel(name);
 }
 
+void kr::mtl::Texture::destroy() {
+    ZoneScoped;
+    texture->retain()->release();
+}
+
 void kr::mtl::Texture::setName(std::string_view newName) {
     ZoneScoped;
     name = getUTF8String(newName.data());

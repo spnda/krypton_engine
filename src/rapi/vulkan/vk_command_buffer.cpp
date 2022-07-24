@@ -5,7 +5,6 @@
 
 #include <Tracy.hpp>
 #include <TracyVulkan.hpp>
-#include <glm/vec4.hpp>
 
 #include <rapi/vulkan/vk_buffer.hpp>
 #include <rapi/vulkan/vk_command_buffer.hpp>

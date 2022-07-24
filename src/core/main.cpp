@@ -197,7 +197,7 @@ auto main(int argc, char* argv[]) -> int {
         uint32_t currentFrame = 0;
         while (!window->shouldClose()) {
             // See tracy chapter 3.1.2
-            static const char* const frameName = "frame";
+            [[maybe_unused]] static const char* const frameName = "frame";
 
             ZoneScopedN("frameloop");
             FrameMarkStart(frameName);

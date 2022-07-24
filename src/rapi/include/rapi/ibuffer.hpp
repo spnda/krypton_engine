@@ -2,14 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 
 #include <util/nameable.hpp>
-
-namespace std {
-    template <typename func>
-    class function;
-}
 
 namespace krypton::rapi {
     enum class BufferMemoryLocation : uint32_t {

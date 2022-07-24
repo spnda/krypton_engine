@@ -67,6 +67,10 @@ std::shared_ptr<kr::IBuffer> kr::mtl::Device::createBuffer() {
     return std::make_shared<mtl::Buffer>(device);
 }
 
+std::shared_ptr<kr::IFence> kr::mtl::Device::createFence() {
+    return std::make_shared<mtl::Fence>();
+}
+
 std::shared_ptr<kr::IPipeline> kr::mtl::Device::createPipeline() {
     return std::make_shared<mtl::Pipeline>(device);
 }
@@ -80,7 +84,7 @@ std::shared_ptr<kr::ISampler> kr::mtl::Device::createSampler() {
 }
 
 std::shared_ptr<kr::ISemaphore> kr::mtl::Device::createSemaphore() {
-    return std::make_shared<kr::mtl::Semaphore>(device);
+    return std::make_shared<kr::mtl::Semaphore>();
 }
 
 std::shared_ptr<kr::IShader> kr::mtl::Device::createShaderFunction(std::span<const std::byte> bytes,

@@ -4,7 +4,7 @@
 #include <memory>
 #include <optional>
 
-#include <glm/fwd.hpp>
+#include <glm/vec4.hpp>
 
 #include <rapi/itexture.hpp>
 
@@ -28,7 +28,7 @@ namespace krypton::rapi {
         TextureFormat attachmentFormat;
         AttachmentLoadAction loadAction;
         AttachmentStoreAction storeAction;
-        glm::fvec4 clearColor = glm::fvec4(0.0f);
+        glm::vec4 clearColor = glm::vec4(0.0f);
     };
 
     struct RenderPassDepthAttachment {

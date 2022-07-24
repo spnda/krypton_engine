@@ -1,12 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <span>
 #include <vector>
 
-namespace std::filesystem {
-    class path;
-}
 namespace fs = std::filesystem;
 
 namespace krypton::shaders {

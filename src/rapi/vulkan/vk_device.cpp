@@ -1,5 +1,4 @@
 #include <Tracy.hpp>
-#include <glm/vec4.hpp>
 #include <volk.h>
 #include <vulkan/vulkan_beta.h>
 

@@ -1,5 +1,6 @@
 #include <Metal/MTLVertexDescriptor.hpp>
 #include <Tracy.hpp>
+#include <glm/vec4.hpp>
 
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_shader.hpp>

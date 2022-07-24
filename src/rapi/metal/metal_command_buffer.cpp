@@ -11,7 +11,6 @@
 #include <rapi/metal/metal_texture.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <rapi/vertex_descriptor.hpp>
-#include <shaders/shader_types.hpp>
 #include <util/assert.hpp>
 
 namespace kr = krypton::rapi;

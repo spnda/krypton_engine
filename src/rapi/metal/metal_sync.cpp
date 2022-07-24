@@ -7,7 +7,7 @@
 namespace kr = krypton::rapi;
 
 #pragma region mtl::Semaphore
-kr::mtl::Semaphore::Semaphore(MTL::Device* device) noexcept : device(device) {}
+kr::mtl::Semaphore::Semaphore() noexcept = default;
 
 void kr::mtl::Semaphore::create() {}
 
@@ -28,7 +28,7 @@ void kr::mtl::Semaphore::wait() {
 #pragma endregion
 
 #pragma region mtl::Fence
-kr::mtl::Fence::Fence(MTL::Device* device) noexcept : device(device) {}
+kr::mtl::Fence::Fence() noexcept = default;
 
 void kr::mtl::Fence::create(bool signaled) {
     ZoneScoped;

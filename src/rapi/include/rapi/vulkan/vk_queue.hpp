@@ -16,7 +16,7 @@ namespace krypton::rapi::vk {
         VkQueue queue;
         uint32_t familyIndex;
         std::string name;
-        void* tracyCtx = nullptr;
+        [[maybe_unused]] void* tracyCtx = nullptr;
 
     public:
         explicit Queue(Device* device, VkQueue queue, uint32_t familyIndex);

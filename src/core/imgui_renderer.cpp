@@ -1,5 +1,4 @@
 #include <filesystem>
-#include <functional>
 #include <utility>
 
 #include <Tracy.hpp>

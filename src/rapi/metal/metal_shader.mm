@@ -1,3 +1,6 @@
+// We can't use ObjC's __bridge with the new C++ casts.
+#pragma clang diagnostic ignored "-Wold-style-cast"
+
 #import <Foundation/Foundation.h>
 #import <Foundation/NSArray.h>
 #import <Metal/MTLArgumentEncoder.hpp>
