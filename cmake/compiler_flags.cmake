@@ -22,11 +22,6 @@ macro(compiler_flags)
       target_compile_options(${PARAM_TARGET} PRIVATE -Wall -Wextra -Wmicrosoft -Wold-style-cast -Wno-unused-parameter -pedantic -Og)
       # cmake-format: on
 
-      if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")
-        target_compile_options(${PARAM_TARGET} PRIVATE -O0)
-      else()
-        target_compile_options(${PARAM_TARGET} PRIVATE -O3)
-      endif()
       target_compile_options(${PARAM_TARGET} PRIVATE $<$<CONFIG:DEBUG>:-O0>)
       target_compile_options(${PARAM_TARGET} PRIVATE $<$<CONFIG:RELEASE>:-O3>)
     endif()

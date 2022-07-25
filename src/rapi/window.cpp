@@ -21,7 +21,6 @@
 #include <utility>
 
 #include <Tracy.hpp>
-#include <fmt/core.h>
 #include <glm/vec2.hpp>
 
 #include <rapi/backend_vulkan.hpp>

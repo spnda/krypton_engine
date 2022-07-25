@@ -9,7 +9,6 @@
 #include <rapi/backend_vulkan.hpp>
 #include <rapi/vulkan/vk_command_buffer.hpp>
 #include <rapi/vulkan/vk_device.hpp>
-#include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_instance.hpp>
 #include <util/logging.hpp>
 

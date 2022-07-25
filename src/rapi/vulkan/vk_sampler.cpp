@@ -5,7 +5,6 @@
 
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_sampler.hpp>
-#include <rapi/vulkan/vma.hpp>
 
 namespace kr = krypton::rapi;
 

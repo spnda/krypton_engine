@@ -1,11 +1,9 @@
 #include <array>
 
 #include <Tracy.hpp>
-#include <glm/vec4.hpp>
 #include <volk.h>
 
 #include <rapi/render_pass_attachments.hpp>
-#include <rapi/vertex_descriptor.hpp>
 #include <rapi/vulkan/vk_renderpass.hpp>
 #include <rapi/vulkan/vk_texture.hpp>
 

@@ -12,7 +12,6 @@
 #include <rapi/vulkan/vk_pipeline.hpp>
 #include <rapi/vulkan/vk_queue.hpp>
 #include <rapi/vulkan/vk_renderpass.hpp>
-#include <rapi/vulkan/vk_shader.hpp>
 #include <util/assert.hpp>
 
 namespace kr = krypton::rapi;

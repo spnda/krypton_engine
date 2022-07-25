@@ -4,15 +4,6 @@
     #define _GNU_SOURCE
 #endif
 
-#if defined WIN32
-    #define WIN32_LEAN_AND_MEAN
-// We disable clang-format as the order of these headers matters!
-// clang-format off
-    #include <Windows.h>
-    #include <processthreadsapi.h>
-// clang-format on
-#endif
-
 #include <util/logging.hpp>
 #include <util/scheduler.hpp>
 
@@ -76,7 +67,7 @@ void kt::Scheduler::start() {
     ZoneScoped;
     auto lock = std::scoped_lock(threadPoolMutex);
 
-    krypton::log::log("Launching thread pool with {} threads", maxThreadCount);
+    kl::log("Launching thread pool with {} threads", maxThreadCount);
 
     if (threadPool.capacity() != maxThreadCount) {
         // Possible that this scheduler has never been used. We reserve

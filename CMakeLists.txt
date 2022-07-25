@@ -40,6 +40,12 @@ if(APPLE)
   enable_language(OBJCXX)
 endif()
 
+# This speeds up build times drastically.
+if(MSVC)
+  add_compile_options(/MP)
+  add_link_options(/incremental)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:> is a generator expression to remove the Debug/Release
                                                                       # folders.
@@ -73,4 +79,7 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/src/rapi")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/shaders")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/util")
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/tests")
+option(KRYPTON_TESTS "Test the utility library of krypton with Catch2" OFF)
+if(KRYPTON_TESTS)
+  add_subdirectory("${CMAKE_SOURCE_DIR}/tests")
+endif()

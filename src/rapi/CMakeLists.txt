@@ -39,6 +39,7 @@ if(APPLE)
   add_files(TARGET krypton_rapi "backend_metal.cpp" "window_cocoa.mm" "metal/glfw_cocoa_bridge.mm" "metal/metal_shader.mm")
 endif()
 
+# TODO: Avoid adding backend_metal.hpp here or backend_vulkan.hpp if they're not applicable.
 add_source_directory(TARGET krypton_rapi FOLDER "include/rapi/")
 
 add_files(TARGET krypton_rapi "rapi.cpp" "shader.cpp" "window.cpp")

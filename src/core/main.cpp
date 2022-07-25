@@ -3,7 +3,6 @@
 
 #include <Tracy.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
-#include <glm/glm.hpp>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
