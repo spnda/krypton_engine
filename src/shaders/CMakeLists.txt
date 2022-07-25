@@ -13,11 +13,6 @@ endif()
 if(TARGET glslang::glslang)
   target_compile_definitions(krypton_shaders PRIVATE WITH_GLSLANG_SHADERS)
   target_link_libraries(krypton_shaders PUBLIC glslang::glslang)
-elseif(APPLE OR UNIX)
-  # We can't download glslang builds from GitHub on Linux and Mac, which is why we use glslang from vcpkg.
-  find_package(glslang CONFIG REQUIRED)
-  target_compile_definitions(krypton_shaders PRIVATE WITH_GLSLANG_SHADERS)
-  target_link_libraries(krypton_shaders PRIVATE HLSL SPIRV glslang OGLCompiler)
 endif()
 
 target_link_libraries(krypton_shaders PUBLIC krypton::util)

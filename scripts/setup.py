@@ -66,14 +66,6 @@ def download_external(name: str, url_callback: Callable[[], str]):
         shutil.rmtree(dir_path)
 
 
-def find_vcpkg_toolchain_file() -> str | None:
-    vcpkg_dir = shutil.which("vcpkg")
-    if vcpkg_dir is None or vcpkg_dir == "":
-        return None
-    else:
-        return vcpkg_dir[:-5] + "scripts/buildsystems/vcpkg.cmake"
-
-
 def configure_cmake(generator: str | None = None):
     if shutil.which("cmake") is None:
         print(
@@ -85,15 +77,13 @@ def configure_cmake(generator: str | None = None):
     create_dir("build/release")
 
     gen = ["-G", generator] if generator is not None else []
-    toolchain_file = find_vcpkg_toolchain_file()
-    tcf_param = [f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}"] if toolchain_file is not None else []
     call(
-        ["cmake", *gen, *tcf_param, "../.."],
+        ["cmake", *gen, "../.."],
         "build/debug",
         platform.system() == "Windows",
     )
     call(
-        ["cmake", *gen, *tcf_param, "../.."],
+        ["cmake", *gen, "../.."],
         "build/release",
         platform.system() == "Windows",
     )
@@ -147,11 +137,11 @@ def main():
     glslang_url = "https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-"
     match platform.system():
         case "Darwin":  # MacOS
-            glslang_url = ""
+            glslang_url += "osx"
         case "Windows":  # Windows
             glslang_url += "windows-x64"
         case "Linux":  # Linux
-            glslang_url = ""
+            glslang_url += "linux"
 
     if len(glslang_url) > 0:
         download_external("glslang-debug", lambda: glslang_url + "-Debug.zip")
@@ -161,36 +151,11 @@ def main():
     if platform.system() == "Darwin":
         download_external("metal-cpp", lambda: metalcpp_url)
 
-    # The VCPKG_ROOT environment variable should point to the vpckg installation.
-    # Without this, our CMake script might not be able to identify where to find dependencies.
-    if "VCPKG_ROOT" not in os.environ:
-        print(
-            f"{Colors.yellow}VCPKG_ROOT is not defined as an environment variable. This may lead to missing "
-            f"dependencies.{Colors.end} "
-        )
-
+    print(f"{Colors.green}Configuring build files...{Colors.end}")
     match platform.system():
         case "Darwin":  # MacOS
-            # We will try running vcpkg install, even on Mac, but won't print
-            # any messages/errors to the console as the user might've installed
-            # the packages through e.g. brew
-            call(["vcpkg", "install"])
-
-            print(f"{Colors.green}Configuring build files...{Colors.end}")
             configure_cmake("Xcode")
         case _:  # Windows / Linux
-            print(f"{Colors.green}Installing dependencies through vcpkg...{Colors.end}")
-            if shutil.which("vcpkg") is not None:
-                if not call(["vcpkg", "install"], "."):
-                    print(
-                        f"{Colors.red}The command 'vcpkg install' failed.{Colors.end}"
-                    )
-            else:
-                print(
-                    f"{Colors.yellow}vcpkg is not installed. This may lead to missing dependencies.{Colors.end}"
-                )
-
-            print(f"{Colors.green}Configuring build files...{Colors.end}")
             configure_cmake()
 
     print(

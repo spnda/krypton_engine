@@ -1,18 +1,25 @@
 # krypton
 
-A modular rendering engine written in C++20 with a Vulkan 1.3 and Metal 3 backend. For Metal, this
-means it currently only runs on recent Apple hardware and on iOS 16, iPadOS 16, and macOS 13 or
-newer.
+A modular rendering engine written in C++20 with a Vulkan and Metal 3 backend. It includes a RHI
+to quickly and easily interface with the GPU. We support Vulkan 1.1, 1.2, and 1.3 and only require
+a minimal amount of extensions. The Metal backend only runs on devices running macOS 13 or iOS 16.
 
 ## Building
 
-A fully conforming C++20 compiler is requried, e.g. GCC 10, Clang 13 or Visual Studio 16.
+A fully conforming C++20 compiler is required, e.g. GCC 10, Clang 13 or Visual Studio 16. All
+dependencies are installed via Git submodules and the setup script. Note that the python script
+required at least Python 3.10.
 
-On Windows, one can simply install vcpkg, git and CMake to get this project running.
+```shell
+git clone https://github.com/spnda/krypton_engine --recursive
+cd krypton_engine
+python3 scripts/setup.py
+```
 
-On Debian-based Linux distributions, however, it is recommended to additionally install Vulkan
-packages from LunarG's [apt repository](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started_ubuntu.html).
+Then, building, is as simple as navigating to `build/debug` and running cmake. The python script
+already configures CMake properly for you.
 
-After everything is installed, it is recommended to run `python scripts/setup.py` with Python
-3.10 or newer. This installes dependencies by downloading required binaries or through vcpkg,
-if found, clones submodules if you have not done so already and configures the CMake project.
+```shell
+cd build/debug
+cmake --build .
+```

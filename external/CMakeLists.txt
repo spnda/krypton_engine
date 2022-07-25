@@ -1,5 +1,10 @@
 # slang's macOS builds are only for x86_64 and CMake is shit in detecting the target architecture.
-if(EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin" AND NOT APPLE)
+if((WIN32
+    AND EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin/windows-x64"
+    OR UNIX
+    AND EXISTS "${CMAKE_SOURCE_DIR}/external/slang/bin/linux-64"
+   )
+   AND NOT APPLE)
   message(STATUS "Found slang")
 
   # slang
@@ -71,6 +76,9 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
   target_include_directories(glslang SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/external/glslang-release/include")
   set_target_properties(glslang PROPERTIES IMPORTED_LOCATION "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}glslang${GLSLANG_LIB_POSTFIX}")
 
+  # Libraries that depend on another library need to have their dependant listed after itself. This is how ld works.
+  target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}MachineIndependent${GLSLANG_LIB_POSTFIX}")
+
   # Dependencies for MachineIndependent.lib
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}OSDependent${GLSLANG_LIB_POSTFIX}")
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}OGLCompiler${GLSLANG_LIB_POSTFIX}")
@@ -78,13 +86,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/glslang-release/" AND EXISTS "${CMAKE_SO
 
   # HLSL and SPIR-V
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}HLSL${GLSLANG_LIB_POSTFIX}")
+  target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}SPIRV${GLSLANG_LIB_POSTFIX}")
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}SPIRV-Tools-opt${GLSLANG_LIB_POSTFIX}")
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}SPIRV-Tools${GLSLANG_LIB_POSTFIX}")
-  target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}SPIRV${GLSLANG_LIB_POSTFIX}")
   target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}SPVRemapper${GLSLANG_LIB_POSTFIX}")
-
-  target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}OSDependent${GLSLANG_LIB_POSTFIX}")
-  target_link_libraries(glslang INTERFACE "${GLSLANG_LIB_DIR}/${GLSLANG_LIB_PREFIX}MachineIndependent${GLSLANG_LIB_POSTFIX}")
 endif()
 
 if(APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/external/metal-cpp/metal-cpp-beta")

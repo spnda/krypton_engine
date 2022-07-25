@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.23)
 
 option(KRYPTON_USE_TRACY "Enable the Tracy profiler" OFF)
 
@@ -9,21 +9,6 @@ set(KRYPTON_TRACY_CALLSTACK_SIZE
 
 # This forces us to set variables explicitly in CACHE so that the option() command does not override the value.
 cmake_policy(SET CMP0077 NEW)
-
-# Automatically find our vcpkg.cmake toolchain file. We only do this on Windows, as on Linux or Mac the user could also use the package
-# manager.
-if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(vcpkg_file "$ENV{VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake")
-  cmake_path(SET vcpkg_file NORMALIZE "${vcpkg_file}")
-  set(CMAKE_TOOLCHAIN_FILE
-      "${vcpkg_file}"
-      CACHE FILEPATH "")
-elseif(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  message(
-    WARNING
-      "The CMAKE_TOOLCHAIN_FILE define and the VCPKG_ROOT environment variable are not defined, this could cause issues while searching for dependencies."
-  )
-endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE

@@ -19,7 +19,10 @@ macro(compiler_flags)
       # Clang, AppleClang, or GCC
 
       # cmake-format: off
-      target_compile_options(${PARAM_TARGET} PRIVATE -Wall -Wextra -Wmicrosoft -Wold-style-cast -Wno-unused-parameter -pedantic -Og)
+      target_compile_options(${PARAM_TARGET} PRIVATE -Wall -Wextra -Wold-style-cast -Wno-unused-parameter -pedantic -Og)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(${PARAM_TARGET} PRIVATE -Wmicrosoft)
+      endif()
       # cmake-format: on
 
       target_compile_options(${PARAM_TARGET} PRIVATE $<$<CONFIG:DEBUG>:-O0>)

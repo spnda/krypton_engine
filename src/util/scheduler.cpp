@@ -1,9 +1,5 @@
 #include <Tracy.hpp>
 
-#if defined __APPLE__ || defined __linux__
-    #define _GNU_SOURCE
-#endif
-
 #include <util/logging.hpp>
 #include <util/scheduler.hpp>
 

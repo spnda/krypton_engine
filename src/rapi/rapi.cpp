@@ -1,5 +1,5 @@
+#include <GLFW/glfw3.h>
 #include <Tracy.hpp>
-#include <glfw/glfw3.h>
 
 #ifdef RAPI_WITH_METAL
     #include <rapi/backend_metal.hpp>
