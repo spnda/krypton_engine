@@ -5,6 +5,7 @@
 #include <robin_hood.h>
 
 #include <rapi/idevice.hpp>
+#include <rapi/vulkan/vk_instance.hpp>
 #include <rapi/vulkan/vk_struct_chain.hpp>
 #include <util/attributes.hpp>
 
@@ -17,7 +18,7 @@ namespace krypton::rapi::vk {
     class PhysicalDevice : public IPhysicalDevice {
         friend class Device;
 
-        class Instance* instance;
+        Instance* instance;
 
         std::vector<VkPhysicalDevice> availablePhysicalDevices = {};
         std::vector<VkQueueFamilyProperties2> queueFamilies = {};
@@ -44,7 +45,7 @@ namespace krypton::rapi::vk {
     };
 
     class Device final : public IDevice {
-        class Instance* instance;
+        Instance* instance;
         class PhysicalDevice* physicalDevice;
 
         VkDevice device = nullptr;
@@ -74,15 +75,55 @@ namespace krypton::rapi::vk {
         auto createSwapchain(Window* window) -> std::shared_ptr<ISwapchain> override;
         auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> override;
         void destroy() override;
-        auto getDeviceName() -> std::string_view override;
-        ALWAYS_INLINE [[nodiscard]] auto getAllocator() const -> VmaAllocator;
-        [[nodiscard]] auto getHandle() const -> VkDevice;
-        [[nodiscard]] auto getInstance() const -> Instance*;
-        [[nodiscard]] auto getProperties() const -> const VkPhysicalDeviceProperties&;
-        [[nodiscard]] auto getPhysicalDevice() const -> VkPhysicalDevice;
+
+        auto getDeviceName() -> std::string_view override {
+            ZoneScoped;
+            return physicalDevice->properties.deviceName;
+        }
+
+        ALWAYS_INLINE [[nodiscard]] inline auto getAllocator() const -> VmaAllocator {
+            return allocator;
+        }
+
+        ALWAYS_INLINE [[nodiscard]] inline auto getHandle() const -> VkDevice {
+            return device;
+        }
+
+        ALWAYS_INLINE [[nodiscard]] inline auto getInstance() const -> Instance* {
+            return instance;
+        }
+
+        ALWAYS_INLINE [[nodiscard]] inline auto getProperties() const -> const VkPhysicalDeviceProperties& {
+            return physicalDevice->properties;
+        }
+
+        ALWAYS_INLINE [[nodiscard]] inline auto getPhysicalDevice() const -> VkPhysicalDevice {
+            return physicalDevice->physicalDevice;
+        }
+
         auto getPresentationQueue() -> std::shared_ptr<IQueue> override;
+
         [[nodiscard]] bool isExtensionEnabled(const char* extensionName) const;
-        bool isHeadless() const noexcept override;
-        ALWAYS_INLINE void setDebugUtilsName(VkObjectType objectType, const uint64_t& handle, const char* string);
+
+        ALWAYS_INLINE [[nodiscard]] inline bool isHeadless() const noexcept override {
+            return instance->isHeadless();
+        }
+
+        ALWAYS_INLINE inline void setDebugUtilsName(VkObjectType objectType, const uint64_t& handle, const char* string) {
+            ZoneScoped;
+#ifdef KRYPTON_DEBUG
+            if (vkSetDebugUtilsObjectNameEXT == nullptr || handle == 0) {
+                return;
+            }
+
+            VkDebugUtilsObjectNameInfoEXT info = {
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = objectType,
+                .objectHandle = handle,
+                .pObjectName = string,
+            };
+            vkSetDebugUtilsObjectNameEXT(device, &info);
+#endif
+        }
     };
 } // namespace krypton::rapi::vk

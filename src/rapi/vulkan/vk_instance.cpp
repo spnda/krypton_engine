@@ -205,10 +205,6 @@ VkInstance kr::vk::Instance::getHandle() {
     return instance;
 }
 
-bool kr::vk::Instance::isHeadless() const noexcept {
-    return headless;
-}
-
 void kr::vk::Instance::setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback) {
     debugUtilsCallback = callback;
 }

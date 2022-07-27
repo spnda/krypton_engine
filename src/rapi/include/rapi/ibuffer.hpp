@@ -54,8 +54,9 @@ namespace krypton::rapi {
         virtual void mapMemory(void** memory) = 0;
 
         /**
-         * Maps CPU accessible memory to a void* for reading and writing. This will not work for
-         * device local memory. This is effectively just a shorthand for mapMemory and unmapMemory.
+         * Maps CPU accessible memory to a void* for reading and writing, and directly flushes
+         * the memory after the lambda completes. This will not work for device local memory. This
+         * is effectively just a shorthand for mapMemory and unmapMemory.
          */
         virtual void mapMemory(std::function<void(void*)> callback) = 0;
 

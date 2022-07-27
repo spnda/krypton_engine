@@ -225,8 +225,9 @@ auto main(int argc, char* argv[]) -> int {
                 window->waitEvents();
             }
 
-            if (needsResize)
+            if (needsResize) {
                 continue;
+            }
 
             auto& cmd = commandBuffers[currentFrame];
 
@@ -256,8 +257,9 @@ auto main(int argc, char* argv[]) -> int {
         }
 
         // Ensure the command buffers are done.
-        for (auto& frame : frameData)
+        for (auto& frame : frameData) {
             frame.fence->wait();
+        }
 
         swapchain->destroy();
         window->destroy();

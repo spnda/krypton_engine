@@ -487,32 +487,6 @@ void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& devic
     }
 }
 
-std::string_view kr::vk::Device::getDeviceName() {
-    ZoneScoped;
-    return physicalDevice->properties.deviceName;
-}
-
-VmaAllocator kr::vk::Device::getAllocator() const {
-    ZoneScoped;
-    return allocator;
-}
-
-VkDevice kr::vk::Device::getHandle() const {
-    return device;
-}
-
-kr::vk::Instance* kr::vk::Device::getInstance() const {
-    return instance;
-}
-
-const VkPhysicalDeviceProperties& kr::vk::Device::getProperties() const {
-    return physicalDevice->properties;
-}
-
-VkPhysicalDevice kr::vk::Device::getPhysicalDevice() const {
-    return physicalDevice->physicalDevice;
-}
-
 std::shared_ptr<kr::IQueue> kr::vk::Device::getPresentationQueue() {
     ZoneScoped;
     VkQueue queue;
@@ -523,26 +497,5 @@ std::shared_ptr<kr::IQueue> kr::vk::Device::getPresentationQueue() {
 bool kr::vk::Device::isExtensionEnabled(const char* extensionName) const {
     ZoneScoped;
     return enabledExtensions.contains(extensionName);
-}
-
-bool kr::vk::Device::isHeadless() const noexcept {
-    ZoneScoped;
-    return instance->isHeadless();
-}
-
-void kr::vk::Device::setDebugUtilsName(VkObjectType objectType, const uint64_t& handle, const char* string) {
-    ZoneScoped;
-#ifdef KRYPTON_DEBUG
-    if (vkSetDebugUtilsObjectNameEXT == nullptr || handle == 0)
-        return;
-
-    VkDebugUtilsObjectNameInfoEXT info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .objectType = objectType,
-        .objectHandle = handle,
-        .pObjectName = string,
-    };
-    vkSetDebugUtilsObjectNameEXT(device, &info);
-#endif
 }
 #pragma endregion

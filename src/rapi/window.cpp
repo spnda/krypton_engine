@@ -122,18 +122,19 @@ void kr::Window::create(RenderAPI* pRenderApi) noexcept(false) {
 
     if (backend == Backend::Vulkan) {
         ZoneScoped;
-        auto vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
+        auto* vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
         auto res = glfwCreateWindowSurface(vulkanRapi->getInstance()->getHandle(), window, nullptr,
                                            reinterpret_cast<VkSurfaceKHR*>(&vulkanSurface));
-        if (res != VK_SUCCESS)
+        if (res != VK_SUCCESS) {
             kl::err("Failed to create window surface: {}, {}", title, res);
+        }
     }
 }
 
 void kr::Window::destroy() {
     ZoneScoped;
     if (backend == Backend::Vulkan) {
-        auto vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
+        auto* vulkanRapi = dynamic_cast<VulkanBackend*>(renderApi);
         vkDestroySurfaceKHR(vulkanRapi->getInstance()->getHandle(), reinterpret_cast<VkSurfaceKHR>(vulkanSurface), nullptr);
         vulkanSurface = nullptr;
     }
@@ -150,14 +151,16 @@ float kr::Window::getAspectRatio() const {
 
 glm::fvec2 kr::Window::getContentScale() const {
     ZoneScoped;
-    float xScale, yScale;
+    float xScale = 0.0f;
+    float yScale = 0.0f;
     glfwGetWindowContentScale(window, &xScale, &yScale);
     return { xScale, yScale };
 }
 
 glm::ivec2 kr::Window::getFramebufferSize() const {
     ZoneScoped;
-    int tWidth, tHeight;
+    int tWidth = 0;
+    int tHeight = 0;
     glfwGetFramebufferSize(window, &tWidth, &tHeight);
     return { tWidth, tHeight };
 }
@@ -174,7 +177,8 @@ GLFWwindow* kr::Window::getWindowPointer() const {
 
 glm::ivec2 kr::Window::getWindowSize() const {
     ZoneScoped;
-    int tWidth, tHeight;
+    int tWidth = 0;
+    int tHeight = 0;
     glfwGetWindowSize(window, &tWidth, &tHeight);
     return { tWidth, tHeight };
 }
@@ -210,7 +214,7 @@ void kr::Window::setWindowTitle(std::string_view newTitle) const {
 
 bool kr::Window::shouldClose() const {
     ZoneScoped;
-    return glfwWindowShouldClose(window);
+    return static_cast<bool>(glfwWindowShouldClose(window));
 }
 
 void kr::Window::waitEvents() {

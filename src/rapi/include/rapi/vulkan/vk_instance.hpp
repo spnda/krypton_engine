@@ -9,7 +9,7 @@ typedef struct VkInstance_T* VkInstance;
 
 namespace krypton::rapi {
     class Window;
-}
+} // namespace krypton::rapi
 
 namespace krypton::rapi::vk {
     struct Version {
@@ -32,6 +32,7 @@ namespace krypton::rapi::vk {
     public:
         Version instanceVersion = { .ver = 0 };
 
+        explicit Instance() noexcept = default;
         ~Instance() = default;
 
         void create();
@@ -39,7 +40,9 @@ namespace krypton::rapi::vk {
         auto getHandle() -> VkInstance;
         // If true, the VK_KHR_surface extension and the corresponding platform surface extension
         // are not enabled, and the device cannot present to a swapchain.
-        ALWAYS_INLINE [[nodiscard]] bool isHeadless() const noexcept;
+        ALWAYS_INLINE [[nodiscard]] inline bool isHeadless() const noexcept {
+            return headless;
+        }
         void setDebugCallback(PFN_vkDebugUtilsMessengerCallbackEXT callback);
     };
 } // namespace krypton::rapi::vk

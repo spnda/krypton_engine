@@ -207,6 +207,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
     // Copy all vertex and index buffers into the proper buffers. Because of Vulkan, we cannot copy
     // buffers while within a render pass.
     if (drawData->TotalVtxCount > 0) {
+        auto commandLists = std::span(drawData->CmdLists, drawData->CmdListsCount);
+
         // Update the uniform buffer
         updateUniformBuffer(buffers[currentFrame].uniformBuffer.get(), drawData->DisplaySize, drawData->DisplayPos);
 
@@ -228,16 +230,14 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 
         // Copy the vertex and index buffers
         {
-            void* vtxData;
-            void* idxData;
+            void* vtxData = nullptr;
+            void* idxData = nullptr;
             vertexBuffer->mapMemory(&vtxData);
             indexBuffer->mapMemory(&idxData);
 
             auto* vertexDestination = static_cast<ImDrawVert*>(vtxData);
             auto* indexDestination = static_cast<ImDrawIdx*>(idxData);
-            for (int i = 0; i < drawData->CmdListsCount; ++i) {
-                auto& list = drawData->CmdLists[i];
-
+            for (auto& list : commandLists) {
                 std::memcpy(vertexDestination, list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert));
                 std::memcpy(indexDestination, list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
@@ -266,33 +266,25 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         auto framebufferWidth = static_cast<uint32_t>(drawData->DisplaySize.x * drawData->FramebufferScale.x);
         auto framebufferHeight = static_cast<uint32_t>(drawData->DisplaySize.y * drawData->FramebufferScale.y);
 
-        std::size_t vertexOffset = 0, indexOffset = 0;
-        for (int n = 0; n < drawData->CmdListsCount; ++n) {
-            const ImDrawList* cmdList = drawData->CmdLists[n];
+        std::size_t vertexOffset = 0;
+        std::size_t indexOffset = 0;
+        for (auto& list : commandLists) {
+            for (int i = 0; i < list->CmdBuffer.Size; ++i) {
+                const auto& cmd = list->CmdBuffer[i];
 
-            for (int i = 0; i < cmdList->CmdBuffer.Size; ++i) {
-                const auto& cmd = cmdList->CmdBuffer[i];
-
-                if (cmd.ElemCount == 0) // drawIndexed doesn't accept this
+                if (cmd.ElemCount == 0) { // drawIndexed doesn't accept this
                     continue;
+                }
 
-                glm::u32vec2 clipMin = { (cmd.ClipRect.x - clipOffset.x) * clipScale.x, (cmd.ClipRect.y - clipOffset.y) * clipScale.y };
-                glm::u32vec2 clipMax = { (cmd.ClipRect.z - clipOffset.x) * clipScale.x, (cmd.ClipRect.w - clipOffset.y) * clipScale.y };
+                glm::u32vec2 clipMin = { std::max(0U, static_cast<uint32_t>((cmd.ClipRect.x - clipOffset.x) * clipScale.x)),
+                                         std::max(0U, static_cast<uint32_t>((cmd.ClipRect.y - clipOffset.y) * clipScale.y)) };
+                glm::u32vec2 clipMax = { std::min(framebufferWidth, static_cast<uint32_t>((cmd.ClipRect.z - clipOffset.x) * clipScale.x)),
+                                         std::min(framebufferHeight,
+                                                  static_cast<uint32_t>((cmd.ClipRect.w - clipOffset.y) * clipScale.y)) };
 
-                if (clipMin.x < 0) {
-                    clipMin.x = 0;
-                }
-                if (clipMin.y < 0) {
-                    clipMin.y = 0;
-                }
-                if (clipMax.x > framebufferWidth) {
-                    clipMax.x = framebufferWidth;
-                }
-                if (clipMax.y > framebufferHeight) {
-                    clipMax.y = framebufferHeight;
-                }
-                if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
+                if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y) {
                     continue;
+                }
 
                 commandBuffer->scissor(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
 
@@ -303,8 +295,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
                 commandBuffer->drawIndexed(cmd.ElemCount, 0);
             }
 
-            indexOffset += cmdList->IdxBuffer.Size;
-            vertexOffset += cmdList->VtxBuffer.Size;
+            indexOffset += list->IdxBuffer.Size;
+            vertexOffset += list->VtxBuffer.Size;
         }
 
         commandBuffer->endRenderPass();
@@ -324,10 +316,10 @@ void kc::ImGuiRenderer::endFrame() {
 
 void kc::ImGuiRenderer::updateUniformBuffer(rapi::IBuffer* uniformBuffer, const ImVec2& displaySize, const ImVec2& displayPos) {
     ZoneScoped;
-    uniforms.scale.x = 2.0f / displaySize.x;
-    uniforms.scale.y = 2.0f / displaySize.y;
-    uniforms.translate.x = -1.0f - displayPos.x * uniforms.scale.x;
-    uniforms.translate.y = -1.0f - displayPos.y * uniforms.scale.y;
+    uniforms.scale.x = 2.0F / displaySize.x;
+    uniforms.scale.y = 2.0F / displaySize.y;
+    uniforms.translate.x = -1.0F - displayPos.x * uniforms.scale.x;
+    uniforms.translate.y = -1.0F - displayPos.y * uniforms.scale.y;
 
     uniformBuffer->mapMemory([this](void* data) { std::memcpy(data, &uniforms, sizeof(ImGuiShaderUniforms)); });
 }
