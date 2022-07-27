@@ -73,7 +73,6 @@ namespace krypton::rapi {
         [[nodiscard]] auto getWindowSize() const -> glm::ivec2;
         [[nodiscard]] bool isMinimised() const;
         [[nodiscard]] bool isOccluded() const;
-        static void newFrame();
         static void pollEvents();
         void setUserPointer(void* pointer) const;
         void setWindowTitle(std::string_view title) const;

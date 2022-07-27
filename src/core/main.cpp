@@ -8,6 +8,7 @@
 
 #include <assets/loader/fileloader.hpp>
 #include <assets/mesh.hpp>
+#include <core/imgui_console.hpp>
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
 #include <rapi/ipipeline.hpp>
@@ -94,15 +95,14 @@ auto main(int argc, char* argv[]) -> int {
             kl::throwError("No physical devices have been found!");
 
         kr::IPhysicalDevice* selectedPhysicalDevice = nullptr;
-        for (auto i = 0UL; i < physicalDevices.size(); ++i) {
-            auto& device = physicalDevices[i];
-            if (!device->meetsMinimumRequirement())
+        for (auto& physicalDevice : physicalDevices) {
+            if (!physicalDevice->meetsMinimumRequirement())
                 continue;
-            if (!device->canPresentToWindow(window.get()))
+            if (!physicalDevice->canPresentToWindow(window.get()))
                 continue;
 
             // This device meets all conditions.
-            selectedPhysicalDevice = device;
+            selectedPhysicalDevice = physicalDevice;
             break;
         }
 
@@ -118,17 +118,19 @@ auto main(int argc, char* argv[]) -> int {
 
         bool needsResize = false;
         std::vector<FrameData> frameData(swapchain->getImageCount());
-        for (auto& i : frameData) {
-            i.imageAcquireSemaphore = device->createSemaphore();
-            i.imageAcquireSemaphore->create();
-            i.renderSemaphore = device->createSemaphore();
-            i.renderSemaphore->create();
-            i.fence = device->createFence();
-            i.fence->create(true);
+        for (auto& frame : frameData) {
+            frame.imageAcquireSemaphore = device->createSemaphore();
+            frame.imageAcquireSemaphore->create();
+            frame.renderSemaphore = device->createSemaphore();
+            frame.renderSemaphore->create();
+            frame.fence = device->createFence();
+            frame.fence->create(true);
         }
 
         auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device.get(), window.get());
         imgui->init(swapchain.get());
+        auto imguiConsole = std::make_unique<krypton::core::ImGuiConsole>();
+        imguiConsole->init(); // All calls to kl::log are now redirected to our console.
 
         auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
         auto vertSpirv = krypton::shaders::readBinaryShaderFile("shaders/vert.spv");
@@ -215,6 +217,12 @@ auto main(int argc, char* argv[]) -> int {
                 std::this_thread::sleep_for(1000ms);
             }
 
+            // We draw all our imgui windows before acquiring the next swapchain image, as the
+            // image might not yet be ready, so we'd have to wait for a bit anyway.
+            imgui->newFrame();
+            drawUi(rapi.get());
+            imguiConsole->drawWindow();
+
             currentFrame = ++currentFrame % swapchain->getImageCount();
 
             if (!needsResize) {
@@ -225,25 +233,21 @@ auto main(int argc, char* argv[]) -> int {
                 window->waitEvents();
             }
 
-            if (needsResize)
+            if (needsResize) {
                 continue;
+            }
 
             auto& cmd = commandBuffers[currentFrame];
-
-            window->newFrame();
-            imgui->newFrame();
-
-            (*defaultRenderPass)[0].attachment = swapchain->getDrawable();
 
             frameData[currentFrame].fence->wait();
             frameData[currentFrame].fence->reset();
 
+            (*defaultRenderPass)[0].attachment = swapchain->getDrawable();
             cmd->begin();
             // cmd->beginRenderPass(defaultRenderPass.get());
 
             // cmd->endRenderPass();
 
-            drawUi(rapi.get());
             imgui->draw(cmd.get());
             cmd->end();
 

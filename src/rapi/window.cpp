@@ -189,10 +189,6 @@ bool kr::Window::isOccluded() const { // NOLINT
 }
 #endif
 
-void kr::Window::newFrame() {
-    ZoneScoped;
-}
-
 void kr::Window::pollEvents() {
     ZoneScoped;
     glfwPollEvents();

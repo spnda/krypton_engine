@@ -21,7 +21,7 @@ namespace krypton::threading {
         mutable std::mutex threadPoolMutex;
 
         // This helps us notify worker threads about new work. This is
-        // useful so the thread doesn't just continuosly run waiting for
+        // useful so the thread doesn't just continuously run waiting for
         // work to do.
         std::condition_variable cv;
 
