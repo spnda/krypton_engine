@@ -79,9 +79,11 @@ auto main(int argc, char* argv[]) -> int {
         return -1;
 
     try {
+        auto imguiConsole = std::make_unique<krypton::core::ImGuiConsole>();
+        imguiConsole->initCallbacks(); // All calls to kl::log are now redirected to our console.
+
         // We currently just use the default backend for the current platform.
-        // auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
-        auto rapi = kr::getRenderApi(kr::Backend::Vulkan);
+        auto rapi = kr::getRenderApi(kr::getPlatformDefaultBackend());
         rapi->init();
 
         // Create the window
@@ -129,8 +131,6 @@ auto main(int argc, char* argv[]) -> int {
 
         auto imgui = std::make_unique<krypton::core::ImGuiRenderer>(device.get(), window.get());
         imgui->init(swapchain.get());
-        auto imguiConsole = std::make_unique<krypton::core::ImGuiConsole>();
-        imguiConsole->init(); // All calls to kl::log are now redirected to our console.
 
         auto fragSpirv = krypton::shaders::readBinaryShaderFile("shaders/frag.spv");
         auto vertSpirv = krypton::shaders::readBinaryShaderFile("shaders/vert.spv");
@@ -264,6 +264,7 @@ auto main(int argc, char* argv[]) -> int {
             frame.fence->wait();
 
         swapchain->destroy();
+        imgui->destroy();
         window->destroy();
 
         defaultRenderPass->destroy();
@@ -275,7 +276,6 @@ auto main(int argc, char* argv[]) -> int {
             frame.renderSemaphore->destroy();
         }
 
-        imgui->destroy();
         rapi->shutdown();
 
         kl::log("rapi reference count: {}", rapi.use_count());

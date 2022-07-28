@@ -20,4 +20,5 @@ if(MSVC)
   set_target_properties(krypton_core PROPERTIES LINK_FLAGS "/ignore:4099")
 endif()
 
+add_source_directory(TARGET krypton_core FOLDER "include/core/")
 add_source_directory(TARGET krypton_core FOLDER ".")

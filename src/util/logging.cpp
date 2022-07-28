@@ -3,8 +3,8 @@
 #include <util/logging.hpp>
 
 namespace krypton::log {
-    static kl::printCallback callback = kl::defaultCallback;
-    static void* userData = nullptr;
+    kl::printCallback callback = kl::defaultCallback;
+    void* userData = nullptr;
 } // namespace krypton::log
 
 void kl::defaultCallback(PrintType type, const std::string& str, [[maybe_unused]] void* user) {
