@@ -18,7 +18,7 @@ void kr::vk::Semaphore::create() {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .flags = 0,
     };
-    auto result = vkCreateSemaphore(device->getHandle(), &semaphoreInfo, nullptr, &semaphore);
+    auto result = vkCreateSemaphore(device->getHandle(), &semaphoreInfo, VK_NULL_HANDLE, &semaphore);
     if (result != VK_SUCCESS)
         kl::err("Failed to create semaphore: {}", result);
 
@@ -28,7 +28,7 @@ void kr::vk::Semaphore::create() {
 
 void kr::vk::Semaphore::destroy() {
     ZoneScoped;
-    vkDestroySemaphore(device->getHandle(), semaphore, nullptr);
+    vkDestroySemaphore(device->getHandle(), semaphore, VK_NULL_HANDLE);
 }
 
 VkSemaphore* kr::vk::Semaphore::getHandle() {
@@ -39,7 +39,7 @@ void kr::vk::Semaphore::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (semaphore != nullptr && !name.empty())
+    if (semaphore != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SEMAPHORE, reinterpret_cast<const uint64_t&>(semaphore), name.c_str());
 }
 #pragma endregion
@@ -53,7 +53,7 @@ void kr::vk::Fence::create(bool signaled) {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = static_cast<VkFenceCreateFlags>(signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0),
     };
-    auto result = vkCreateFence(device->getHandle(), &fenceInfo, nullptr, &fence);
+    auto result = vkCreateFence(device->getHandle(), &fenceInfo, VK_NULL_HANDLE, &fence);
     if (result != VK_SUCCESS)
         kl::err("Failed to create fence: {}", result);
 
@@ -63,7 +63,7 @@ void kr::vk::Fence::create(bool signaled) {
 
 void kr::vk::Fence::destroy() {
     ZoneScoped;
-    vkDestroyFence(device->getHandle(), fence, nullptr);
+    vkDestroyFence(device->getHandle(), fence, VK_NULL_HANDLE);
 }
 
 VkFence* kr::vk::Fence::getHandle() {
@@ -81,7 +81,7 @@ void kr::vk::Fence::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (fence != nullptr && !name.empty())
+    if (fence != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_FENCE, reinterpret_cast<const uint64_t&>(fence), name.c_str());
 }
 
@@ -102,7 +102,7 @@ void kr::vk::Event::create(uint64_t initialValue) {
         .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
         .flags = 0,
     };
-    auto result = vkCreateEvent(device->getHandle(), &eventInfo, nullptr, &event);
+    auto result = vkCreateEvent(device->getHandle(), &eventInfo, VK_NULL_HANDLE, &event);
     if (result != VK_SUCCESS)
         kl::err("Failed to create event: {}", result);
 
@@ -112,7 +112,7 @@ void kr::vk::Event::create(uint64_t initialValue) {
 
 void kr::vk::Event::destroy() {
     ZoneScoped;
-    vkDestroyEvent(device->getHandle(), event, nullptr);
+    vkDestroyEvent(device->getHandle(), event, VK_NULL_HANDLE);
 }
 
 VkEvent* kr::vk::Event::getHandle() {
@@ -123,7 +123,7 @@ void kr::vk::Event::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (event != nullptr && !name.empty())
+    if (event != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_EVENT, reinterpret_cast<const uint64_t&>(event), name.c_str());
 }
 #pragma endregion

@@ -18,7 +18,6 @@
 #include <rapi/itexture.hpp>
 #include <rapi/rapi.hpp>
 #include <rapi/render_pass_attachments.hpp>
-#include <rapi/vertex_descriptor.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
 #include <util/logging.hpp>
@@ -100,6 +99,8 @@ auto main(int argc, char* argv[]) -> int {
                 continue;
             if (!device->canPresentToWindow(window.get()))
                 continue;
+            if (!device->supportedDeviceFeatures().bufferDeviceAddress)
+                continue;
 
             // This device meets all conditions.
             selectedPhysicalDevice = device;
@@ -109,7 +110,9 @@ auto main(int argc, char* argv[]) -> int {
         if (selectedPhysicalDevice == nullptr)
             kl::throwError("No compatible physical device has been found!");
 
-        std::unique_ptr<kr::IDevice> device = physicalDevices.front()->createDevice();
+        std::unique_ptr<kr::IDevice> device = physicalDevices.front()->createDevice({
+            .bufferDeviceAddress = true,
+        });
 
         kl::log("Launching on {}", device->getDeviceName());
 
@@ -152,21 +155,6 @@ auto main(int argc, char* argv[]) -> int {
         defaultPipeline->setFragmentFunction(defaultFragmentFunction.get());
         defaultPipeline->setVertexFunction(defaultVertexFunction.get());
         // clang-format off
-        defaultPipeline->setVertexDescriptor({
-            .buffers = {
-               {
-                   .stride = sizeof(krypton::assets::Vertex),
-                   .inputRate = krypton::rapi::VertexInputRate::Vertex,
-               },
-           },
-            .attributes = {
-                {
-                    .offset = 0,
-                    .bufferIndex = 0,
-                    .format = krypton::rapi::VertexFormat::RGBA32_FLOAT,
-                }
-            }
-        });
         defaultPipeline->addAttachment(0, {
             .format = swapchain->getDrawableFormat(),
             .blending = {

@@ -6,16 +6,11 @@
 #include <rapi/metal/metal_pipeline.hpp>
 #include <rapi/metal/metal_shader.hpp>
 #include <rapi/metal/metal_texture.hpp>
-#include <rapi/vertex_descriptor.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
 
 // clang-format off
-static constexpr std::array<MTL::VertexStepFunction, 2> metalVertexStepFunctions = {
-    MTL::VertexStepFunctionPerVertex,   // VertexInputRate::Vertex = 0,
-    MTL::VertexStepFunctionPerInstance, // VertexInputRate::Instance = 1,
-};
 
 static constexpr std::array<MTL::PrimitiveTopologyClass, 3> metalPrimitiveTopologies = {
     MTL::PrimitiveTopologyClassPoint,       // PrimitiveTopology::Point = 0,
@@ -73,9 +68,6 @@ void kr::mtl::Pipeline::addAttachment(uint32_t index, PipelineAttachment attachm
 
 void kr::mtl::Pipeline::create() {
     ZoneScoped;
-    if (vertexDescriptor != nullptr)
-        descriptor->setVertexDescriptor(vertexDescriptor);
-
     // Load attachments
     for (auto& pair : attachments) {
         auto& second = pair.second;
@@ -150,28 +142,6 @@ void kr::mtl::Pipeline::setName(std::string_view newName) {
 void kr::mtl::Pipeline::setPrimitiveTopology(krypton::rapi::PrimitiveTopology topology) {
     ZoneScoped;
     descriptor->setInputPrimitiveTopology(metalPrimitiveTopologies[static_cast<uint8_t>(topology)]);
-}
-
-void kr::mtl::Pipeline::setVertexDescriptor(VertexDescriptor vtxDescriptor) {
-    ZoneScoped;
-    if (vertexDescriptor != nullptr)
-        vertexDescriptor->retain()->release();
-
-    vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
-
-    for (auto i = 0ULL; i < vtxDescriptor.buffers.size(); ++i) {
-        auto* layout = vertexDescriptor->layouts()->object(i);
-        layout->setStride(vtxDescriptor.buffers[i].stride);
-        layout->setStepFunction(metalVertexStepFunctions[static_cast<uint8_t>(vtxDescriptor.buffers[i].inputRate)]);
-    }
-
-    // Setup vertex attributes
-    for (auto i = 0ULL; i < vtxDescriptor.attributes.size(); ++i) {
-        auto* attrib = vertexDescriptor->attributes()->object(i);
-        attrib->setBufferIndex(vtxDescriptor.attributes[i].bufferIndex);
-        attrib->setOffset(vtxDescriptor.attributes[i].offset);
-        attrib->setFormat(getMetalVertexFormat(vtxDescriptor.attributes[i].format));
-    }
 }
 
 void kr::mtl::Pipeline::setVertexFunction(const IShader* shader) {

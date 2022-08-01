@@ -12,6 +12,7 @@
 #include <rapi/vulkan/vk_pipeline.hpp>
 #include <rapi/vulkan/vk_queue.hpp>
 #include <rapi/vulkan/vk_renderpass.hpp>
+#include <rapi/vulkan/vk_shaderparameter.hpp>
 #include <util/assert.hpp>
 
 namespace kr = krypton::rapi;
@@ -45,7 +46,7 @@ void kr::vk::CommandBuffer::begin() {
 
 void kr::vk::CommandBuffer::beginRenderPass(const IRenderPass* renderPass) {
     ZoneScoped;
-    if (vkCmdBeginRendering != nullptr) {
+    if (vkCmdBeginRendering != VK_NULL_HANDLE) {
         vkCmdBeginRendering(cmdBuffer, dynamic_cast<const RenderPass*>(renderPass)->getRenderingInfo());
     } else {
         vkCmdBeginRenderingKHR(cmdBuffer, dynamic_cast<const RenderPass*>(renderPass)->getRenderingInfo());
@@ -60,8 +61,8 @@ void kr::vk::CommandBuffer::bindIndexBuffer(IBuffer* indexBuffer, IndexType type
 
 void kr::vk::CommandBuffer::bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) {
     ZoneScoped;
-    // vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline->getLayout(), 0, 1,
-    //                         dynamic_cast<ShaderParameter*>(parameter)->getHandle(), 0, nullptr);
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline->getLayout(), index, 1,
+                            dynamic_cast<ShaderParameter*>(parameter)->getHandle(), 0, nullptr);
 }
 
 void kr::vk::CommandBuffer::bindPipeline(IPipeline* pipeline) {
@@ -70,21 +71,14 @@ void kr::vk::CommandBuffer::bindPipeline(IPipeline* pipeline) {
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline->getHandle());
 }
 
-void kr::vk::CommandBuffer::bindVertexBuffer(uint32_t index, IBuffer* buffer, uint64_t offset) {
-    ZoneScoped;
-    boundVertexBuffer = dynamic_cast<Buffer*>(buffer);
-    auto bufferHandle = boundVertexBuffer->getHandle();
-    vkCmdBindVertexBuffers(cmdBuffer, index, 1, &bufferHandle, &offset);
-}
-
 void kr::vk::CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t firstIndex) {
     ZoneScoped;
-    // vkCmdDrawIndexed(cmdBuffer, indexCount, 1UL, firstIndex, 0, 0);
+    vkCmdDrawIndexed(cmdBuffer, indexCount, 1UL, firstIndex, 0, 0);
 }
 
 void kr::vk::CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t firstIndex, uint32_t instanceCount, uint32_t firstInstance) {
     ZoneScoped;
-    // vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, firstIndex, 0, firstInstance);
+    vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, firstIndex, 0, firstInstance);
 }
 
 void kr::vk::CommandBuffer::end() {
@@ -95,7 +89,7 @@ void kr::vk::CommandBuffer::end() {
 
 void kr::vk::CommandBuffer::endRenderPass() {
     ZoneScoped;
-    if (vkCmdEndRendering != nullptr) {
+    if (vkCmdEndRendering != VK_NULL_HANDLE) {
         vkCmdEndRendering(cmdBuffer);
     } else {
         vkCmdEndRenderingKHR(cmdBuffer);
@@ -106,18 +100,16 @@ VkCommandBuffer kr::vk::CommandBuffer::getHandle() const {
     return cmdBuffer;
 }
 
+void kr::vk::CommandBuffer::pushConstants(uint32_t size, const void* data, shaders::ShaderStage stages) {
+    ZoneScoped;
+    VERIFY(boundPipeline != nullptr);
+    vkCmdPushConstants(cmdBuffer, boundPipeline->getLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, size, data);
+}
+
 void kr::vk::CommandBuffer::setName(std::string_view name) {
     ZoneScoped;
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<const uint64_t&>(cmdBuffer), name.data());
-}
-
-void kr::vk::CommandBuffer::setVertexBufferOffset(uint32_t index, uint64_t offset) {
-    ZoneScoped;
-    VERIFY(boundVertexBuffer != nullptr);
-
-    auto handle = boundVertexBuffer->getHandle();
-    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &handle, &offset);
 }
 
 void kr::vk::CommandBuffer::scissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {}
@@ -149,7 +141,7 @@ void kr::vk::CommandBufferPool::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (commandPool != nullptr && !name.empty())
+    if (commandPool != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<const uint64_t&>(commandPool), name.c_str());
 }
 #pragma endregion

@@ -15,31 +15,27 @@
 
 namespace kr = krypton::rapi;
 
-kr::vk::Swapchain::Swapchain(Device* device, Window* window) : window(window), device(device) {
-    ZoneScoped;
-    surface = window->getVulkanSurface();
-}
+kr::vk::Swapchain::Swapchain(Device* device, Window* window) : window(window), device(device), surface(window->getVulkanSurface()) {}
 
 VkExtent2D kr::vk::Swapchain::calculateSurfaceExtent() {
     ZoneScoped;
     if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
-    } else {
-        glm::u32vec2 windowExtent = window->getWindowSize();
-        VkExtent2D actualExtent = {
-            .width = windowExtent.x,
-            .height = windowExtent.y,
-        };
-        actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-        actualExtent.height =
-            std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-        return actualExtent;
     }
+
+    glm::u32vec2 windowExtent = window->getWindowSize();
+    VkExtent2D actualExtent = {
+        .width = windowExtent.x,
+        .height = windowExtent.y,
+    };
+    actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+    actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+    return actualExtent;
 }
 
 VkPresentModeKHR kr::vk::Swapchain::choosePresentMode() {
     ZoneScoped;
-    uint32_t presentModeCount;
+    uint32_t presentModeCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(device->getPhysicalDevice(), surface, &presentModeCount, nullptr);
     presentModes.resize(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(device->getPhysicalDevice(), surface, &presentModeCount, presentModes.data());
@@ -53,7 +49,7 @@ VkPresentModeKHR kr::vk::Swapchain::choosePresentMode() {
 
 void kr::vk::Swapchain::chooseSurfaceFormat() {
     ZoneScoped;
-    uint32_t formatCount;
+    uint32_t formatCount = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), surface, &formatCount, nullptr);
     formats.resize(formatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), surface, &formatCount, formats.data());
@@ -67,7 +63,7 @@ void kr::vk::Swapchain::chooseSurfaceFormat() {
             return;
         } else if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             surfaceFormat = availableFormat;
-            textureFormat = TextureFormat::RGBA8_SRGB;
+            textureFormat = TextureFormat::BGRA8_SRGB;
             return;
         }
     }
@@ -89,12 +85,12 @@ void kr::vk::Swapchain::destroy() {
     ZoneScoped;
     // Destroy all image views first
     for (auto& view : imageViews) {
-        vkDestroyImageView(device->getHandle(), view, nullptr);
-        view = nullptr;
+        vkDestroyImageView(device->getHandle(), view, VK_NULL_HANDLE);
+        view = VK_NULL_HANDLE;
     }
 
-    vkDestroySwapchainKHR(device->getHandle(), swapchain, nullptr);
-    swapchain = nullptr;
+    vkDestroySwapchainKHR(device->getHandle(), swapchain, VK_NULL_HANDLE);
+    swapchain = VK_NULL_HANDLE;
 }
 
 kr::TextureFormat kr::vk::Swapchain::getDrawableFormat() {
@@ -115,7 +111,7 @@ uint32_t kr::vk::Swapchain::getImageCount() {
 void kr::vk::Swapchain::nextImage(ISemaphore* signal, bool* needsResize) {
     ZoneScoped;
     VkSemaphore semaphore = signal == nullptr ? nullptr : *dynamic_cast<Semaphore*>(signal)->getHandle();
-    auto res = vkAcquireNextImageKHR(device->getHandle(), swapchain, 1'000'000, semaphore, nullptr, &imageIndex);
+    auto res = vkAcquireNextImageKHR(device->getHandle(), swapchain, 1'000'000, semaphore, VK_NULL_HANDLE, &imageIndex);
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
         *needsResize = true;
     else if (res != VK_SUCCESS)
@@ -167,18 +163,18 @@ void kr::vk::Swapchain::recreateSwapchain() {
         .clipped = VK_TRUE,
         .oldSwapchain = oldSwapchain,
     };
-    auto res = vkCreateSwapchainKHR(device->getHandle(), &swapchainInfo, nullptr, &swapchain);
+    auto res = vkCreateSwapchainKHR(device->getHandle(), &swapchainInfo, VK_NULL_HANDLE, &swapchain);
     if (res != VK_SUCCESS)
         kl::err("Failed to create swapchain: {}", res);
 
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SWAPCHAIN_KHR, reinterpret_cast<const uint64_t&>(swapchain), name.c_str());
 
-    if (oldSwapchain != nullptr)
-        vkDestroySwapchainKHR(device->getHandle(), oldSwapchain, nullptr);
+    if (oldSwapchain != VK_NULL_HANDLE)
+        vkDestroySwapchainKHR(device->getHandle(), oldSwapchain, VK_NULL_HANDLE);
 
     // Get our swapchain images.
-    vkGetSwapchainImagesKHR(device->getHandle(), swapchain, &imageCount, nullptr);
+    vkGetSwapchainImagesKHR(device->getHandle(), swapchain, &imageCount, VK_NULL_HANDLE);
     images.resize(imageCount);
     vkGetSwapchainImagesKHR(device->getHandle(), swapchain, &imageCount, images.data());
 
@@ -206,7 +202,7 @@ void kr::vk::Swapchain::recreateSwapchain() {
         };
 
         VkImageView imageView;
-        auto res = vkCreateImageView(device->getHandle(), &imageViewCreateInfo, nullptr, &imageView);
+        auto res = vkCreateImageView(device->getHandle(), &imageViewCreateInfo, VK_NULL_HANDLE, &imageView);
         if (res != VK_SUCCESS)
             kl::err("Failed to create swapchain image view: {}", res);
 
@@ -223,6 +219,6 @@ void kr::vk::Swapchain::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (swapchain != nullptr && !name.empty())
+    if (swapchain != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SWAPCHAIN_KHR, reinterpret_cast<const uint64_t&>(swapchain), name.c_str());
 }

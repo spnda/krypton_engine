@@ -3,7 +3,6 @@
 #include <robin_hood.h>
 
 #include <Metal/MTLRenderPipeline.hpp>
-#include <Metal/MTLVertexDescriptor.hpp>
 
 #include <rapi/ipipeline.hpp>
 
@@ -25,7 +24,6 @@ namespace krypton::rapi::mtl {
 
         MTL::RenderPipelineDescriptor* descriptor = nullptr;
         MTL::DepthStencilDescriptor* depthDescriptor = nullptr;
-        MTL::VertexDescriptor* vertexDescriptor = nullptr;
 
         const FragmentShader* fragmentFunction;
         const VertexShader* vertexFunction;
@@ -44,7 +42,6 @@ namespace krypton::rapi::mtl {
         void setFragmentFunction(const IShader* shader) override;
         void setName(std::string_view name) override;
         void setPrimitiveTopology(PrimitiveTopology topology) override;
-        void setVertexDescriptor(VertexDescriptor descriptor) override;
         void setVertexFunction(const IShader* shader) override;
     };
 } // namespace krypton::rapi::mtl

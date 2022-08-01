@@ -8,7 +8,6 @@ namespace krypton::rapi {
     class IShader;
     struct RenderPassAttachment;
     struct RenderPassDepthAttachment;
-    struct VertexDescriptor;
 
     class IRenderPass {
     public:

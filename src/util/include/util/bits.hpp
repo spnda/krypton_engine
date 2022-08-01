@@ -14,7 +14,7 @@ namespace krypton::util {
 
     template <typename T>
     requires has_and_operator<T> && (std::is_enum_v<T> && std::is_integral_v<std::underlying_type_t<T>>)
-    ALWAYS_INLINE inline bool hasBit(T flags, T bit) {
+    ALWAYS_INLINE constexpr bool hasBit(T flags, T bit) {
         return (flags & bit) != static_cast<T>(0u);
     }
     // clang-format on

@@ -1,4 +1,3 @@
-#include <Metal/MTLVertexDescriptor.hpp>
 #include <Tracy.hpp>
 #include <glm/vec4.hpp>
 

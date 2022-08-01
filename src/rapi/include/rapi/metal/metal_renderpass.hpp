@@ -7,7 +7,6 @@
 
 #include <rapi/irenderpass.hpp>
 #include <rapi/render_pass_attachments.hpp>
-#include <rapi/vertex_descriptor.hpp>
 
 #include <robin_hood.h>
 

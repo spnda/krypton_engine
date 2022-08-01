@@ -47,7 +47,7 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = bufferSize,
-        .usage = usageFlags,
+        .usage = usageFlags | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
     };
 
     VmaAllocationCreateInfo allocationInfo = {
@@ -56,7 +56,7 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
         .requiredFlags = 0,
     };
 
-    auto result = vmaCreateBuffer(device->getAllocator(), &bufferInfo, &allocationInfo, &buffer, &allocation, nullptr);
+    auto result = vmaCreateBuffer(device->getAllocator(), &bufferInfo, &allocationInfo, &buffer, &allocation, VK_NULL_HANDLE);
     if (result != VK_SUCCESS)
         kl::err("Failed to create buffer: {}", result);
 
@@ -67,7 +67,7 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
         };
         if (device->getProperties().apiVersion >= VK_API_VERSION_1_3) {
             bufferAddress = vkGetBufferDeviceAddress(device->getHandle(), &deviceAddressInfo);
-        } else if (vkGetBufferDeviceAddressKHR != nullptr) {
+        } else if (vkGetBufferDeviceAddressKHR != VK_NULL_HANDLE) {
             bufferAddress = vkGetBufferDeviceAddressKHR(device->getHandle(), &deviceAddressInfo);
         }
     }
@@ -79,8 +79,8 @@ void kr::vk::Buffer::create(std::size_t sizeBytes, krypton::rapi::BufferUsage kU
 void kr::vk::Buffer::destroy() {
     ZoneScoped;
     vmaDestroyBuffer(device->getAllocator(), buffer, allocation);
-    buffer = nullptr;
-    allocation = nullptr;
+    buffer = VK_NULL_HANDLE;
+    allocation = VK_NULL_HANDLE;
 }
 
 VkBuffer kr::vk::Buffer::getHandle() const {
@@ -122,7 +122,7 @@ void kr::vk::Buffer::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (buffer != nullptr && !name.empty())
+    if (buffer != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<const uint64_t&>(buffer), name.c_str());
 }
 

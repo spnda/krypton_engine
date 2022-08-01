@@ -1,7 +1,7 @@
 #version 460
 
-layout(set = 2, binding = 0) uniform texture2D sTexture;
-layout(set = 2, binding = 1) uniform sampler textureSampler;
+layout(set = 1, binding = 0) uniform texture2D sTexture;
+layout(set = 1, binding = 1) uniform sampler textureSampler;
 
 layout(location = 0) out vec4 fragColor;
 

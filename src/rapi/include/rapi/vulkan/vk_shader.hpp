@@ -3,6 +3,7 @@
 #include <robin_hood.h>
 
 #include <rapi/ishader.hpp>
+#include <rapi/ishaderparameter.hpp>
 
 // fwd.
 typedef VkShaderModule_T* VkShaderModule;

@@ -6,9 +6,9 @@
 
 #include <core/imgui_renderer.hpp>
 #include <rapi/icommandbuffer.hpp>
+#include <rapi/ishaderparameter.hpp>
 #include <rapi/iswapchain.hpp>
 #include <rapi/render_pass_attachments.hpp>
-#include <rapi/vertex_descriptor.hpp>
 #include <rapi/window.hpp>
 #include <shaders/shaders.hpp>
 
@@ -57,6 +57,42 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     io.BackendRendererName = "krypton::core::ImGuiRenderer";
     io.BackendPlatformName = "krypton::rapi::RenderAPI";
 
+    // clang-format off
+    rapi::ShaderParameterLayoutInfo uniformLayoutInfo = {
+        .bindings = {
+            {
+                .bindingId = 0,
+                .count = 1,
+                .type = rapi::ShaderParameterType::UniformBuffer,
+                .stages = shaders::ShaderStage::Vertex,
+            }
+        }
+    };
+    uniformLayout = device->createShaderParameterLayout(std::move(uniformLayoutInfo));
+
+    // clang-format off
+    rapi::ShaderParameterLayoutInfo fontAtlasLayoutInfo = {
+        .bindings = {
+            {
+                .bindingId = 0,
+                .count = 1,
+                .type = rapi::ShaderParameterType::SampledImage,
+                .stages = shaders::ShaderStage::Fragment,
+            },
+            {
+                .bindingId = 1,
+                .count = 1,
+                .type = rapi::ShaderParameterType::Sampler,
+                .stages = shaders::ShaderStage::Fragment,
+            }
+        }
+    };
+    // clang-format on
+    fontAtlasLayout = device->createShaderParameterLayout(std::move(fontAtlasLayoutInfo));
+
+    parameterPool = device->createShaderParameterPool();
+    parameterPool->create();
+
     buildFontTexture(io);
 
     // Create the index/vertex buffers. As the swapchain implementation might have multiple
@@ -82,9 +118,9 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
 
         updateUniformBuffer(buffers[i].uniformBuffer.get(), io.DisplaySize, ImVec2(0, 0));
 
-        buffers[i].uniformShaderParameter = device->createShaderParameter();
-        buffers[i].uniformShaderParameter->addBuffer(0, buffers[i].uniformBuffer);
-        buffers[i].uniformShaderParameter->buildParameter();
+        parameterPool->allocate(uniformLayout, buffers[i].uniformShaderParameter);
+        buffers[i].uniformShaderParameter->setBuffer(0, buffers[i].uniformBuffer);
+        buffers[i].uniformShaderParameter->update();
     }
 
     // Create the shaders
@@ -110,32 +146,10 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     pipeline = device->createPipeline();
     pipeline->setFragmentFunction(fragmentShader.get());
     pipeline->setVertexFunction(vertexShader.get());
+    pipeline->addParameter(0, uniformLayout);
+    pipeline->addParameter(1, fontAtlasLayout);
+    pipeline->setUsesPushConstants(sizeof(uint64_t), shaders::ShaderStage::Vertex);
     // clang-format off
-    pipeline->setVertexDescriptor({
-        .buffers = {
-            {
-                .stride = sizeof(ImDrawVert),
-                .inputRate = rapi::VertexInputRate::Vertex,
-            },
-        },
-        .attributes = {
-            {
-                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, pos)),
-                .bufferIndex = 0,
-                .format = rapi::VertexFormat::RG32_FLOAT,
-            },
-            {
-                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, uv)),
-                .bufferIndex = 0,
-                .format = rapi::VertexFormat::RG32_FLOAT,
-            },
-            {
-                .offset = static_cast<uint32_t>(offsetof(ImDrawVert, col)),
-                .bufferIndex = 0,
-                .format = rapi::VertexFormat::RGBA8_UNORM,
-            },
-        }
-    });
     pipeline->addAttachment(0, {
         .format = swapchain->getDrawableFormat(),
         .blending = {
@@ -166,23 +180,27 @@ void kc::ImGuiRenderer::init(rapi::ISwapchain* pSwapchain) {
     renderPass->build();
 
     // Build our font atlas shader parameter
-    textureShaderParameter = device->createShaderParameter();
-    textureShaderParameter->addTexture(0, fontAtlas);
-    textureShaderParameter->addSampler(1, fontAtlasSampler);
-    textureShaderParameter->buildParameter();
+    parameterPool->allocate(fontAtlasLayout, textureShaderParameter);
+    textureShaderParameter->setTexture(0, fontAtlas);
+    textureShaderParameter->setSampler(1, fontAtlasSampler);
+    textureShaderParameter->update();
 }
 
 void kc::ImGuiRenderer::destroy() {
     for (auto& buf : buffers) {
         buf.indexBuffer->destroy();
         buf.vertexBuffer->destroy();
-        buf.uniformShaderParameter->destroy();
         buf.uniformBuffer->destroy();
     }
 
-    textureShaderParameter->destroy();
     fontAtlasSampler->destroy();
     fontAtlas->destroy();
+
+    parameterPool->reset();
+    parameterPool->destroy();
+
+    device->destroyShaderParameterLayout(fontAtlasLayout);
+    device->destroyShaderParameterLayout(uniformLayout);
 
     pipeline->destroy();
     renderPass->destroy();
@@ -237,7 +255,7 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 
             auto* vertexDestination = static_cast<ImDrawVert*>(vtxData);
             auto* indexDestination = static_cast<ImDrawIdx*>(idxData);
-            for (auto& list : commandLists) {
+            for (const auto& list : commandLists) {
                 std::memcpy(vertexDestination, list->VtxBuffer.Data, list->VtxBuffer.Size * sizeof(ImDrawVert));
                 std::memcpy(indexDestination, list->IdxBuffer.Data, list->IdxBuffer.Size * sizeof(ImDrawIdx));
 
@@ -254,9 +272,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         (*renderPass)[0].attachment = swapchain->getDrawable();
         commandBuffer->beginRenderPass(renderPass.get());
         commandBuffer->bindPipeline(pipeline.get());
-        commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Vertex, buffers[currentFrame].uniformShaderParameter.get());
-        commandBuffer->bindShaderParameter(2, shaders::ShaderStage::Fragment, textureShaderParameter.get());
-        commandBuffer->bindVertexBuffer(0, vertexBuffer.get(), 0);
+        commandBuffer->bindShaderParameter(0, shaders::ShaderStage::Vertex, buffers[currentFrame].uniformShaderParameter.get());
+        commandBuffer->bindShaderParameter(1, shaders::ShaderStage::Fragment, textureShaderParameter.get());
         commandBuffer->viewport(0.0, 0.0, drawData->DisplaySize.x * drawData->FramebufferScale.x,
                                 drawData->DisplaySize.y * drawData->FramebufferScale.y, 0.0, 1.0);
 
@@ -269,9 +286,8 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
         std::size_t vertexOffset = 0;
         std::size_t indexOffset = 0;
         for (auto& list : commandLists) {
-            for (int i = 0; i < list->CmdBuffer.Size; ++i) {
-                const auto& cmd = list->CmdBuffer[i];
-
+            auto cmdBuffer = std::span(list->CmdBuffer.Data, list->CmdBuffer.Size);
+            for (const auto& cmd : cmdBuffer) {
                 if (cmd.ElemCount == 0) { // drawIndexed doesn't accept this
                     continue;
                 }
@@ -288,7 +304,9 @@ void kc::ImGuiRenderer::draw(rapi::ICommandBuffer* commandBuffer) {
 
                 commandBuffer->scissor(clipMin.x, clipMin.y, clipMax.x - clipMin.x, clipMax.y - clipMin.y);
 
-                commandBuffer->setVertexBufferOffset(0, (vertexOffset + cmd.VtxOffset) * sizeof(ImDrawVert));
+                auto vertexAddress =
+                    buffers[currentFrame].vertexBuffer->getGPUAddress() + (vertexOffset + cmd.VtxOffset) * sizeof(ImDrawVert);
+                commandBuffer->pushConstants(sizeof(uint64_t), &vertexAddress, shaders::ShaderStage::Vertex);
                 commandBuffer->bindIndexBuffer(indexBuffer.get(),
                                                sizeof(ImDrawIdx) == 2 ? rapi::IndexType::UINT16 : rapi::IndexType::UINT32, // NOLINT
                                                (cmd.IdxOffset + static_cast<uint32_t>(indexOffset)) * sizeof(ImDrawIdx));

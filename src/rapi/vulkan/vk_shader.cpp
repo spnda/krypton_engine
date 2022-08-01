@@ -53,7 +53,7 @@ void kr::vk::Shader::createModule() {
         .codeSize = spirv.size() * sizeof(uint32_t),
         .pCode = spirv.data(),
     };
-    auto res = vkCreateShaderModule(device->getHandle(), &moduleInfo, nullptr, &shader);
+    auto res = vkCreateShaderModule(device->getHandle(), &moduleInfo, VK_NULL_HANDLE, &shader);
     if (res != VK_SUCCESS)
         kl::err("Failed to create shader module: {}", res);
 
@@ -63,8 +63,8 @@ void kr::vk::Shader::createModule() {
 
 void kr::vk::Shader::destroy() {
     ZoneScoped;
-    vkDestroyShaderModule(device->getHandle(), shader, nullptr);
-    shader = nullptr;
+    vkDestroyShaderModule(device->getHandle(), shader, VK_NULL_HANDLE);
+    shader = VK_NULL_HANDLE;
 }
 
 VkShaderModule kr::vk::Shader::getHandle() const {
@@ -79,7 +79,7 @@ void kr::vk::Shader::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (shader != nullptr && !name.empty())
+    if (shader != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<const uint64_t&>(shader), name.c_str());
 }
 #pragma endregion

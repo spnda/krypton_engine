@@ -13,6 +13,8 @@ namespace krypton::rapi {
 
         RGBA8_UNORM,
         RGBA8_SRGB,
+        BGRA8_UNORM,
+        BGRA8_SRGB,
         RGBA16_UNORM,
 
         // The next are Metal-exclusive and used for 10-bit colour depth.

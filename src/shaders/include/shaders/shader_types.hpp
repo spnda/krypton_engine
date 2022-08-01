@@ -63,6 +63,10 @@ namespace krypton::shaders {
         return static_cast<ShaderStage>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
     }
 
+    inline constexpr ShaderStage operator>>(ShaderStage a, std::size_t b) {
+        return static_cast<ShaderStage>(static_cast<uint16_t>(a) >> b);
+    }
+
     enum class TargetSpirv {
         /* slang compiler doesn't specify a SPIR-V Version, we default to 1.5 */
         SPV_1_5,

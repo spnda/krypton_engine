@@ -25,7 +25,7 @@ std::shared_ptr<kr::ICommandBufferPool> kr::vk::Queue::createCommandPool() {
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = familyIndex,
     };
-    vkCreateCommandPool(device->getHandle(), &poolInfo, nullptr, &pool);
+    vkCreateCommandPool(device->getHandle(), &poolInfo, VK_NULL_HANDLE, &pool);
     return std::make_shared<kr::vk::CommandBufferPool>(device, this, pool);
 }
 
@@ -67,7 +67,7 @@ void kr::vk::Queue::setName(std::string_view newName) {
     }
 #endif
 
-    if (queue != nullptr && !name.empty())
+    if (queue != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_QUEUE, reinterpret_cast<const uint64_t&>(queue), name.c_str());
 }
 

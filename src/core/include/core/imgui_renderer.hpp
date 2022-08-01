@@ -20,7 +20,7 @@ namespace krypton::core {
             std::shared_ptr<rapi::IBuffer> vertexBuffer;
             std::shared_ptr<rapi::IBuffer> indexBuffer;
             std::shared_ptr<rapi::IBuffer> uniformBuffer;
-            std::shared_ptr<rapi::IShaderParameter> uniformShaderParameter;
+            std::unique_ptr<rapi::IShaderParameter> uniformShaderParameter;
         };
 
         rapi::Window* window;
@@ -30,11 +30,15 @@ namespace krypton::core {
         rapi::ISwapchain* swapchain = nullptr;
         uint32_t currentFrame = 0;
 
+        std::shared_ptr<rapi::IShaderParameterPool> parameterPool;
+        rapi::ShaderParameterLayout uniformLayout = {};
+        rapi::ShaderParameterLayout fontAtlasLayout = {};
+
         std::vector<ImGuiFrameBuffers> buffers;
 
         std::shared_ptr<rapi::ITexture> fontAtlas;
         std::shared_ptr<rapi::ISampler> fontAtlasSampler;
-        std::shared_ptr<rapi::IShaderParameter> textureShaderParameter;
+        std::unique_ptr<rapi::IShaderParameter> textureShaderParameter;
 
         std::shared_ptr<rapi::IShader> fragmentShader;
         std::shared_ptr<rapi::IShader> vertexShader;

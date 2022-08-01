@@ -17,6 +17,7 @@
 #include <rapi/vulkan/vk_texture.hpp>
 #include <rapi/vulkan/vma.hpp>
 #include <rapi/window.hpp>
+#include <shaders/shader_types.hpp>
 #include <util/assert.hpp>
 #include <util/bits.hpp>
 #include <util/logging.hpp>
@@ -36,16 +37,18 @@ bool kr::vk::PhysicalDevice::canPresentToWindow(Window* window) {
     ZoneScoped;
     // Headless instances don't support VK_KHR_surface and the function pointer we run in the below
     // loop would trigger a segfault.
-    if (instance->isHeadless())
+    if (instance->isHeadless()) {
         return false;
+    }
 
     // This could probably be optimized drastically. We shouldn't iterate over each queue family to
     // see if any supports present.
     for (auto i = 0UL; i < queueFamilies.size(); ++i) {
-        VkBool32 supportsPresent;
+        VkBool32 supportsPresent = VK_FALSE;
         vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, window->getVulkanSurface(), &supportsPresent);
-        if (supportsPresent)
+        if (supportsPresent == VK_TRUE) {
             presentQueueIndices.emplace_back(i);
+        }
     }
     return !presentQueueIndices.empty();
 }
@@ -72,9 +75,9 @@ VkPhysicalDeviceFeatures2 kr::vk::PhysicalDevice::getDeviceFeatures(void* pNext)
     return features2;
 }
 
-std::unique_ptr<kr::IDevice> kr::vk::PhysicalDevice::createDevice() {
+std::unique_ptr<kr::IDevice> kr::vk::PhysicalDevice::createDevice(DeviceFeatures features) {
     ZoneScoped;
-    auto device = std::make_unique<Device>(instance, this, DeviceFeatures {});
+    auto device = std::make_unique<Device>(instance, this, features);
     device->create();
     return device;
 }
@@ -115,6 +118,10 @@ bool kr::vk::PhysicalDevice::meetsMinimumRequirement() {
     if (properties.apiVersion < VK_API_VERSION_1_2 && !supportsExtension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME))
         return false;
 
+    auto features = getDeviceFeatures();
+    if (features.features.shaderInt64 == VK_FALSE)
+        return false;
+
     return true;
 }
 
@@ -123,7 +130,7 @@ kr::DeviceFeatures kr::vk::PhysicalDevice::supportedDeviceFeatures() {
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
     };
-    getDeviceProperties(&vulkan12Features);
+    getDeviceFeatures(&vulkan12Features);
 
     return DeviceFeatures {
         .accelerationStructures = supportsExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME),
@@ -144,16 +151,16 @@ bool kr::vk::PhysicalDevice::supportsExtension(const char* extensionName) const 
 std::vector<VkExtensionProperties> kr::vk::getAvailablePhysicalDeviceExtensions(VkPhysicalDevice physicalDevice) {
     ZoneScoped;
     uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(physicalDevice, VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE);
     std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, extensions.data());
+    vkEnumerateDeviceExtensionProperties(physicalDevice, VK_NULL_HANDLE, &extensionCount, extensions.data());
     return extensions;
 }
 
 std::vector<VkQueueFamilyProperties2> kr::vk::getQueueFamilyProperties(VkPhysicalDevice physicalDevice) {
     ZoneScoped;
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, VK_NULL_HANDLE);
     std::vector<VkQueueFamilyProperties2> queueFamilies(queueFamilyCount, { .sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
     vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, queueFamilies.data());
     return queueFamilies;
@@ -165,7 +172,7 @@ auto enableBufferDeviceAddress(kr::vk::PhysicalDevice* physicalDevice, std::vect
     if (!deviceFeatures.bufferDeviceAddress) {
         return VkPhysicalDeviceBufferDeviceAddressFeatures {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-            .bufferDeviceAddress = false,
+            .bufferDeviceAddress = VK_FALSE,
         };
     }
 
@@ -174,15 +181,15 @@ auto enableBufferDeviceAddress(kr::vk::PhysicalDevice* physicalDevice, std::vect
     }
     return VkPhysicalDeviceBufferDeviceAddressFeatures {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-        .bufferDeviceAddress = true,
+        .bufferDeviceAddress = VK_TRUE,
     };
 }
 
 auto enable8BitIndex(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions, kr::DeviceFeatures& deviceFeatures) {
     ZoneScoped;
-    bool support = false;
+    VkBool32 support = VK_FALSE;
     if (deviceFeatures.indexType8Bit && physicalDevice->supportsExtension(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
-        support = true;
+        support = VK_TRUE;
         extensions.emplace_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     }
 
@@ -203,7 +210,7 @@ auto enableDynamicRendering(kr::vk::PhysicalDevice* physicalDevice, std::vector<
 
     return VkPhysicalDeviceDynamicRenderingFeatures {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-        .dynamicRendering = true,
+        .dynamicRendering = VK_TRUE,
     };
 }
 
@@ -216,18 +223,19 @@ auto enableImagelessFramebuffer(kr::vk::PhysicalDevice* physicalDevice, std::vec
 
     return VkPhysicalDeviceImagelessFramebufferFeatures {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES,
-        .imagelessFramebuffer = true,
+        .imagelessFramebuffer = VK_TRUE,
     };
 }
 
 auto enableTimelineSemaphore(kr::vk::PhysicalDevice* physicalDevice, std::vector<const char*>& extensions) {
     ZoneScoped;
-    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2)
+    if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2) {
         extensions.emplace_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+    }
 
     return VkPhysicalDeviceTimelineSemaphoreFeatures {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
-        .timelineSemaphore = true,
+        .timelineSemaphore = VK_TRUE,
     };
 }
 
@@ -264,10 +272,10 @@ VkResult kr::vk::Device::create() {
         .pNext = deviceFeatures.getPointer(),
     };
     if (physicalDevice->properties.apiVersion >= VK_API_VERSION_1_3) {
-        sync2Features.synchronization2 = true;
+        sync2Features.synchronization2 = VK_TRUE;
     } else if (physicalDevice->supportsExtension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)) {
         deviceExtensions.emplace_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
-        sync2Features.synchronization2 = true;
+        sync2Features.synchronization2 = VK_TRUE;
     }
 
     VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures = {
@@ -278,7 +286,7 @@ VkResult kr::vk::Device::create() {
         // BDAs are part of Vulkan 1.2, though are only required as of 1.3.
         if (physicalDevice->properties.apiVersion < VK_API_VERSION_1_2)
             deviceExtensions.emplace_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-        bdaFeatures.bufferDeviceAddress = true;
+        bdaFeatures.bufferDeviceAddress = VK_TRUE;
     }
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
@@ -291,7 +299,7 @@ VkResult kr::vk::Device::create() {
         deviceExtensions.emplace_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
         deviceExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         deviceExtensions.emplace_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-        accelerationStructureFeatures.accelerationStructure = true;
+        accelerationStructureFeatures.accelerationStructure = VK_TRUE;
     }
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
@@ -304,8 +312,14 @@ VkResult kr::vk::Device::create() {
             deviceExtensions.emplace_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
 
         deviceExtensions.emplace_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-        rayTracingPipelineFeatures.rayTracingPipeline = true;
+        rayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
     }
+
+    VkPhysicalDeviceFeatures2 physicalDeviceFeatures = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+                                                         .pNext = &rayTracingPipelineFeatures,
+                                                         .features = {
+                                                             .shaderInt64 = VK_TRUE,
+                                                         } };
 
     std::vector<VkDeviceQueueCreateInfo> deviceQueues = {};
     std::vector<std::vector<float>> deviceQueuePriorities = {}; // We use this to keep the priorities float pointers alive.
@@ -319,13 +333,13 @@ VkResult kr::vk::Device::create() {
         // Create the logical device
         VkDeviceCreateInfo deviceInfo = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .pNext = &rayTracingPipelineFeatures,
+            .pNext = &physicalDeviceFeatures,
             .queueCreateInfoCount = static_cast<uint32_t>(deviceQueues.size()),
             .pQueueCreateInfos = deviceQueues.data(),
             .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
             .ppEnabledExtensionNames = deviceExtensions.data(),
         };
-        auto result = vkCreateDevice(physicalDevice->physicalDevice, &deviceInfo, nullptr, &device);
+        auto result = vkCreateDevice(physicalDevice->physicalDevice, &deviceInfo, VK_NULL_HANDLE, &device);
         if (result != VK_SUCCESS)
             kl::throwError("Failed to create device", result);
 
@@ -401,9 +415,49 @@ std::shared_ptr<kr::IShader> kr::vk::Device::createShaderFunction(std::span<cons
     return std::make_shared<Shader>(this, bytes, type);
 }
 
-std::shared_ptr<kr::IShaderParameter> kr::vk::Device::createShaderParameter() {
+// clang-format off
+constexpr std::array<std::pair<krypton::shaders::ShaderStage, uint32_t>, 4> vulkanShaderStages = {{
+    {krypton::shaders::ShaderStage::Fragment, VK_SHADER_STAGE_FRAGMENT_BIT},
+    {krypton::shaders::ShaderStage::Vertex, VK_SHADER_STAGE_VERTEX_BIT},
+}};
+// clang-format on
+
+kr::ShaderParameterLayout kr::vk::Device::createShaderParameterLayout(ShaderParameterLayoutInfo&& layoutInfo) {
     ZoneScoped;
-    return std::make_shared<ShaderParameter>(this);
+    std::vector<VkDescriptorSetLayoutBinding> bindings(layoutInfo.bindings.size());
+    for (auto i = 0UL; i < bindings.size(); ++i) {
+        auto& vkBinding = bindings[i];
+        auto& binding = layoutInfo.bindings[i];
+
+        vkBinding.binding = binding.bindingId;
+        vkBinding.descriptorCount = binding.count;
+        vkBinding.descriptorType = getDescriptorType(binding.type);
+        for (const auto& [old_pos, new_pos] : vulkanShaderStages) {
+            if (util::hasBit(binding.stages, old_pos)) {
+                vkBinding.stageFlags |= new_pos;
+            }
+        }
+    }
+
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = static_cast<uint32_t>(layoutInfo.bindings.size()),
+        .pBindings = bindings.data(),
+    };
+    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+    auto result = vkCreateDescriptorSetLayout(device, &setLayoutInfo, VK_NULL_HANDLE, &layout);
+    if (result != VK_SUCCESS) {
+        kl::err("Failed to create descriptor set layout: {}", result);
+    }
+    return ShaderParameterLayout {
+        .layout = reinterpret_cast<void*>(layout),
+        .layoutInfo = std::move(layoutInfo),
+    };
+}
+
+std::shared_ptr<kr::IShaderParameterPool> kr::vk::Device::createShaderParameterPool() {
+    ZoneScoped;
+    return std::make_shared<ShaderParameterPool>(this);
 }
 
 std::shared_ptr<kr::ISwapchain> kr::vk::Device::createSwapchain(Window* window) {
@@ -425,7 +479,14 @@ void kr::vk::Device::destroy() {
 
     vmaDestroyAllocator(allocator);
 
-    vkDestroyDevice(device, nullptr);
+    vkDestroyDevice(device, VK_NULL_HANDLE);
+    device = VK_NULL_HANDLE;
+}
+
+void kr::vk::Device::destroyShaderParameterLayout(ShaderParameterLayout& layout) {
+    ZoneScoped;
+    vkDestroyDescriptorSetLayout(device, reinterpret_cast<VkDescriptorSetLayout>(layout.layout), nullptr);
+    layout.layout = VK_NULL_HANDLE;
 }
 
 void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& deviceQueues, std::vector<std::vector<float>>& priorities) {

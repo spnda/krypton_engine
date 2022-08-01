@@ -4,9 +4,14 @@
 
 #include <rapi/itexture.hpp>
 
+// fwd
+namespace krypton::shaders {
+    enum class ShaderStage : uint16_t;
+} // namespace krypton::shaders
+
 namespace krypton::rapi {
     class IShader;
-    struct VertexDescriptor;
+    struct ShaderParameterLayout;
 
     enum class TextureFormat : uint16_t;
 
@@ -49,13 +54,14 @@ namespace krypton::rapi {
         ~IPipeline() override = default;
 
         virtual void addAttachment(uint32_t index, PipelineAttachment attachment) = 0;
+        virtual void addParameter(uint32_t index, const ShaderParameterLayout& layout) = 0;
         virtual void create() = 0;
         virtual void destroy() = 0;
         virtual void setDepthWriteEnabled(bool enabled) = 0;
         virtual void setFragmentFunction(const IShader* shader) = 0;
         // Primitive toplogy should always default to PrimitiveTopology::Triangle.
         virtual void setPrimitiveTopology(PrimitiveTopology topology) = 0;
-        virtual void setVertexDescriptor(VertexDescriptor descriptor) = 0;
+        virtual void setUsesPushConstants(uint32_t size, shaders::ShaderStage stages) = 0;
         virtual void setVertexFunction(const IShader* shader) = 0;
     };
 } // namespace krypton::rapi

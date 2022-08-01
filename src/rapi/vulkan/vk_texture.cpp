@@ -6,6 +6,7 @@
 #include <rapi/vulkan/vma.hpp>
 #include <util/assert.hpp>
 #include <util/bits.hpp>
+#include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
 
@@ -17,6 +18,10 @@ namespace krypton::rapi::vk {
                 return VK_FORMAT_R8G8B8A8_UNORM;
             case TextureFormat::RGBA8_SRGB:
                 return VK_FORMAT_R8G8B8A8_SRGB;
+            case TextureFormat::BGRA8_UNORM:
+                return VK_FORMAT_B8G8R8A8_UNORM;
+            case TextureFormat::BGRA8_SRGB:
+                return VK_FORMAT_B8G8R8A8_SRGB;
             case TextureFormat::RGBA16_UNORM:
                 return VK_FORMAT_R16G16B16A16_UNORM;
             case TextureFormat::A2BGR10_UNORM:
@@ -47,7 +52,8 @@ namespace krypton::rapi::vk {
 } // namespace krypton::rapi::vk
 
 #pragma region vk::Texture
-kr::vk::Texture::Texture(Device* device, rapi::TextureUsage usage) : device(device), image(nullptr), imageView(nullptr), usage(usage) {}
+kr::vk::Texture::Texture(Device* device, rapi::TextureUsage usage)
+    : device(device), image(VK_NULL_HANDLE), imageView(VK_NULL_HANDLE), usage(usage) {}
 
 kr::vk::Texture::Texture(krypton::rapi::vk::Device* device, rapi::TextureUsage usage, VkImage image, VkImageView imageView)
     : device(device), image(image), imageView(imageView), usage(usage) {}
@@ -61,11 +67,16 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
 
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
         .format = getVulkanFormat(format),
         .extent = {
             .width = width,
             .height = height,
+            .depth = 1,
         },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
         .usage = usageFlags,
     };
 
@@ -74,7 +85,24 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    vmaCreateImage(device->getAllocator(), &imageInfo, &allocationCreateInfo, &image, &allocation, &allocationInfo);
+    auto result = vmaCreateImage(device->getAllocator(), &imageInfo, &allocationCreateInfo, &image, &allocation, &allocationInfo);
+    if (result != VK_SUCCESS) {
+        kl::err("Failed to create image: {}", result);
+    }
+
+    VkImageViewCreateInfo imageViewInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = getVulkanFormat(format),
+        .components = mapping,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .levelCount = 1,
+            .layerCount = 1,
+        },
+    };
+    vkCreateImageView(device->getHandle(), &imageViewInfo, nullptr, &imageView);
 
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
@@ -82,12 +110,12 @@ void kr::vk::Texture::create(TextureFormat newFormat, uint32_t width, uint32_t h
 
 void kr::vk::Texture::destroy() {
     ZoneScoped;
-    vkDestroyImageView(device->getHandle(), imageView, nullptr);
+    vkDestroyImageView(device->getHandle(), imageView, VK_NULL_HANDLE);
     vmaDestroyImage(device->getAllocator(), image, allocation);
 
-    imageView = nullptr;
-    image = nullptr;
-    allocation = nullptr;
+    imageView = VK_NULL_HANDLE;
+    image = VK_NULL_HANDLE;
+    allocation = VK_NULL_HANDLE;
 }
 
 VkImage kr::vk::Texture::getHandle() const noexcept {
@@ -102,7 +130,7 @@ void kr::vk::Texture::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (image != nullptr && !name.empty())
+    if (image != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<const uint64_t&>(image), name.c_str());
 }
 

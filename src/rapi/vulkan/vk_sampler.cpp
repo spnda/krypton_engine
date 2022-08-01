@@ -14,15 +14,15 @@ kr::vk::Sampler::Sampler(Device* device) : device(device) {
 
 void kr::vk::Sampler::createSampler() {
     ZoneScoped;
-    vkCreateSampler(device->getHandle(), &samplerInfo, nullptr, &sampler);
+    vkCreateSampler(device->getHandle(), &samplerInfo, VK_NULL_HANDLE, &sampler);
     if (!name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<const uint64_t&>(sampler), name.c_str());
 }
 
 void kr::vk::Sampler::destroy() {
     ZoneScoped;
-    vkDestroySampler(device->getHandle(), sampler, nullptr);
-    sampler = nullptr;
+    vkDestroySampler(device->getHandle(), sampler, VK_NULL_HANDLE);
+    sampler = VK_NULL_HANDLE;
 }
 
 VkSampler kr::vk::Sampler::getHandle() {
@@ -51,6 +51,6 @@ void kr::vk::Sampler::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (sampler != nullptr && !name.empty())
+    if (sampler != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<const uint64_t&>(sampler), name.c_str());
 }

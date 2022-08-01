@@ -3,10 +3,10 @@
 #include <Tracy.hpp>
 #include <volk.h>
 
-#include <rapi/vertex_descriptor.hpp>
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_pipeline.hpp>
+#include <rapi/vulkan/vk_shaderparameter.hpp>
 #include <rapi/vulkan/vk_texture.hpp>
 #include <util/assert.hpp>
 #include <util/logging.hpp>
@@ -14,11 +14,6 @@
 namespace kr = krypton::rapi;
 
 // clang-format off
-static constexpr std::array<VkVertexInputRate, 2> vulkanVertexInputRates = {
-    VK_VERTEX_INPUT_RATE_VERTEX,    // VertexInputRate::Vertex = 0,
-    VK_VERTEX_INPUT_RATE_INSTANCE,  // VertexInputRate::Instance = 1,
-};
-
 static constexpr std::array<VkPrimitiveTopology, 3> vulkanPrimitiveTopologies = {
     VK_PRIMITIVE_TOPOLOGY_POINT_LIST,       // PrimitiveTopology::Point = 0,
     VK_PRIMITIVE_TOPOLOGY_LINE_LIST,        // PrimitiveTopology::Line = 1,
@@ -37,33 +32,18 @@ static constexpr std::array<VkBlendFactor, 4> vulkanBlendFactors = {
 };
 // clang-format on
 
-namespace krypton::rapi::vk {
-    VkFormat getVulkanVertexFormat(VertexFormat vertexFormat) {
-        ZoneScoped;
-        switch (vertexFormat) {
-            case VertexFormat::RGBA32_FLOAT: {
-                return VK_FORMAT_R32G32B32A32_SFLOAT;
-            }
-            case VertexFormat::RGB32_FLOAT: {
-                return VK_FORMAT_R32G32B32_SFLOAT;
-            }
-            case VertexFormat::RG32_FLOAT: {
-                return VK_FORMAT_R32G32_SFLOAT;
-            }
-            case VertexFormat::RGBA8_UNORM: {
-                return VK_FORMAT_R8G8B8A8_UNORM;
-            }
-        }
-
-        return VK_FORMAT_UNDEFINED;
-    }
-} // namespace krypton::rapi::vk
-
 kr::vk::Pipeline::Pipeline(Device* device) noexcept : device(device) {}
 
 void kr::vk::Pipeline::addAttachment(uint32_t index, PipelineAttachment attachment) {
     ZoneScoped;
     attachments[index] = attachment;
+}
+
+void kr::vk::Pipeline::addParameter(uint32_t index, const ShaderParameterLayout& layout) {
+    ZoneScoped;
+    if (descriptorLayouts.size() <= index)
+        descriptorLayouts.resize(index + 1);
+    descriptorLayouts[index] = reinterpret_cast<VkDescriptorSetLayout>(layout.layout);
 }
 
 void kr::vk::Pipeline::create() {
@@ -74,8 +54,14 @@ void kr::vk::Pipeline::create() {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = static_cast<uint32_t>(descriptorLayouts.size()),
+        .pSetLayouts = descriptorLayouts.data(),
     };
-    vkCreatePipelineLayout(device->getHandle(), &pipelineLayoutInfo, nullptr, &pipelineLayout);
+    if (pushConstantRange.size != 0) {
+        pipelineLayoutInfo.pushConstantRangeCount = 1U;
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    }
+    vkCreatePipelineLayout(device->getHandle(), &pipelineLayoutInfo, VK_NULL_HANDLE, &pipelineLayout);
 
     // Setup VK_KHR_dynamic_rendering
     std::vector<VkFormat> colorAttachmentFormats(attachments.size());
@@ -181,17 +167,17 @@ void kr::vk::Pipeline::create() {
         .pDynamicState = &dynamicStateInfo,
         .layout = pipelineLayout,
     };
-    auto result = vkCreateGraphicsPipelines(device->getHandle(), nullptr, 1, &graphicsPipelineInfo, nullptr, &pipeline);
+    auto result = vkCreateGraphicsPipelines(device->getHandle(), nullptr, 1, &graphicsPipelineInfo, VK_NULL_HANDLE, &pipeline);
     if (result != VK_SUCCESS)
         kl::err("Failed to create graphics pipeline: {}", result);
 }
 
 void kr::vk::Pipeline::destroy() {
     ZoneScoped;
-    if (pipelineLayout != nullptr)
-        vkDestroyPipelineLayout(device->getHandle(), pipelineLayout, nullptr);
-    if (pipeline != nullptr)
-        vkDestroyPipeline(device->getHandle(), pipeline, nullptr);
+    if (pipelineLayout != VK_NULL_HANDLE)
+        vkDestroyPipelineLayout(device->getHandle(), pipelineLayout, VK_NULL_HANDLE);
+    if (pipeline != VK_NULL_HANDLE)
+        vkDestroyPipeline(device->getHandle(), pipeline, VK_NULL_HANDLE);
 }
 
 VkPipeline kr::vk::Pipeline::getHandle() const {
@@ -215,7 +201,7 @@ void kr::vk::Pipeline::setName(std::string_view newName) {
     ZoneScoped;
     name = newName;
 
-    if (pipeline != nullptr && !name.empty())
+    if (pipeline != VK_NULL_HANDLE && !name.empty())
         device->setDebugUtilsName(VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<const uint64_t&>(pipeline), name.c_str());
 }
 
@@ -224,29 +210,11 @@ void kr::vk::Pipeline::setPrimitiveTopology(PrimitiveTopology topology) {
     inputAssemblyInfo.topology = vulkanPrimitiveTopologies[static_cast<uint8_t>(topology)];
 }
 
-void kr::vk::Pipeline::setVertexDescriptor(VertexDescriptor descriptor) {
+void kr::vk::Pipeline::setUsesPushConstants(uint32_t size, shaders::ShaderStage stages) {
     ZoneScoped;
-    bindings.resize(descriptor.buffers.size());
-    for (auto i = 0ULL; i < descriptor.buffers.size(); ++i) {
-        auto& binding = bindings[i];
-        binding.inputRate = vulkanVertexInputRates[static_cast<uint8_t>(descriptor.buffers[i].inputRate)];
-        binding.stride = descriptor.buffers[i].stride;
-        binding.binding = static_cast<uint32_t>(i);
-    }
-
-    attributes.resize(descriptor.attributes.size());
-    for (auto i = 0ULL; i < descriptor.attributes.size(); ++i) {
-        auto& attribute = attributes[i];
-        attribute.location = static_cast<uint32_t>(i);
-        attribute.binding = descriptor.attributes[i].bufferIndex;
-        attribute.offset = descriptor.attributes[i].offset;
-        attribute.format = getVulkanVertexFormat(descriptor.attributes[i].format);
-    }
-
-    vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
-    vertexInputInfo.pVertexBindingDescriptions = bindings.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
-    vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
+    VERIFY(size % 4 == 0);
+    pushConstantRange.size = size;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
 }
 
 void kr::vk::Pipeline::setVertexFunction(const IShader* shader) {

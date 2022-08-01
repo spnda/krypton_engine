@@ -24,6 +24,8 @@ namespace krypton::rapi::vk {
         std::string name;
 
         robin_hood::unordered_map<uint32_t, PipelineAttachment> attachments;
+        std::vector<VkDescriptorSetLayout> descriptorLayouts;
+        VkPushConstantRange pushConstantRange = {};
 
         const Shader* fragmentShader = nullptr;
         const Shader* vertexShader = nullptr;
@@ -54,6 +56,7 @@ namespace krypton::rapi::vk {
         ~Pipeline() override = default;
 
         void addAttachment(uint32_t index, PipelineAttachment attachment) override;
+        void addParameter(uint32_t index, const ShaderParameterLayout& layout) override;
         void create() override;
         void destroy() override;
         auto getHandle() const -> VkPipeline;
@@ -62,7 +65,7 @@ namespace krypton::rapi::vk {
         void setFragmentFunction(const IShader* shader) override;
         void setName(std::string_view name) override;
         void setPrimitiveTopology(PrimitiveTopology topology) override;
-        void setVertexDescriptor(VertexDescriptor descriptor) override;
+        void setUsesPushConstants(uint32_t size, shaders::ShaderStage stages) override;
         void setVertexFunction(const IShader* shader) override;
     };
 } // namespace krypton::rapi::vk

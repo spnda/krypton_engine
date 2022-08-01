@@ -166,7 +166,7 @@ void kr::vk::Instance::create() {
         instanceInfo.pNext = &validationFeatures;
 #endif
 
-    result = vkCreateInstance(&instanceInfo, nullptr, &instance);
+    result = vkCreateInstance(&instanceInfo, VK_NULL_HANDLE, &instance);
     if (result != VK_SUCCESS) [[unlikely]]
         kl::throwError("Failed to create an Vulkan instance: {}!", result);
 
@@ -188,17 +188,18 @@ void kr::vk::Instance::createDebugUtilsMessenger() {
         .pUserData = this,
     };
 
-    auto result = vkCreateDebugUtilsMessengerEXT(instance, &messengerInfo, nullptr, &messenger);
+    auto result = vkCreateDebugUtilsMessengerEXT(instance, &messengerInfo, VK_NULL_HANDLE, &messenger);
     if (result != VK_SUCCESS) [[unlikely]]
         kl::warn("Failed to create Vulkan debug messenger: {}", result);
 }
 
 void kr::vk::Instance::destroy() {
     ZoneScoped;
-    if (messenger != nullptr)
-        vkDestroyDebugUtilsMessengerEXT(instance, messenger, nullptr);
+    if (messenger != VK_NULL_HANDLE) {
+        vkDestroyDebugUtilsMessengerEXT(instance, messenger, VK_NULL_HANDLE);
+    }
 
-    vkDestroyInstance(instance, nullptr);
+    vkDestroyInstance(instance, VK_NULL_HANDLE);
 }
 
 VkInstance kr::vk::Instance::getHandle() {

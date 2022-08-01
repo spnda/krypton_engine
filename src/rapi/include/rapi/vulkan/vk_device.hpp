@@ -34,7 +34,7 @@ namespace krypton::rapi::vk {
         explicit PhysicalDevice(VkPhysicalDevice physicalDevice, Instance* instance) noexcept;
 
         bool canPresentToWindow(Window* window) override;
-        auto createDevice() -> std::unique_ptr<IDevice> override;
+        auto createDevice(DeviceFeatures features) -> std::unique_ptr<IDevice> override;
         auto getDeviceFeatures(void* pNext = nullptr) -> VkPhysicalDeviceFeatures2;
         auto getDeviceProperties(void* pNext = nullptr) -> VkPhysicalDeviceProperties2;
         void init();
@@ -71,10 +71,12 @@ namespace krypton::rapi::vk {
         auto createSemaphore() -> std::shared_ptr<ISemaphore> override;
         auto createShaderFunction(std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType type,
                                   krypton::shaders::ShaderStage stage) -> std::shared_ptr<IShader> override;
-        auto createShaderParameter() -> std::shared_ptr<IShaderParameter> override;
+        auto createShaderParameterLayout(ShaderParameterLayoutInfo&& layoutInfo) -> ShaderParameterLayout override;
+        auto createShaderParameterPool() -> std::shared_ptr<IShaderParameterPool> override;
         auto createSwapchain(Window* window) -> std::shared_ptr<ISwapchain> override;
         auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> override;
         void destroy() override;
+        void destroyShaderParameterLayout(ShaderParameterLayout& layout) override;
 
         auto getDeviceName() -> std::string_view override {
             ZoneScoped;

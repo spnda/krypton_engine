@@ -20,6 +20,8 @@ namespace krypton::shaders {
 } // namespace krypton::shaders
 
 namespace krypton::rapi {
+    class IShaderParameter;
+
     /**
      * The IShader interface is intended to be used as a base class/interface with everything
      * related to shader compiling, shader management, and shader parameters/uniforms. This

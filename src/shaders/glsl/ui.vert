@@ -1,11 +1,17 @@
 #version 460
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_ARB_gpu_shader_int64 : require
 
-layout(location = 0) in vec2 inPos;
-layout(location = 1) in vec2 inUV;
-layout(location = 2) in vec4 inColor;
+struct ImDrawVert {
+    vec2 pos;
+    vec2 uv;
+    uint col;
+};
 
-// We specifically specify 'buffer' here to force SPIRV-Cross to use a device-scope pointer.
-layout(set = 1, binding = 0) buffer Uniforms {
+layout(buffer_reference, scalar) buffer Vertices { ImDrawVert v[]; };
+
+layout(set = 0, binding = 0) uniform Uniforms {
     vec2 scale;
     vec2 translate;
 } uniforms;
@@ -15,8 +21,14 @@ layout(location = 0) out struct {
     vec2 uv;
 } outp;
 
+layout(push_constant) uniform constants {
+	uint64_t vertexBufferAddress;
+} PushConstants;
+
 void main() {
-    outp.color = inColor;
-    outp.uv = inUV;
-    gl_Position = vec4(inPos * uniforms.scale + uniforms.translate, 0, 1) * vec4(1.0f, -1.0f, 1.0f, 1.0f);
+    Vertices vertices = Vertices(PushConstants.vertexBufferAddress);
+    ImDrawVert vert = vertices.v[gl_VertexIndex];
+    outp.color = unpackUnorm4x8(vert.col);
+    outp.uv = vert.uv;
+    gl_Position = vec4(vert.pos * uniforms.scale + uniforms.translate, 0, 1) * vec4(1.0f, -1.0f, 1.0f, 1.0f);
 }

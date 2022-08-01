@@ -32,8 +32,8 @@ if(MSVC)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/$<0:>") # The $<0:> is a generator expression to remove the Debug/Release
-                                                                      # folders.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin$<0:>") # The $<0:> is a generator expression to remove the Debug/Release
+# folders.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib")
 
 if(KRYPTON_BUILD_TYPE_UPPER STREQUAL "DEBUG")

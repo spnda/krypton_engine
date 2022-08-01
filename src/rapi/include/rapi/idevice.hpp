@@ -3,6 +3,7 @@
 #include <span>
 #include <string_view>
 
+#include <rapi/ishaderparameter.hpp>
 #include <rapi/itexture.hpp>
 
 // fwd
@@ -40,7 +41,7 @@ namespace krypton::rapi {
 
         [[nodiscard]] virtual bool canPresentToWindow(Window* window) = 0;
 
-        [[nodiscard]] virtual auto createDevice() -> std::unique_ptr<IDevice> = 0;
+        [[nodiscard]] virtual auto createDevice(DeviceFeatures features) -> std::unique_ptr<IDevice> = 0;
 
         // Returns true for Vulkan implementations which are layered above another graphics API.
         // These devices are favored less than native implementations, as they cannot provide a
@@ -78,13 +79,17 @@ namespace krypton::rapi {
         [[nodiscard]] virtual auto createShaderFunction(std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType type,
                                                         krypton::shaders::ShaderStage stage) -> std::shared_ptr<IShader> = 0;
 
-        [[nodiscard]] virtual auto createShaderParameter() -> std::shared_ptr<IShaderParameter> = 0;
+        [[nodiscard]] virtual auto createShaderParameterLayout(ShaderParameterLayoutInfo&& layoutInfo) -> ShaderParameterLayout = 0;
+
+        [[nodiscard]] virtual auto createShaderParameterPool() -> std::shared_ptr<IShaderParameterPool> = 0;
 
         [[nodiscard]] virtual auto createSwapchain(Window* window) -> std::shared_ptr<ISwapchain> = 0;
 
         [[nodiscard]] virtual auto createTexture(rapi::TextureUsage usage) -> std::shared_ptr<ITexture> = 0;
 
         virtual void destroy() = 0;
+
+        virtual void destroyShaderParameterLayout(ShaderParameterLayout& layout) = 0;
 
         [[nodiscard]] virtual auto getDeviceName() -> std::string_view = 0;
 
