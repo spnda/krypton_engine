@@ -16,35 +16,10 @@ namespace krypton::rapi {
 }
 
 namespace krypton::rapi::mtl {
-    class Buffer;
     class CommandBuffer;
     class RenderPass;
-    class Sampler;
-    class Texture;
 
-    class ShaderParameter final : public IShaderParameter {
-        friend class ::krypton::rapi::MetalBackend;
-        friend class ::krypton::rapi::mtl::CommandBuffer;
-
-        MTL::Device* device = nullptr;
-        MTL::ArgumentEncoder* encoder = nullptr;
-        MTL::Buffer* argumentBuffer = nullptr;
-        NS::String* name = nullptr;
-
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Buffer>> buffers;
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Texture>> textures;
-        robin_hood::unordered_flat_map<uint32_t, std::shared_ptr<mtl::Sampler>> samplers;
-
-    public:
-        explicit ShaderParameter(MTL::Device* device);
-
-        void addBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) override;
-        void addTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) override;
-        void addSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
-        void buildParameter() override;
-        void destroy() override;
-        void setName(std::string_view name) override;
-    };
+    ALWAYS_INLINE [[nodiscard]] MTL::RenderStages getRenderStages(shaders::ShaderStage stages) noexcept;
 
     class FragmentShader final : public IShader {
         friend class ::krypton::rapi::MetalBackend;

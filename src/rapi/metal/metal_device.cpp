@@ -1,3 +1,5 @@
+#include <bit>
+
 #include <Tracy.hpp>
 
 #include <rapi/metal/metal_buffer.hpp>
@@ -7,10 +9,12 @@
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
+#include <rapi/metal/metal_shaderparameter.hpp>
 #include <rapi/metal/metal_swapchain.hpp>
 #include <rapi/metal/metal_sync.hpp>
 #include <rapi/metal/metal_texture.hpp>
 #include <shaders/shader_types.hpp>
+#include <util/assert.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
@@ -24,9 +28,9 @@ bool kr::mtl::PhysicalDevice::canPresentToWindow(Window* window) {
     return true;
 }
 
-std::unique_ptr<kr::IDevice> kr::mtl::PhysicalDevice::createDevice() {
+std::unique_ptr<kr::IDevice> kr::mtl::PhysicalDevice::createDevice(DeviceFeatures features) {
     ZoneScoped;
-    return std::make_unique<Device>(device, DeviceFeatures {});
+    return std::make_unique<Device>(device, features);
 }
 
 bool kr::mtl::PhysicalDevice::isPortabilityDriver() const {
@@ -51,17 +55,17 @@ bool kr::mtl::PhysicalDevice::meetsMinimumRequirement() {
 kr::DeviceFeatures kr::mtl::PhysicalDevice::supportedDeviceFeatures() {
     ZoneScoped;
     return DeviceFeatures {
-        .bufferDeviceAddress = true, // Given because of Metal 3 requirement.
         .accelerationStructures = false,
+        .bufferDeviceAddress = true, // Given because of Metal 3 requirement.
+        .indexType8Bit = false,
         .rayTracing = false,
     };
 }
 #pragma endregion
 
 #pragma region mtl::Device
-kr::mtl::Device::Device(MTL::Device* device, krypton::rapi::DeviceFeatures features) noexcept : IDevice(features), device(device) {
-    name = device->name()->cString(NS::UTF8StringEncoding);
-}
+kr::mtl::Device::Device(MTL::Device* device, krypton::rapi::DeviceFeatures features) noexcept
+    : IDevice(features), device(device), name(device->name()->cString(NS::UTF8StringEncoding)) {}
 
 std::shared_ptr<kr::IBuffer> kr::mtl::Device::createBuffer() {
     return std::make_shared<mtl::Buffer>(device);
@@ -91,6 +95,7 @@ std::shared_ptr<kr::IShader> kr::mtl::Device::createShaderFunction(std::span<con
                                                                    krypton::shaders::ShaderSourceType type,
                                                                    krypton::shaders::ShaderStage stage) {
     ZoneScoped;
+    VERIFY(std::popcount(static_cast<uint16_t>(stage)) == 1);
     switch (stage) {
         case krypton::shaders::ShaderStage::Fragment: {
             return std::make_shared<mtl::FragmentShader>(device, bytes, type);
@@ -103,9 +108,17 @@ std::shared_ptr<kr::IShader> kr::mtl::Device::createShaderFunction(std::span<con
     }
 }
 
-std::shared_ptr<kr::IShaderParameter> kr::mtl::Device::createShaderParameter() {
+kr::ShaderParameterLayout kr::mtl::Device::createShaderParameterLayout(ShaderParameterLayoutInfo&& layoutInfo) {
     ZoneScoped;
-    return std::make_shared<mtl::ShaderParameter>(device);
+    return kr::ShaderParameterLayout {
+        .layout = nullptr,
+        .layoutInfo = std::move(layoutInfo),
+    };
+}
+
+std::shared_ptr<kr::IShaderParameterPool> kr::mtl::Device::createShaderParameterPool() {
+    ZoneScoped;
+    return std::make_shared<ShaderParameterPool>(device);
 }
 
 std::shared_ptr<kr::ISwapchain> kr::mtl::Device::createSwapchain(Window* window) {
@@ -120,6 +133,10 @@ std::shared_ptr<kr::ITexture> kr::mtl::Device::createTexture(rapi::TextureUsage 
 
 void kr::mtl::Device::destroy() {
     // MTL::Device lifetimes are not our concern.
+}
+
+void kr::mtl::Device::destroyShaderParameterLayout(krypton::rapi::ShaderParameterLayout& layout) {
+    // Nothing to do, as we don't use the void pointer for anything.
 }
 
 std::string_view kr::mtl::Device::getDeviceName() {

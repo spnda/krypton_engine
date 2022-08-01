@@ -6,6 +6,7 @@
 #include <rapi/vulkan/vk_device.hpp>
 #include <rapi/vulkan/vk_fmt.hpp>
 #include <rapi/vulkan/vk_pipeline.hpp>
+#include <rapi/vulkan/vk_shader.hpp>
 #include <rapi/vulkan/vk_shaderparameter.hpp>
 #include <rapi/vulkan/vk_texture.hpp>
 #include <util/assert.hpp>
@@ -214,7 +215,7 @@ void kr::vk::Pipeline::setUsesPushConstants(uint32_t size, shaders::ShaderStage 
     ZoneScoped;
     VERIFY(size % 4 == 0);
     pushConstantRange.size = size;
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.stageFlags = getShaderStages(stages);
 }
 
 void kr::vk::Pipeline::setVertexFunction(const IShader* shader) {

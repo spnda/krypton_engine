@@ -6,9 +6,27 @@
 #include <rapi/vulkan/vk_shader.hpp>
 #include <shaders/shader_types.hpp>
 #include <util/assert.hpp>
+#include <util/bits.hpp>
 #include <util/logging.hpp>
 
 namespace kr = krypton::rapi;
+
+// clang-format off
+constexpr std::array<std::pair<krypton::shaders::ShaderStage, VkShaderStageFlagBits>, 2> vulkanShaderStages = {{
+    {krypton::shaders::ShaderStage::Fragment, VK_SHADER_STAGE_FRAGMENT_BIT},
+    {krypton::shaders::ShaderStage::Vertex, VK_SHADER_STAGE_VERTEX_BIT},
+}};
+// clang-format on
+
+VkShaderStageFlags kr::vk::getShaderStages(shaders::ShaderStage stages) noexcept {
+    VkShaderStageFlags newStages = 0;
+    for (const auto& [old_pos, new_pos] : vulkanShaderStages) {
+        if (util::hasBit(stages, old_pos)) {
+            newStages |= new_pos;
+        }
+    }
+    return newStages;
+}
 
 #pragma region vk::Shader
 kr::vk::Shader::Shader(Device* device, std::span<const std::byte> bytes, krypton::shaders::ShaderSourceType source)

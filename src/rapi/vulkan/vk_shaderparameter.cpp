@@ -24,7 +24,7 @@ constexpr std::array<VkDescriptorType, 7> vulkanDescriptorTypes = {
 };
 
 // Some default sizes I got from https://vkguide.dev/docs/extra-chapter/abstracting_descriptors/.
-std::vector<VkDescriptorPoolSize> defaultPoolSizes = {
+const std::vector<VkDescriptorPoolSize> defaultPoolSizes = {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 500 },
     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4000 },
     { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4000 },
@@ -53,7 +53,7 @@ bool kr::vk::ShaderParameterPool::allocate(ShaderParameterLayout layout, std::un
         usedPools.push_back(currentHandle);
     }
 
-    auto vkLayout = static_cast<VkDescriptorSetLayout>(layout.layout);
+    auto* vkLayout = static_cast<VkDescriptorSetLayout>(layout.layout);
     VkDescriptorSetAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = currentHandle,
@@ -241,9 +241,21 @@ void kr::vk::ShaderParameterPool::setName(std::string_view newName) {
 #pragma region vk::ShaderParameter
 kr::vk::ShaderParameter::ShaderParameter(Device* device, ShaderParameterLayout layout) : device(device), layout(std::move(layout)) {}
 
+VkDescriptorSet* kr::vk::ShaderParameter::getHandle() {
+    return &set;
+}
+
 void kr::vk::ShaderParameter::setBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) {
     ZoneScoped;
     buffers[index] = std::dynamic_pointer_cast<Buffer>(buffer);
+}
+
+void kr::vk::ShaderParameter::setName(std::string_view newName) {
+    ZoneScoped;
+    name = newName;
+
+    if (!name.empty())
+        device->setDebugUtilsName(VK_OBJECT_TYPE_DESCRIPTOR_SET, reinterpret_cast<const uint64_t&>(set), name.c_str());
 }
 
 void kr::vk::ShaderParameter::setSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) {
@@ -324,17 +336,5 @@ void kr::vk::ShaderParameter::update() {
     buffers.clear();
     samplers.clear();
     textures.clear();
-}
-
-VkDescriptorSet* kr::vk::ShaderParameter::getHandle() {
-    return &set;
-}
-
-void kr::vk::ShaderParameter::setName(std::string_view newName) {
-    ZoneScoped;
-    name = newName;
-
-    if (!name.empty())
-        device->setDebugUtilsName(VK_OBJECT_TYPE_DESCRIPTOR_SET, reinterpret_cast<const uint64_t&>(set), name.c_str());
 }
 #pragma endregion

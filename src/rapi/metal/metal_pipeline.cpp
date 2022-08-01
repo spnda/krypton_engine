@@ -11,7 +11,6 @@
 namespace kr = krypton::rapi;
 
 // clang-format off
-
 static constexpr std::array<MTL::PrimitiveTopologyClass, 3> metalPrimitiveTopologies = {
     MTL::PrimitiveTopologyClassPoint,       // PrimitiveTopology::Point = 0,
     MTL::PrimitiveTopologyClassLine,        // PrimitiveTopology::Line = 1,
@@ -30,28 +29,6 @@ static constexpr std::array<MTL::BlendFactor, 4> metalBlendFactors = {
 };
 // clang-format on
 
-namespace krypton::rapi::mtl {
-    MTL::VertexFormat getMetalVertexFormat(VertexFormat vertexFormat) {
-        ZoneScoped;
-        switch (vertexFormat) {
-            case VertexFormat::RGBA32_FLOAT: {
-                return MTL::VertexFormatFloat4;
-            }
-            case VertexFormat::RGB32_FLOAT: {
-                return MTL::VertexFormatFloat3;
-            }
-            case VertexFormat::RG32_FLOAT: {
-                return MTL::VertexFormatFloat2;
-            }
-            case VertexFormat::RGBA8_UNORM: {
-                return MTL::VertexFormatUChar4;
-            }
-        }
-
-        return MTL::VertexFormatInvalid;
-    }
-} // namespace krypton::rapi::mtl
-
 kr::mtl::Pipeline::Pipeline(MTL::Device* device) noexcept : device(device) {
     ZoneScoped;
     descriptor = MTL::RenderPipelineDescriptor::alloc()->init();
@@ -65,6 +42,8 @@ void kr::mtl::Pipeline::addAttachment(uint32_t index, PipelineAttachment attachm
     ZoneScoped;
     attachments[index] = attachment;
 }
+
+void kr::mtl::Pipeline::addParameter(uint32_t index, const krypton::rapi::ShaderParameterLayout& layout) {}
 
 void kr::mtl::Pipeline::create() {
     ZoneScoped;
@@ -113,6 +92,10 @@ MTL::RenderPipelineState* kr::mtl::Pipeline::getState() const {
     return state;
 }
 
+bool kr::mtl::Pipeline::getUsesPushConstants() const {
+    return usesPushConstants;
+}
+
 void kr::mtl::Pipeline::setDepthWriteEnabled(bool enabled) {
     ZoneScoped;
     depthDescriptor->setDepthWriteEnabled(enabled);
@@ -142,6 +125,11 @@ void kr::mtl::Pipeline::setName(std::string_view newName) {
 void kr::mtl::Pipeline::setPrimitiveTopology(krypton::rapi::PrimitiveTopology topology) {
     ZoneScoped;
     descriptor->setInputPrimitiveTopology(metalPrimitiveTopologies[static_cast<uint8_t>(topology)]);
+}
+
+void kr::mtl::Pipeline::setUsesPushConstants([[maybe_unused]] uint32_t size, [[maybe_unused]] shaders::ShaderStage stages) {
+    ZoneScoped;
+    usesPushConstants = true;
 }
 
 void kr::mtl::Pipeline::setVertexFunction(const IShader* shader) {

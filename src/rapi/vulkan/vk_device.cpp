@@ -415,13 +415,6 @@ std::shared_ptr<kr::IShader> kr::vk::Device::createShaderFunction(std::span<cons
     return std::make_shared<Shader>(this, bytes, type);
 }
 
-// clang-format off
-constexpr std::array<std::pair<krypton::shaders::ShaderStage, uint32_t>, 4> vulkanShaderStages = {{
-    {krypton::shaders::ShaderStage::Fragment, VK_SHADER_STAGE_FRAGMENT_BIT},
-    {krypton::shaders::ShaderStage::Vertex, VK_SHADER_STAGE_VERTEX_BIT},
-}};
-// clang-format on
-
 kr::ShaderParameterLayout kr::vk::Device::createShaderParameterLayout(ShaderParameterLayoutInfo&& layoutInfo) {
     ZoneScoped;
     std::vector<VkDescriptorSetLayoutBinding> bindings(layoutInfo.bindings.size());
@@ -432,11 +425,7 @@ kr::ShaderParameterLayout kr::vk::Device::createShaderParameterLayout(ShaderPara
         vkBinding.binding = binding.bindingId;
         vkBinding.descriptorCount = binding.count;
         vkBinding.descriptorType = getDescriptorType(binding.type);
-        for (const auto& [old_pos, new_pos] : vulkanShaderStages) {
-            if (util::hasBit(binding.stages, old_pos)) {
-                vkBinding.stageFlags |= new_pos;
-            }
-        }
+        vkBinding.stageFlags = getShaderStages(binding.stages);
     }
 
     VkDescriptorSetLayoutCreateInfo setLayoutInfo = {
@@ -512,7 +501,7 @@ void kr::vk::Device::determineQueues(std::vector<VkDeviceQueueCreateInfo>& devic
             auto count = qfProperties.queueCount;
             priorities[i].resize(count);
             for (auto j = 0U; j < count; ++j)
-                priorities[i][j] = 1.0f;
+                priorities[i][j] = 1.0F;
 
             deviceQueues[i] = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,

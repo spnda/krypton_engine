@@ -9,6 +9,8 @@
 typedef VkShaderModule_T* VkShaderModule;
 
 namespace krypton::rapi::vk {
+    ALWAYS_INLINE [[nodiscard]] VkShaderStageFlags getShaderStages(shaders::ShaderStage stages) noexcept;
+
     class Shader final : public IShader {
         class Device* device;
 

@@ -76,8 +76,8 @@ namespace krypton::rapi {
         ~IShaderParameter() override = default;
 
         virtual void setBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) = 0;
-        virtual void setTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) = 0;
         virtual void setSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) = 0;
+        virtual void setTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) = 0;
         virtual void update() = 0;
     };
 } // namespace krypton::rapi

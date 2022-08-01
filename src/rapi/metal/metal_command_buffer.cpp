@@ -8,12 +8,13 @@
 #include <rapi/metal/metal_renderpass.hpp>
 #include <rapi/metal/metal_sampler.hpp>
 #include <rapi/metal/metal_shader.hpp>
+#include <rapi/metal/metal_shaderparameter.hpp>
 #include <rapi/metal/metal_texture.hpp>
 #include <rapi/render_pass_attachments.hpp>
 #include <util/assert.hpp>
+#include <util/bits.hpp>
 
 namespace kr = krypton::rapi;
-namespace ku = krypton::util;
 
 #pragma region mtl::CommandBuffer
 kr::mtl::CommandBuffer::CommandBuffer(MTL::Device* device, MTL::CommandQueue* commandQueue) : device(device), queue(commandQueue) {}
@@ -30,10 +31,10 @@ void kr::mtl::CommandBuffer::begin() {
 
 void kr::mtl::CommandBuffer::beginRenderPass(const IRenderPass* handle) {
     ZoneScoped;
-    auto* mtlRenderPass = dynamic_cast<const mtl::RenderPass*>(handle);
+    const auto* mtlRenderPass = dynamic_cast<const mtl::RenderPass*>(handle);
 
     // Update texture handles
-    for (auto& attachment : mtlRenderPass->attachments) {
+    for (const auto& attachment : mtlRenderPass->attachments) {
         // Search for the swapchain texture handle
         auto* colorAttachment = mtlRenderPass->descriptor->colorAttachments()->object(attachment.first);
         colorAttachment->setTexture(dynamic_cast<Texture*>(attachment.second.attachment)->texture);
@@ -44,6 +45,7 @@ void kr::mtl::CommandBuffer::beginRenderPass(const IRenderPass* handle) {
 
 void kr::mtl::CommandBuffer::bindIndexBuffer(IBuffer* indexBuffer, IndexType type, uint32_t offset) {
     ZoneScoped;
+    VERIFY(type != IndexType::UINT8); // Metal does not support single byte indices.
     boundIndexBuffer = dynamic_cast<mtl::Buffer*>(indexBuffer);
     boundIndexBufferOffset = offset;
     boundIndexType = type == IndexType::UINT16 ? MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
@@ -52,34 +54,30 @@ void kr::mtl::CommandBuffer::bindIndexBuffer(IBuffer* indexBuffer, IndexType typ
 void kr::mtl::CommandBuffer::bindShaderParameter(uint32_t index, shaders::ShaderStage stage, IShaderParameter* parameter) {
     ZoneScoped;
     auto* mtlParameter = dynamic_cast<mtl::ShaderParameter*>(parameter);
+    auto indexOffset = boundPipeline->getUsesPushConstants() ? 1 : 0; // push constants occupy the first binding
 
-    if ((stage & shaders::ShaderStage::Fragment) == shaders::ShaderStage::Fragment) {
-        curRenderEncoder->setFragmentBuffer(mtlParameter->argumentBuffer, 0, index);
+    if (util::hasBit(stage, shaders::ShaderStage::Fragment)) {
+        curRenderEncoder->setFragmentBuffer(mtlParameter->argumentBuffer, 0, index + indexOffset);
     }
 
-    if ((stage & shaders::ShaderStage::Vertex) == shaders::ShaderStage::Vertex) {
-        curRenderEncoder->setVertexBuffer(mtlParameter->argumentBuffer, 0, index);
+    if (util::hasBit(stage, shaders::ShaderStage::Vertex)) {
+        curRenderEncoder->setVertexBuffer(mtlParameter->argumentBuffer, 0, index + indexOffset);
     }
 
+    auto mtlStages = getRenderStages(stage);
     for (auto& buf : mtlParameter->buffers) {
-        // TODO: Pass the shaderStage parameter to the useResource call.
-        curRenderEncoder->useResource(buf.second->buffer, MTL::ResourceUsageRead | MTL::ResourceUsageWrite);
+        curRenderEncoder->useResource(buf.second->buffer, MTL::ResourceUsageRead | MTL::ResourceUsageWrite, mtlStages);
     }
 
     for (auto& tex : mtlParameter->textures) {
-        curRenderEncoder->useResource(tex.second->texture, MTL::ResourceUsageSample);
+        curRenderEncoder->useResource(tex.second->texture, MTL::ResourceUsageSample, mtlStages);
     }
 }
 
 void kr::mtl::CommandBuffer::bindPipeline(IPipeline* pipeline) {
     ZoneScoped;
-    curRenderEncoder->setRenderPipelineState(dynamic_cast<Pipeline*>(pipeline)->getState());
-}
-
-void kr::mtl::CommandBuffer::bindVertexBuffer(uint32_t index, IBuffer* vertexBuffer, uint64_t offset) {
-    ZoneScoped;
-    auto* mtlBuffer = dynamic_cast<mtl::Buffer*>(vertexBuffer);
-    curRenderEncoder->setVertexBuffer(mtlBuffer->buffer, offset, index);
+    boundPipeline = dynamic_cast<Pipeline*>(pipeline);
+    curRenderEncoder->setRenderPipelineState(boundPipeline->getState());
 }
 
 void kr::mtl::CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t firstIndex) {
@@ -117,9 +115,14 @@ void kr::mtl::CommandBuffer::setName(std::string_view newName) {
         buffer->setLabel(name);
 }
 
-void kr::mtl::CommandBuffer::setVertexBufferOffset(uint32_t index, uint64_t offset) {
+void kr::mtl::CommandBuffer::pushConstants(uint32_t size, const void* data, shaders::ShaderStage stages) {
     ZoneScoped;
-    curRenderEncoder->setVertexBufferOffset(offset, index);
+    if (util::hasBit(stages, shaders::ShaderStage::Fragment)) {
+        curRenderEncoder->setFragmentBytes(data, size, 0);
+    }
+    if (util::hasBit(stages, shaders::ShaderStage::Vertex)) {
+        curRenderEncoder->setVertexBytes(data, size, 0);
+    }
 }
 
 void kr::mtl::CommandBuffer::scissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {

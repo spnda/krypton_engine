@@ -15,8 +15,6 @@ namespace krypton::rapi {
 }
 
 namespace krypton::rapi::vk {
-    VkFormat getVulkanVertexFormat(VertexFormat format);
-
     class Pipeline final : public IPipeline {
         class Device* device;
         VkPipeline pipeline = nullptr;

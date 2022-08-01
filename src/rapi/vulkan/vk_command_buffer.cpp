@@ -12,6 +12,7 @@
 #include <rapi/vulkan/vk_pipeline.hpp>
 #include <rapi/vulkan/vk_queue.hpp>
 #include <rapi/vulkan/vk_renderpass.hpp>
+#include <rapi/vulkan/vk_shader.hpp>
 #include <rapi/vulkan/vk_shaderparameter.hpp>
 #include <util/assert.hpp>
 
@@ -103,7 +104,7 @@ VkCommandBuffer kr::vk::CommandBuffer::getHandle() const {
 void kr::vk::CommandBuffer::pushConstants(uint32_t size, const void* data, shaders::ShaderStage stages) {
     ZoneScoped;
     VERIFY(boundPipeline != nullptr);
-    vkCmdPushConstants(cmdBuffer, boundPipeline->getLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, size, data);
+    vkCmdPushConstants(cmdBuffer, boundPipeline->getLayout(), getShaderStages(stages), 0, size, data);
 }
 
 void kr::vk::CommandBuffer::setName(std::string_view name) {

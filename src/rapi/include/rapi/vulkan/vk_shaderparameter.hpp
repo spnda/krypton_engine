@@ -57,11 +57,11 @@ namespace krypton::rapi::vk {
         explicit ShaderParameter(Device* device, ShaderParameterLayout layout);
         ~ShaderParameter() override = default;
 
-        void setBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) override;
-        void setTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) override;
-        void setSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
-        void update() override;
         [[nodiscard]] auto getHandle() -> VkDescriptorSet*;
+        void setBuffer(uint32_t index, std::shared_ptr<rapi::IBuffer> buffer) override;
         void setName(std::string_view name) override;
+        void setSampler(uint32_t index, std::shared_ptr<rapi::ISampler> sampler) override;
+        void setTexture(uint32_t index, std::shared_ptr<rapi::ITexture> texture) override;
+        void update() override;
     };
 } // namespace krypton::rapi::vk

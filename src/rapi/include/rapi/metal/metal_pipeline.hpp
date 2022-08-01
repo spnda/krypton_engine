@@ -5,16 +5,11 @@
 #include <Metal/MTLRenderPipeline.hpp>
 
 #include <rapi/ipipeline.hpp>
-
-namespace krypton::rapi {
-    enum class VertexFormat : uint32_t;
-}
+#include <shaders/shader_types.hpp>
 
 namespace krypton::rapi::mtl {
     class FragmentShader;
     class VertexShader;
-
-    MTL::VertexFormat getMetalVertexFormat(VertexFormat vertexFormat);
 
     class Pipeline final : public IPipeline {
         MTL::Device* device;
@@ -24,6 +19,7 @@ namespace krypton::rapi::mtl {
 
         MTL::RenderPipelineDescriptor* descriptor = nullptr;
         MTL::DepthStencilDescriptor* depthDescriptor = nullptr;
+        bool usesPushConstants = false;
 
         const FragmentShader* fragmentFunction;
         const VertexShader* vertexFunction;
@@ -35,13 +31,16 @@ namespace krypton::rapi::mtl {
         ~Pipeline() override = default;
 
         void addAttachment(uint32_t index, PipelineAttachment attachment) override;
+        void addParameter(uint32_t index, const ShaderParameterLayout& layout) override;
         void create() override;
         void destroy() override;
-        auto getState() const -> MTL::RenderPipelineState*;
+        [[nodiscard]] auto getState() const -> MTL::RenderPipelineState*;
+        [[nodiscard]] bool getUsesPushConstants() const;
         void setDepthWriteEnabled(bool enabled) override;
         void setFragmentFunction(const IShader* shader) override;
         void setName(std::string_view name) override;
         void setPrimitiveTopology(PrimitiveTopology topology) override;
+        void setUsesPushConstants(uint32_t size, shaders::ShaderStage stages) override;
         void setVertexFunction(const IShader* shader) override;
     };
 } // namespace krypton::rapi::mtl
